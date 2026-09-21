@@ -3,15 +3,23 @@
     wavemaker_type: "flap"
     wavemaker_id: "ladertanken"
     wavemaker_maximum: 0.5
+    water_depth: 0.6          # meters, still-water depth at the paddle
+    hinge_height: 0.0         # meters above tank floor, only meaningful for flap type
+    driver_address: ""
 
 /wavemakers/lilletanken/controller:
   ros__parameters:
     wavemaker_type: "piston"
     wavemaker_id: "lilletanken"
     wavemaker_maximum: 0.5
+    water_depth: 1.0
+    driver_address: ""
 
 /wavemakers/mc_lab/controller:
   ros__parameters:
     wavemaker_type: "flap"
     wavemaker_id: "mc_lab"
     wavemaker_maximum: 0.5
+    water_depth: 1.5
+    hinge_height: 0.5
+    driver_address: ""
