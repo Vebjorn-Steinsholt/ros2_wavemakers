@@ -1,0 +1,11 @@
+# Goal
+float64 amplitude
+float64 frequency
+---
+# Result
+bool success
+string message
+---
+# Feedback
+float64 position
+float64 elapsed_time
