@@ -1,5 +1,7 @@
 #include <memory>
 #include <string>
+#include <mutex>
+#include <thread>
 
 #include "lifecycle_msgs/msg/transition.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -10,7 +12,6 @@
 
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
-using namespace std::placeholders;
 
 
 
@@ -27,7 +28,6 @@ public:
       declare_parameter<std::string>("wavemaker_id", "");
       declare_parameter<double>("wavemaker_maximum", 1.0);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
-      server_active_ = false;
 
     
   }
@@ -71,6 +71,7 @@ public:
     bond_->setHeartbeatPeriod(0.10);
     bond_->setHeartbeatTimeout(4.0);
     bond_->start();
+  
       
     // --- driver comms: arm actuator, start periodic write loop ---
     // if (!driver_->enable()) { return CallbackReturn::FAILURE }
@@ -87,6 +88,17 @@ public:
       if(bond_) {
         bond_->breakBond();
         bond_.reset();
+      }
+      std::shared_ptr<MoveWavemakerGoalHandle> goal_to_abort;
+      {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        goal_to_abort = goal_handle_;
+        goal_handle_.reset();
+        goal_pending_ = false;
+      }
+      if (goal_to_abort && goal_to_abort->is_active()) {
+        auto result = std::make_shared<MoveWavemaker::Result>();
+        goal_to_abort->abort(result);
       }
     // --- driver comms: stop motion, keep connection open ---
     // command_timer_->cancel()
@@ -117,34 +129,98 @@ private:
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const MoveWavemaker::Goal> goal)
   {
-    if(!server_active_ || goal_active_) {
-      RCLCPP_WARN(get_logger(), "Received goal while server inactive, or already active, rejecting");
+    (void)uuid;
+    std::lock_guard<std::mutex> lock(goal_mutex_);
+   
+
+    if(this->get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+      RCLCPP_WARN(get_logger(), "Received goal while server inactive, rejecting");
       return rclcpp_action::GoalResponse::REJECT;
     }
-    goal_active_ = true;
+     if (goal_pending_ ||(goal_handle_ && goal_handle_->is_active())) {
+      RCLCPP_WARN(get_logger(), "Received new goal while another is active or pending, rejecting");
+      return rclcpp_action::GoalResponse::REJECT;
+     
+    }
+
+
     if (goal->amplitude > wavemaker_maximum_) {
       RCLCPP_WARN(get_logger(), "Received goal with amplitude %f exceeding maximum %f, rejecting",
                   goal->amplitude, wavemaker_maximum_);
       return rclcpp_action::GoalResponse::REJECT;
     }
+    goal_pending_ = true;
 
 
-    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    return rclcpp_action::GoalResponse::ACCEPT_AND_DEFER;
   }
 
-  void cancel_callback(
-    const rclcpp_action::GoalUUID & uuid)
+rclcpp_action::CancelResponse cancel_callback(
+const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
   {
-    goal_active_ = false;
-    // Handle cancellation of the goal
+    (void)goal_handle;
+    RCLCPP_INFO(get_logger(), "Received request to cancel goal");
+    return rclcpp_action::CancelResponse::ACCEPT;
   }
 
   void handle_accepted_callback(
     std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
   {
-    goal_active_ = true;  
-    // Handle the accepted goal
+    {
+    std::lock_guard<std::mutex> lock(goal_mutex_);
+    goal_handle_ = goal_handle;
+    goal_pending_ = false;
   }
+    // Handle the accepted goal
+    std::thread([this, goal_handle]() {
+      // Execute the goal in a separate thread
+      execute_goal(goal_handle);
+    }).detach();
+  }
+
+  void execute_goal(
+    std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
+{
+    auto result = std::make_shared<MoveWavemaker::Result>();
+
+    // Example execution loop
+    while (rclcpp::ok()) {
+
+        // Check for cancellation
+        if (goal_handle->is_canceling()) {
+            goal_handle->canceled(result);
+
+            {
+                std::lock_guard<std::mutex> lock(goal_mutex_);
+                goal_handle_.reset();
+                goal_pending_ = false;
+            }
+
+            return;
+        }
+
+        // TODO:
+        //  - compute waveform setpoint
+        //  - send command to driver
+        //  - publish feedback
+        //  - determine when the sequence is complete
+
+        bool finished = true;  // placeholder
+
+        if (finished) {
+            break;
+        }
+    }
+
+    // Goal completed successfully
+    goal_handle->succeed(result);
+
+    {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+        goal_handle_.reset();
+        goal_pending_ = false;
+    }
+}
 
   void publish_and_write_setpoint()
   {
@@ -202,11 +278,10 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   bool wavemaker_mode_pregenerated_;
   double mu_;
   double S_;
-  bool server_active_;
   std::mutex goal_mutex_;
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
+  bool goal_pending_{false};
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
-  bool goal_active_;
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;
