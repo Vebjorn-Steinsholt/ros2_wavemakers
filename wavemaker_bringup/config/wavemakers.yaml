@@ -3,15 +3,18 @@
     wavemaker_type: "flap"
     wavemaker_id: "ladertanken"
     wavemaker_maximum: 0.5
+    wavemaker_mode_pregenerated: false
 
 /wavemakers/lilletanken/controller:
   ros__parameters:
     wavemaker_type: "piston"
     wavemaker_id: "lilletanken"
     wavemaker_maximum: 0.5
+    wavemaker_mode_pregenerated: false
 
 /wavemakers/mc_lab/controller:
   ros__parameters:
     wavemaker_type: "flap"
     wavemaker_id: "mc_lab"
     wavemaker_maximum: 0.5
+    wavemaker_mode_pregenerated: false
