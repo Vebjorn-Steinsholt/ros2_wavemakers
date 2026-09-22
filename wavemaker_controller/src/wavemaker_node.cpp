@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "lifecycle_msgs/msg/transition.hpp"
+#include "lifecycle_msgs/msg/state.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -27,6 +28,7 @@ public:
       declare_parameter<std::string>("driver_address", "");
       declare_parameter<std::string>("wavemaker_id", "");
       declare_parameter<double>("wavemaker_maximum", 1.0);
+      declare_parameter<double>("water_depth", 0.6);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
 
     
@@ -40,6 +42,7 @@ public:
     wavemaker_id_ = get_parameter("wavemaker_id").as_string();
     wavemaker_maximum_ = get_parameter("wavemaker_maximum").as_double();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
+    water_depth_ = get_parameter("water_depth").as_double();
     action_server_ = rclcpp_action::create_server<MoveWavemaker>(
       shared_from_this(),
       "move_wavemaker",
@@ -142,14 +145,26 @@ private:
       return rclcpp_action::GoalResponse::REJECT;
      
     }
+    if (goal->amplitude <= 0.0 || goal->frequency <= 0.0) {
+      RCLCPP_WARN(get_logger(), "Received goal with non-positive amplitude or frequency, rejecting");
+      return rclcpp_action::GoalResponse::REJECT;
+    }
 
+    double f = goal->frequency;
+    double omega = 2.0 * M_PI * f;
 
-    if (goal->amplitude > wavemaker_maximum_) {
+    double mu = solve_dispersion(omega, water_depth_);
+    double S_ = compute_stroke(mu, (goal->amplitude)*2, wavemaker_type_);
+    double x_max = (S_ / 2.0);
+    if (x_max > wavemaker_maximum_) {
       RCLCPP_WARN(get_logger(), "Received goal with amplitude %f exceeding maximum %f, rejecting",
                   goal->amplitude, wavemaker_maximum_);
       return rclcpp_action::GoalResponse::REJECT;
     }
     goal_pending_ = true;
+    mu_ = mu;
+    S_ = S_;
+    omega_ = omega;
 
 
     return rclcpp_action::GoalResponse::ACCEPT_AND_DEFER;
@@ -182,6 +197,8 @@ const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
     std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
 {
     auto result = std::make_shared<MoveWavemaker::Result>();
+
+    goal_handle->execute();
 
     // Example execution loop
     while (rclcpp::ok()) {
@@ -249,8 +266,8 @@ const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
     constexpr double beta1 = 1.30;
     constexpr double beta2 = 0.216;
 
-    const double fc =std::pow(mu0,alpha) * 
-                      (std::exp(-beta0+beta1*mu0+beta2*mu0*mu0));
+    const double fc = std::pow(mu0, alpha) *
+                   std::exp(-(beta0 + beta1 * mu0 + beta2 * mu0 * mu0));
     const double mu = mu_a *(1.0+fc);
     return mu;
   }
@@ -278,6 +295,8 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   bool wavemaker_mode_pregenerated_;
   double mu_;
   double S_;
+  double water_depth_; 
+  double omega_;
   std::mutex goal_mutex_;
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
   bool goal_pending_{false};
