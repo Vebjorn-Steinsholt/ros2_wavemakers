@@ -10,6 +10,7 @@
 
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
+using namespace std::placeholders;
 
 
 
@@ -26,6 +27,7 @@ public:
       declare_parameter<std::string>("wavemaker_id", "");
       declare_parameter<double>("wavemaker_maximum", 1.0);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
+      server_active_ = false;
 
     
   }
@@ -38,6 +40,12 @@ public:
     wavemaker_id_ = get_parameter("wavemaker_id").as_string();
     wavemaker_maximum_ = get_parameter("wavemaker_maximum").as_double();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
+    action_server_ = rclcpp_action::create_server<MoveWavemaker>(
+      shared_from_this(),
+      "move_wavemaker",
+      std::bind(&WavemakerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
+      std::bind(&WavemakerNode::cancel_callback, this, std::placeholders::_1),
+      std::bind(&WavemakerNode::handle_accepted_callback, this, std::placeholders::_1));
     RCLCPP_INFO(
       get_logger(), "Configuring from state '%s' as a %s wavemaker",
       previous_state.label().c_str(), wavemaker_type_.c_str());
@@ -104,6 +112,40 @@ public:
 private:
   std::unique_ptr<bond::Bond> bond_;
   // called periodically while active, or driven by an incoming action goal
+
+  rclcpp_action::GoalResponse goal_callback(
+    const rclcpp_action::GoalUUID & uuid,
+    std::shared_ptr<const MoveWavemaker::Goal> goal)
+  {
+    if(!server_active_ || goal_active_) {
+      RCLCPP_WARN(get_logger(), "Received goal while server inactive, or already active, rejecting");
+      return rclcpp_action::GoalResponse::REJECT;
+    }
+    goal_active_ = true;
+    if (goal->amplitude > wavemaker_maximum_) {
+      RCLCPP_WARN(get_logger(), "Received goal with amplitude %f exceeding maximum %f, rejecting",
+                  goal->amplitude, wavemaker_maximum_);
+      return rclcpp_action::GoalResponse::REJECT;
+    }
+
+
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+  }
+
+  void cancel_callback(
+    const rclcpp_action::GoalUUID & uuid)
+  {
+    goal_active_ = false;
+    // Handle cancellation of the goal
+  }
+
+  void handle_accepted_callback(
+    std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
+  {
+    goal_active_ = true;  
+    // Handle the accepted goal
+  }
+
   void publish_and_write_setpoint()
   {
     // setpoint = compute_from_current_goal()   // amplitude/period/ramp logic
@@ -164,6 +206,7 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   std::mutex goal_mutex_;
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
+  bool goal_active_;
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;
