@@ -1,0 +1,707 @@
+; ================================================================
+; GSD File for Rexroth IndraDrive
+; ================================================================
+; Language: international
+; ================================================================
+; Rexroth
+; Bosch Group
+; Bgm.-Dr.-Nebel-Str. 2
+; D-97816 Lohr am Main
+; Germany
+; Tel.: +49 - 9352 - 40 - 0
+; ================================================================
+; ; File Name   : RX030107.GSD
+; File Version: 3.00
+; File Date   : 2006-01-27
+; ================================================================
+; ------------- File History -------------------------------------
+; Date
+; 2003-11-05  Initial Release (RX010107.GSD)
+; 2004-12-23  Version 2.00 for PROFIsafe Certification
+; 2005-03-01  Release 2.01 for PROFIsafe Certification
+;             (Software_Release changed to include double axis drive)
+; 2005-03-31  C1_Max_Data_Len und C2_Max_Data_Len auf 244 erhöht
+; 2005-06-15  Anpassung für MLD (RT030107.GSD):
+;             EA-Längen auf 208 Bytes erhöht
+;             Anzahl der Module auf 19 für 6 Achsen
+; 2005-08-23  Ext_User_Prm_Data_Const(0)= 0x80,0x00,0x08 (DPV1 aktiv als Standard)
+; 2005-09-20  Zyklische Länge auf 23 Worte je Modul erhöht
+; 2005-12-13  C1_Max_Data_Len und C2_Max_Data_Len wegen Problem mit Siemens Master
+;             auf 240 Byte reduziert.
+; 2006-01-27  Version 3.00 (RX030107.GSD) aus der Testversion erstellt
+;
+; ------------- File History End ---------------------------------
+; ================================================================
+;
+;      DISCLAIMER:
+;      ===========
+;
+;      DO NOT MODIFY THIS FILE!
+;      CHANGING PROFIBUS PARAMETERS CAN LEAD TO UNDEFINED SYSTEM BEHAVIOUR
+;
+; ================================================================
+
+#Profibus_DP
+GSD_Revision=4
+Vendor_Name="Rexroth"
+Model_Name="IndraDrive RX03"
+Revision="V3.00"
+Ident_Number=0x0107
+Protocol_Ident=0
+Station_Type=0
+FMS_supp=0
+Hardware_Release="V1.x"
+Software_Release="FWA-INDRV*-MPx-0x"
+Slave_Family=1@Rexroth
+
+9.6_supp=1
+19.2_supp=1
+45.45_supp=1
+93.75_supp=1
+187.5_supp=1
+500_supp=1
+1.5M_supp=1
+3M_supp=1
+6M_supp=1
+12M_supp=1
+MaxTsdr_9.6=15
+MaxTsdr_19.2=15
+MaxTsdr_45.45=15
+MaxTsdr_93.75=15
+MaxTsdr_187.5=15
+MaxTsdr_500=15
+MaxTsdr_1.5M=20
+MaxTsdr_3M=20
+MaxTsdr_6M=30
+MaxTsdr_12M=45
+
+Redundancy=0
+Repeater_Ctrl_Sig=1
+24V_Pins=0
+Implementation_Type="VPC3+C"
+
+Bitmap_Device="RX_R0107"
+Bitmap_Diag="RX_D0107"
+Bitmap_SF="RX_S0107"
+
+Freeze_Mode_supp=1
+Sync_Mode_supp=1
+Auto_Baud_supp=1
+Set_Slave_Add_supp=0
+Fail_Safe=0
+
+Min_Slave_Intervall=5     ; *100us
+Modular_Station=1
+Max_Module=25
+Max_Input_Len=208
+Max_Output_Len=208
+Max_Data_Len=488
+Modul_Offset=1
+WD_Base_1ms_supp=1
+Check_Cfg_Mode=0
+Prm_block_structure_supp = 1 ; 1 = block structure supported
+; Diagnos mit jeweils 5 Bytes pro Achse + 5 Byte generell
+Max_Diag_Data_Len=32
+; Device specific diagnostic
+; Modul
+Unit_Diag_Area = 8-15
+Value(0)="Device"
+Value(1)="ParamChannel"
+Value(2)="F-Modul Axis 0"
+Value(3)="Inputs Axis 0"
+Value(4)="Outputs Axis 0"
+Value(5)="F-Modul Axis 1"
+Value(6)="Inputs Axis 1"
+Value(7)="Outputs Axis 1"
+Unit_Diag_Area_End
+; Diagnose
+Unit_Diag_Area = 24-31
+;Standard
+Value(0)="Data valid"
+Value(1)="Data invalid"
+Value(2)="Wrong module"
+Value(3)="No Module"
+;F-Slave Messages
+Value(64)="F_Dest_Add does not match"
+Value(65)="F_Dest_Add = 0x0000 or 0xFFFF"
+Value(66)="F_Source_Add = 0x0000 or 0xFFFF"
+Value(67)="F_WD_Time = 0"
+Value(68)="F_SIL exceeds supp. technology"
+Value(69)="F_CRC_Length doesn't match"
+Value(70)="Incor. version of F_Parameter"
+Value(71)="CRC1-Fault"
+Value(72)="reserved"
+Value(73)="reserved"
+Value(74)="reserved"
+;Device Specific
+Value(128)="Set_Prm length error"
+Value(129)="Publisher not supp."
+Value(130)="Chk_Cfg mode not supp."
+Value(132)="Isochron mode not supp."
+Value(133)="Prm_Structure expected"
+Value(134)="DBX not supp."
+Value(135)="Unknown Set_Prm service"
+Value(136)="Too many modules configured"
+Unit_Diag_Area_End
+
+; DPV1
+DPV1_Slave=1
+DPV1_Data_Types=0
+C1_Read_Write_supp=1
+C1_Max_Data_Len=240
+C1_Response_Timeout=500
+Diagnostic_Alarm_supp=0
+Process_Alarm_supp=0
+Pull_Plug_Alarm_supp=0
+Status_Alarm_supp=0
+Update_Alarm_supp=0
+Manufacturer_Specific_Alarm_supp=0
+Alarm_Sequence_Mode_Count=0
+Alarm_Type_Mode_supp=0
+Diagnostic_Alarm_required=0
+Extra_Alarm_SAP_Supp=0
+Max_Initiate_PDU_Length=52
+C2_Read_Write_supp=1
+C2_Max_Data_Len=240
+C2_Response_Timeout=50
+C2_Read_Write_required=0
+C2_Max_Count_Channels=2
+
+; DPV2
+Publisher_supp=0
+
+; Parametrierung
+X_Prm_SAP_supp=0
+Max_User_Prm_Data_Len=48
+Ext_User_Prm_Data_Const(0)= 0x80,0x00,0x08
+
+;**********************************************************
+;Text-Definitionen fuer User_Prm_Data
+;**********************************************************
+
+;ProfiSave Begin
+;Text-Definitionen fuer User_Prm_Data
+
+PrmText 		= 	1
+Text(0) 		= 	"SIL 1"
+Text(1) 		= 	"SIL 2"
+Text(2) 		= 	"SIL 3"
+;Text(3) 		= 	"no SIL"
+EndPrmText
+
+PrmText 		= 	2
+Text(0) 		= 	"No Check"
+Text(1) 		= 	"Check"
+EndPrmText
+
+; Text-Definition fuer CRC-Length
+PrmText 		=	 3
+Text(1) 		= 	"2 Byte CRC"
+;Text(2) 		= 	"4 Byte CRC"
+EndPrmText
+
+; Ext-User-Prm-Data-Def-List
+
+;User_Prm_Data definition 1
+ExtUserPrmData = 1 "[SlotNumber]" ; Reference number 1
+Unsigned8 1 1-255       ; Default = 1, Max = 255
+EndExtUserPrmData
+
+ExtUserPrmData = 2 "F_Check_SeqNr"
+Bit(0) 0 0-1                            
+Prm_Text_Ref = 2
+EndExtUserPrmData
+
+ExtUserPrmData = 3 "F_SIL"  		
+BitArea(2-3) 2 0-2        			
+Prm_Text_Ref = 1            		
+EndExtUserPrmData
+
+ExtUserPrmData = 4 "F_CRC_Length"
+BitArea(4-5) 1 1-1          		
+Prm_Text_Ref = 3 
+EndExtUserPrmData
+
+ExtUserPrmData = 5 "F_Par_Version"
+BitArea(6-7) 0 0-0          		
+EndExtUserPrmData
+
+ExtUserPrmData = 6 "F_Source_Add"  
+Unsigned16 1 1-65534          			
+EndExtUserPrmData
+
+ExtUserPrmData = 7 "F_Dest_Add"  	
+Unsigned16 1 1-65534        			
+EndExtUserPrmData
+
+ExtUserPrmData = 8 "F_WD_Time"  	
+Unsigned16 500 10-2000
+EndExtUserPrmData
+
+ExtUserPrmData = 9 "F_Par_CRC"  	
+Unsigned16 18329 0-65535          			
+EndExtUserPrmData
+
+;BG-Beschreibung
+;ParameterChannel Modules
+Module="ParamCh not used" 0x00
+1
+EndModule
+
+Module="ParamCh 2 Words" 0xF1
+2
+EndModule
+
+Module="ParamCh 3 Words" 0xF2
+3
+EndModule
+
+Module="ParamCh 4 Words" 0xF3
+4
+EndModule
+
+Module="ParamCh 5 Words" 0xF4
+5
+EndModule
+
+Module="ParamCh 6 Words" 0xF5
+6
+EndModule
+
+Module="ParamCh 7 Words" 0xF6
+7
+EndModule
+
+Module="ParamCh 8 Words" 0xF7
+8
+EndModule
+
+;Safety-Modul
+Module="F-Modul not used" 0x00
+9
+EndModule
+
+Module="F-Modul I/O" 0xC6,0x85,0x85,0x05,0x05,0x0a,0x05,0x05,0x0a
+10
+;***********************************************************
+; Prm-Daten
+;************************************************************
+F_Ext_Module_Prm_Data_Len=14
+F_Ext_User_Prm_Data_Const(0) 	= 0xE		;Blocklänge F-Parameter
+F_Ext_User_Prm_Data_Const(1) 	= 5      	;Kennung F-Parameter
+F_Ext_User_Prm_Data_Const(2) 	= 1   		;Steckplatz des F-Moduls
+F_Ext_User_Prm_Data_Const(3) 	= 0   		;Reserviert
+F_Ext_User_Prm_Data_Const(4) 	= 0x18 		;F-Param-Flag1
+F_Ext_User_Prm_Data_Const(5) 	= 0x00 		;F-Param-Flag2
+F_Ext_User_Prm_Data_Ref(2) 	= 1		;Slot
+F_Ext_User_Prm_Data_Ref(4) 	= 2		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 3 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 4 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(5) 	= 5 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(6) 	= 6		;F-Source-Adr
+F_Ext_User_Prm_Data_Ref(8) 	= 7		;F-Dest-Adr
+F_Ext_User_Prm_Data_Ref(10)   	= 8		;F-WD-Time
+F_Ext_User_Prm_Data_Ref(12)  	= 9 	  	;F-CRC1
+;CRC über die Parameterbeschreibungsdaten
+F_ParamDescCRC = 21547
+
+EndModule
+
+Module="F-Modul I/O Cmd" 0xC7,0x89,0x85,0x05,0x05,0x03,0x0a,0x05,0x05,0x0a
+11
+;***********************************************************
+; Prm-Daten
+;************************************************************
+F_Ext_Module_Prm_Data_Len=14
+F_Ext_User_Prm_Data_Const(0) 	= 0xE		;Blocklänge F-Parameter
+F_Ext_User_Prm_Data_Const(1) 	= 5      	;Kennung F-Parameter
+F_Ext_User_Prm_Data_Const(2) 	= 1   		;Steckplatz des F-Moduls
+F_Ext_User_Prm_Data_Const(3) 	= 0   		;Reserviert
+F_Ext_User_Prm_Data_Const(4) 	= 0x18 		;F-Param-Flag1
+F_Ext_User_Prm_Data_Const(5) 	= 0x00 		;F-Param-Flag2
+F_Ext_User_Prm_Data_Ref(2) 	= 1		;Slot
+F_Ext_User_Prm_Data_Ref(4) 	= 2		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 3 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 4 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(5) 	= 5 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(6) 	= 6		;F-Source-Adr
+F_Ext_User_Prm_Data_Ref(8) 	= 7		;F-Dest-Adr
+F_Ext_User_Prm_Data_Ref(10)   	= 8		;F-WD-Time
+F_Ext_User_Prm_Data_Ref(12)  	= 9 	  	;F-CRC1
+;CRC über die Parameterbeschreibungsdaten
+F_ParamDescCRC = 21547
+
+EndModule
+
+Module="F-Modul I/O Real" 0xC7,0x85,0x89,0x05,0x05,0x0a,0x05,0x05,0x03,0x0a
+12
+;***********************************************************
+; Prm-Daten
+;************************************************************
+F_Ext_Module_Prm_Data_Len=14
+F_Ext_User_Prm_Data_Const(0) 	= 0xE		;Blocklänge F-Parameter
+F_Ext_User_Prm_Data_Const(1) 	= 5      	;Kennung F-Parameter
+F_Ext_User_Prm_Data_Const(2) 	= 1   		;Steckplatz des F-Moduls
+F_Ext_User_Prm_Data_Const(3) 	= 0   		;Reserviert
+F_Ext_User_Prm_Data_Const(4) 	= 0x18 		;F-Param-Flag1
+F_Ext_User_Prm_Data_Const(5) 	= 0x00 		;F-Param-Flag2
+F_Ext_User_Prm_Data_Ref(2) 	= 1		;Slot
+F_Ext_User_Prm_Data_Ref(4) 	= 2		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 3 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 4 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(5) 	= 5 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(6) 	= 6		;F-Source-Adr
+F_Ext_User_Prm_Data_Ref(8) 	= 7		;F-Dest-Adr
+F_Ext_User_Prm_Data_Ref(10)   	= 8		;F-WD-Time
+F_Ext_User_Prm_Data_Ref(12)  	= 9 	  	;F-CRC1
+;CRC über die Parameterbeschreibungsdaten
+F_ParamDescCRC = 21547
+
+EndModule
+
+Module="F-Modul I/O Cmd Real" 0xC8,0x89,0x89,0x05,0x05,0x03,0x0a,0x05,0x05,0x03,0x0a
+13
+;***********************************************************
+; Prm-Daten
+;************************************************************
+F_Ext_Module_Prm_Data_Len=14
+F_Ext_User_Prm_Data_Const(0) 	= 0xE		;Blocklänge F-Parameter
+F_Ext_User_Prm_Data_Const(1) 	= 5      	;Kennung F-Parameter
+F_Ext_User_Prm_Data_Const(2) 	= 1   		;Steckplatz des F-Moduls
+F_Ext_User_Prm_Data_Const(3) 	= 0   		;Reserviert
+F_Ext_User_Prm_Data_Const(4) 	= 0x18 		;F-Param-Flag1
+F_Ext_User_Prm_Data_Const(5) 	= 0x00 		;F-Param-Flag2
+F_Ext_User_Prm_Data_Ref(2) 	= 1		;Slot
+F_Ext_User_Prm_Data_Ref(4) 	= 2		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 3 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(4) 	= 4 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(5) 	= 5 		;F-Param-Flag (Motorola-Format einhalten!)
+F_Ext_User_Prm_Data_Ref(6) 	= 6		;F-Source-Adr
+F_Ext_User_Prm_Data_Ref(8) 	= 7		;F-Dest-Adr
+F_Ext_User_Prm_Data_Ref(10)   	= 8		;F-WD-Time
+F_Ext_User_Prm_Data_Ref(12)  	= 9 	  	;F-CRC1
+;CRC über die Parameterbeschreibungsdaten
+F_ParamDescCRC = 21547
+
+EndModule
+
+;Input Modules
+Module="Input not used" 0x00
+14
+EndModule
+
+Module="Input 1 Word" 0xD0
+15
+EndModule
+
+Module="Input 2 Words" 0xD1
+16
+EndModule
+
+Module="Input 3 Words" 0xD2
+17
+EndModule
+
+Module="Input 4 Words" 0xD3
+18
+EndModule
+
+Module="Input 5 Words" 0xD4
+19
+EndModule
+
+Module="Input 6 Words" 0xD5
+20
+EndModule
+
+Module="Input 7 Words" 0xD6
+21
+EndModule
+
+Module="Input 8 Words" 0xD7
+22
+EndModule
+
+Module="Input 9 Words" 0xD8
+23
+EndModule
+
+Module="Input 10 Words" 0xD9
+24
+EndModule
+
+Module="Input 11 Words" 0xDA
+25
+EndModule
+
+Module="Input 12 Words" 0xDB
+26
+EndModule
+
+Module="Input 13 Words" 0xDC
+27
+EndModule
+
+Module="Input 14 Words" 0xDD
+28
+EndModule
+
+Module="Input 15 Words" 0xDE
+29
+EndModule
+
+Module="Input 16 Words" 0xDF
+30
+EndModule
+
+Module = "Input 17 Words" 0x40,0xD0
+31
+EndModule
+
+Module = "Input 18 Words" 0x40,0xD1
+32
+EndModule
+
+Module = "Input 19 Words" 0x40,0xD2
+33
+EndModule
+
+Module = "Input 20 Words" 0x40,0xD3
+34
+EndModule
+
+Module = "Input 21 WOrds" 0x40,0xD4
+35
+EndModule
+
+Module = "Input 22 Words" 0x40,0xD5
+36
+EndModule
+
+Module = "Input 23 Words" 0x40,0xD6
+37
+EndModule
+
+Module = "Input 24 Words" 0x40,0xD7
+38
+EndModule
+
+Module = "Input 25 Words" 0x40,0xD8
+39
+EndModule
+
+Module = "Input 26 Words" 0x40,0xD9
+40
+EndModule
+
+Module = "Input 27 Words" 0x40,0xDA
+41
+EndModule
+
+Module = "Input 28 Words" 0x40,0xDB
+42
+EndModule
+
+Module = "Input 29 Words" 0x40,0xDC
+43
+EndModule
+
+Module = "Input 30 Words" 0x40,0xDD
+44
+EndModule
+
+Module = "Input 31 Words" 0x40,0xDE
+45
+EndModule
+
+Module = "Input 32 Words" 0x40,0xDF
+46
+EndModule
+
+;Output Modules
+Module="Output not used" 0x00 
+47
+EndModule
+
+Module="Output 1 Word" 0xE0
+48
+EndModule
+
+Module="Output 2 Words" 0xE1
+49
+EndModule
+
+Module="Output 3 Words" 0xE2
+50
+EndModule
+
+Module="Output 4 Words" 0xE3
+51
+EndModule
+
+Module="Output 5 Words" 0xE4
+52
+EndModule
+
+Module="Output 6 Words" 0xE5
+53
+EndModule
+
+Module="Output 7 Words" 0xE6
+54
+EndModule
+
+Module="Output 8 Words" 0xE7
+55
+EndModule
+
+Module="Output 9 Words" 0xE8
+56
+EndModule
+
+Module="Output 10 Words" 0xE9
+57
+EndModule
+
+Module="Output 11 Words" 0xEA
+58
+EndModule
+
+Module="Output 12 Words" 0xEB
+59
+EndModule
+
+Module="Output 13 Words" 0xEC
+60
+EndModule
+
+Module="Output 14 Words" 0xED
+61
+EndModule
+
+Module="Output 15 Words" 0xEE
+62
+EndModule
+
+Module="Output 16 Words" 0xEF
+63
+EndModule
+
+Module = "Output 17 Words" 0x80,0xD0
+64
+EndModule
+
+Module = "Output 18 Words" 0x80,0xD1
+65
+EndModule
+
+Module = "Output 19 Words" 0x80,0xD2
+66
+EndModule
+
+Module = "Output 20 Words" 0x80,0xD3
+67
+EndModule
+
+Module = "Output 21 Words" 0x80,0xD4
+68
+EndModule
+
+Module = "Output 22 Words" 0x80,0xD5
+69
+EndModule
+
+Module = "Output 23 Words" 0x80,0xD6
+70
+EndModule
+
+Module = "Output 24 Words" 0x80,0xD7
+71
+EndModule
+
+Module = "Output 25 Words" 0x80,0xD8
+72
+EndModule
+
+Module = "Output 26 Words" 0x80,0xD9
+73
+EndModule
+
+Module = "Output 27 Words" 0x80,0xDA
+74
+EndModule
+
+Module = "Output 28 Words" 0x80,0xDB
+75
+EndModule
+
+Module = "Output 29 Words" 0x80,0xDC
+76
+EndModule
+
+Module = "Output 30 Words" 0x80,0xDD
+77
+EndModule
+
+Module = "Output 31 Words" 0x80,0xDE
+78
+EndModule
+
+Module = "Output 32 Words" 0x80,0xDF
+79
+EndModule
+
+
+SlotDefinition
+Slot(1) = "ParamChannel" 1 1-8
+
+Slot(2) = "Safety-Modul Axis 0" 9 9-13
+   ;Slot(3) = "Inputs Axis 0" 15 15-46
+Slot(3) = "Inputs Axis 0" 15 15-37
+   ;Slot(4) = "Outputs Axis 0" 48 48-79
+Slot(4) = "Outputs Axis 0" 48 48-70
+
+Slot(5) = "Safety-Modul Axis 1" 9 9-13
+   ;Slot(6) = "Inputs Axis 1" 14 14-46
+Slot(6) = "Inputs Axis 1" 14 14-37
+   ;Slot(7) = "Outputs Axis 1" 47 47-79
+Slot(7) = "Outputs Axis 1" 47 47-70
+
+Slot(8) = "Safety-Modul Axis 2" 9 9-13
+   ;Slot(9) = "Inputs Axis 2" 14 14-46
+Slot(9) = "Inputs Axis 2" 14 14-37
+   ;Slot(10) = "Outputs Axis 2" 47 47-79
+Slot(10) = "Outputs Axis 2" 47 47-70
+
+Slot(11) = "Safety-Modul Axis 3" 9 9-13
+   ;Slot(12) = "Inputs Axis 3" 14 14-46
+Slot(12) = "Inputs Axis 3" 14 14-37
+   ;Slot(13) = "Outputs Axis 3" 47 47-79
+Slot(13) = "Outputs Axis 3" 47 47-70
+
+Slot(14) = "Safety-Modul Axis 4" 9 9-13
+   ;Slot(15) = "Inputs Axis 4" 14 14-46
+Slot(15) = "Inputs Axis 4" 14 14-37
+   ;Slot(16) = "Outputs Axis 4" 47 47-79
+Slot(16) = "Outputs Axis 4" 47 47-70
+
+Slot(17) = "Safety-Modul Axis 5" 9 9-13
+   ;Slot(18) = "Inputs Axis 5" 14 14-46
+Slot(18) = "Inputs Axis 5" 14 14-37
+   ;Slot(19) = "Outputs Axis 5" 47 47-79
+Slot(19) = "Outputs Axis 5" 47 47-70
+
+Slot(20) = "Safety-Modul Axis 6" 9 9-13
+   ;Slot(21) = "Inputs Axis 6" 14 14-46
+Slot(21) = "Inputs Axis 6" 14 14-37
+   ;Slot(22) = "Outputs Axis 6" 47 47-79
+Slot(22) = "Outputs Axis 6" 47 47-70
+
+Slot(23) = "Safety-Modul Axis 7" 9 9-13
+   ;Slot(24) = "Inputs Axis 7" 14 14-46
+Slot(24) = "Inputs Axis 7" 14 14-37
+   ;Slot(25) = "Outputs Axis 7" 47 47-79
+Slot(25) = "Outputs Axis 7" 47 47-70
+
+EndSlotDefinition
+

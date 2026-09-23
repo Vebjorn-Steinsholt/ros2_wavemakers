@@ -1,0 +1,315 @@
+; ================================================================
+; Identification
+; ================================================================
+; GSD File for Rexroth IndraDrive
+; ================================================================
+; Language: international
+; ================================================================
+; Rexroth
+; Bosch Group
+; Bgm.-Dr.-Nebel-Str. 2
+; D-97816 Lohr am Main
+; Germany
+; Tel.: +49 - 9352 - 40 - 0
+; ================================================================
+; Date: 2005-03-03  
+; Version: 1.0
+; Date of release: 2003-11-05
+; ================================================================
+; ------------- File History -------------------------------------
+; Date
+; 2003-11-05  Initial Release (RX010107.GSD)
+; 2005-03-03  Version 1.01 Change to GSD-Revision 2
+;             PROFIsafe isn't possible with this Version
+;             IMPORTANT, check order of moduls!
+;             Slot1: ParamCh
+;             Slot2: F-Modul not used
+;             Slot3: Input
+;             Slot4: Output
+;             Slot5: F-Modul not used (only double axis drive)
+;             Slot6: Input (only double axis drive)
+;             Slot7: Output (only double axis drive)
+; ------------- File History End ---------------------------------
+; ================================================================
+;
+;      DISCLAIMER:
+;      ===========
+;
+;      DO NOT MODIFY THIS FILE!
+;      CHANGING PROFIBUS PARAMETERS CAN LEAD TO UNDEFINED SYSTEM BEHAVIOUR
+;
+; ================================================================
+
+#Profibus_DP
+GSD_Revision=2
+Vendor_Name="Rexroth"
+Model_Name="IndraDrive no PROFIsafe"
+Revision="V1.01"
+Ident_Number=0x0107
+Protocol_Ident=0
+Station_Type=0
+FMS_supp=0
+Hardware_Release="V1.00"
+Software_Release="MPx02"
+Slave_Family=1@Rexroth
+
+9.6_supp=1
+19.2_supp=1
+45.45_supp=1
+93.75_supp=1
+187.5_supp=1
+500_supp=1
+1.5M_supp=1
+3M_supp=1
+6M_supp=1
+12M_supp=1
+MaxTsdr_9.6=15
+MaxTsdr_19.2=15
+MaxTsdr_45.45=15
+MaxTsdr_93.75=15
+MaxTsdr_187.5=15
+MaxTsdr_500=15
+MaxTsdr_1.5M=20
+MaxTsdr_3M=20
+MaxTsdr_6M=30
+MaxTsdr_12M=45
+
+Redundancy=0
+Repeater_Ctrl_Sig=2
+24V_Pins=0
+Implementation_Type="VPC3+C"
+
+Bitmap_Device="RX_R0107"
+Bitmap_Diag="RX_D0107"
+Bitmap_SF="RX_S0107"
+
+Freeze_Mode_supp=1
+Sync_Mode_supp=1
+Auto_Baud_supp=1
+Set_Slave_Add_supp=0
+Fail_Safe=0
+
+Min_Slave_Intervall=5 ; *100us
+Modular_Station=1
+Max_Module=7
+Max_Input_Len=112
+Max_Output_Len=112
+Max_Data_Len=224
+Modul_Offset=1
+; Diagnose mit jeweils 5 Bytes pro Achse + 5 Byte generell
+Max_Diag_Data_Len=32
+; Device specific diagnostic
+; Modul
+Unit_Diag_Area=8-15
+Value(0)="Device"
+Value(1)="ParamChannel"
+Value(2)="F-Modul Axis 0"
+Value(3)="Inputs Axis 0"
+Value(4)="Outputs Axis 0"
+Value(5)="F-Modul Axis 1"
+Value(6)="Inputs Axis 1"
+Value(7)="Outputs Axis 1"
+Unit_Diag_Area_End
+; Diagnose
+Unit_Diag_Area=24-31
+;Standard
+Value(0)="Data valid"
+Value(1)="Data invalid"
+Value(2)="Wrong module"
+Value(3)="No Module"
+;Device Specific
+Value(128)="Set_Prm length error"
+Value(129)="Publisher not supp."
+Value(130)="Chk_Cfg mode not supp."
+Value(131)="DPV1_Alarms not supp."
+Value(132)="Isochron mode not supp."
+Value(133)="Prm_Structure expected"
+Value(134)="DBX not supp."
+Value(135)="Unknown Set_Prm service"
+Value(136)="Too many modules configured"
+Unit_Diag_Area_End
+
+
+; Parametrierung
+Max_User_Prm_Data_Len=48
+Ext_User_Prm_Data_Const(0)= 0x80,0x00,0x08
+
+;BG-Beschreibung
+
+;ParameterChannel Modules
+Module="ParamCh not used 1" 0x00
+1
+EndModule
+
+Module="ParamCh 2 Words 1" 0xF1
+2
+EndModule
+
+Module="ParamCh 3 Words 1" 0xF2
+3
+EndModule
+
+Module="ParamCh 4 Words 1" 0xF3
+4
+EndModule
+
+Module="ParamCh 5 Words 1" 0xF4
+5
+EndModule
+
+Module="ParamCh 6 Words 1" 0xF5
+6
+EndModule
+
+Module="ParamCh 7 Words 1" 0xF6
+7
+EndModule
+
+Module="ParamCh 8 Words 1" 0xF7
+8
+EndModule
+
+;Safety-Modul
+Module="F-Modul not used" 0x00
+9
+EndModule
+
+;Input Modules
+Module="Input not used 3,6" 0x00
+10
+EndModule
+
+Module="Input 1 Word 3,6" 0xD0
+11
+EndModule
+
+Module="Input 2 Words 3,6" 0xD1
+12
+EndModule
+
+Module="Input 3 Words 3,6" 0xD2
+13
+EndModule
+
+Module="Input 4 Words 3,6" 0xD3
+14
+EndModule
+
+Module="Input 5 Words 3,6" 0xD4
+15
+EndModule
+
+Module="Input 6 Words 3,6" 0xD5
+16
+EndModule
+
+Module="Input 7 Words 3,6" 0xD6
+17
+EndModule
+
+Module="Input 8 Words 3,6" 0xD7
+18
+EndModule
+
+Module="Input 9 Words 3,6" 0xD8
+19
+EndModule
+
+Module="Input 10 Words 3,6" 0xD9
+20
+EndModule
+
+Module="Input 11 Words 3,6" 0xDA
+21
+EndModule
+
+Module="Input 12 Words 3,6" 0xDB
+22
+EndModule
+
+Module="Input 13 Words 3,6" 0xDC
+23
+EndModule
+
+Module="Input 14 Words 3,6" 0xDD
+24
+EndModule
+
+Module="Input 15 Words 3,6" 0xDE
+25
+EndModule
+
+Module="Input 16 Words 3,6" 0xDF
+26
+EndModule
+
+;Output Modules
+Module="Output not used 4,7" 0x00 
+27
+EndModule
+
+Module="Output 1 Word 4,7" 0xE0
+28
+EndModule
+
+Module="Output 2 Words 4,7" 0xE1
+29
+EndModule
+
+Module="Output 3 Words 4,7" 0xE2
+30
+EndModule
+
+Module="Output 4 Words 4,7" 0xE3
+31
+EndModule
+
+Module="Output 5 Words 4,7" 0xE4
+32
+EndModule
+
+Module="Output 6 Words 4,7" 0xE5
+33
+EndModule
+
+Module="Output 7 Words 4,7" 0xE6
+34
+EndModule
+
+Module="Output 8 Words 4,7" 0xE7
+35
+EndModule
+
+Module="Output 9 Words 4,7" 0xE8
+36
+EndModule
+
+Module="Output 10 Words 4,7" 0xE9
+37
+EndModule
+
+Module="Output 11 Words 4,7" 0xEA
+38
+EndModule
+
+Module="Output 12 Words 4,7" 0xEB
+39
+EndModule
+
+Module="Output 13 Words 4,7" 0xEC
+40
+EndModule
+
+Module="Output 14 Words 4,7" 0xED
+41
+EndModule
+
+Module="Output 15 Words 4,7" 0xEE
+42
+EndModule
+
+Module="Output 16 Words 4,7" 0xEF
+43
+EndModule
+
+

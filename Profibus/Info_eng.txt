@@ -1,0 +1,37 @@
+Rexroth IndraDrive PROFIBUS
+  Actually for all firmwares the same configuration files can be 
+  used.
+
+  Firmware       - GSD (intern.)
+
+  MPB02 min. V11 - RX030107.GSD
+  MPD02 min. V11 - RX030107.GSD
+  MPH02 min. V11 - RX030107.GSD
+
+  MPB03          - RX030107.GSD
+  MPD03          - RX030107.GSD
+  MPH03          - RX030107.GSD
+
+  MPB04          - RX030107.GSD
+  MPD04          - RX030107.GSD
+  MPH04          - RX030107.GSD
+
+  For configuration tools which don't support GSD-Revesion 4 a
+  file with GSD-Revision2 is available. PROFIsafe isn't supported
+  and the user needs to take care of the kind of modul in the slots.
+
+  Firmware       - GSD (intern.)
+
+  MPB02 min. V11 - RX010107.GSD
+  MPD02 min. V11 - RX010107.GSD
+  MPH02 min. V11 - RX010107.GSD
+
+  MPB03          - RX010107.GSD
+  MPD03          - RX010107.GSD
+  MPH03          - RX010107.GSD
+
+  MPB04          - RX010107.GSD
+  MPD04          - RX010107.GSD
+  MPH04          - RX010107.GSD
+
+
