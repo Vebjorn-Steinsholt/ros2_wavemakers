@@ -4,7 +4,11 @@
     wavemaker_id: "ladertanken"
     wavemaker_maximum: 0.5
     wavemaker_mode_pregenerated: false
-    water_depth: 0.60
+    water_depth: 1.0
+    flap_attachment_height: 1.30   # must be > water_depth (1.0)
+    actuator_drive_type: "angular"
+    actuator_lead_m_per_degree: 0.01
+
 /wavemakers/lilletanken/controller:
   ros__parameters:
     wavemaker_type: "piston"
@@ -12,6 +16,8 @@
     wavemaker_maximum: 0.5
     wavemaker_mode_pregenerated: false
     water_depth: 1.0
+    # flap_attachment_height omitted — fine, piston never checks it
+    actuator_drive_type: "linear"
 
 /wavemakers/mc_lab/controller:
   ros__parameters:
@@ -20,3 +26,5 @@
     wavemaker_maximum: 0.5
     wavemaker_mode_pregenerated: false
     water_depth: 1.5
+    flap_attachment_height: 1.95   # must be > water_depth (1.5)
+    actuator_drive_type: "linear"

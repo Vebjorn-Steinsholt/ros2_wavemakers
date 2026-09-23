@@ -30,6 +30,9 @@ public:
       declare_parameter<double>("wavemaker_maximum", 1.0);
       declare_parameter<double>("water_depth", 0.6);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
+      declare_parameter<double>("flap_attachment_height", 0.0);
+      declare_parameter<std::string>("actuator_drive_type", "linear");
+      declare_parameter<double>("actuator_lead_m_per_degree", 0.0);
 
     
   }
@@ -43,12 +46,39 @@ public:
     wavemaker_maximum_ = get_parameter("wavemaker_maximum").as_double();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
+    flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
+    
+    if (wavemaker_type_ == "flap" && flap_attachment_height_ <= 0.0) {
+      RCLCPP_ERROR(get_logger(), "flap_attachment_height must be set (> 0) for flap-type wavemakers");
+      return CallbackReturn::FAILURE;
+    }
+    
+    actuator_drive_type_ = get_parameter("actuator_drive_type").as_string();
+    if (actuator_drive_type_ != "linear" && actuator_drive_type_ != "angular") {
+      RCLCPP_ERROR(get_logger(), "actuator_drive_type must be 'linear' or 'angular', got '%s'",
+               actuator_drive_type_.c_str());
+               return CallbackReturn::FAILURE;
+              }
+if (actuator_drive_type_ == "angular") {
+  const double lead_m_per_deg = get_parameter("actuator_lead_m_per_degree").as_double();
+  if (lead_m_per_deg <= 0.0) {
+    RCLCPP_ERROR(get_logger(),
+      "actuator_lead_m_per_degree must be set (> 0) when actuator_drive_type is 'angular'");
+    return CallbackReturn::FAILURE;
+  }
+  actuator_lead_ = lead_m_per_deg * (180.0 / M_PI);  // convert to meters per radian
+}
+    action_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
     action_server_ = rclcpp_action::create_server<MoveWavemaker>(
-      shared_from_this(),
-      "move_wavemaker",
-      std::bind(&WavemakerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
-      std::bind(&WavemakerNode::cancel_callback, this, std::placeholders::_1),
-      std::bind(&WavemakerNode::handle_accepted_callback, this, std::placeholders::_1));
+  shared_from_this(),
+  "move_wavemaker",
+  std::bind(&WavemakerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
+  std::bind(&WavemakerNode::cancel_callback, this, std::placeholders::_1),
+  std::bind(&WavemakerNode::handle_accepted_callback, this, std::placeholders::_1),
+  rcl_action_server_get_default_options(),
+  action_callback_group_);
+
     RCLCPP_INFO(
       get_logger(), "Configuring from state '%s' as a %s wavemaker",
       previous_state.label().c_str(), wavemaker_type_.c_str());
@@ -153,18 +183,21 @@ private:
     double f = goal->frequency;
     double omega = 2.0 * M_PI * f;
 
+    // goal_callback — replace the x_max block
     double mu = solve_dispersion(omega, water_depth_);
-    double S_ = compute_stroke(mu, (goal->amplitude)*2, wavemaker_type_);
-    double x_max = (S_ / 2.0);
-    if (x_max > wavemaker_maximum_) {
-      RCLCPP_WARN(get_logger(), "Received goal with amplitude %f exceeding maximum %f, rejecting",
-                  goal->amplitude, wavemaker_maximum_);
-      return rclcpp_action::GoalResponse::REJECT;
+    double S = compute_stroke(mu, (goal->amplitude) * 2, wavemaker_type_);
+    double actuator_amplitude = (S / 2.0);
+    if (wavemaker_type_ == "flap") {
+      actuator_amplitude *= (flap_attachment_height_ / water_depth_);
     }
-    goal_pending_ = true;
-    mu_ = mu;
-    S_ = S_;
-    omega_ = omega;
+    if (actuator_amplitude > wavemaker_maximum_) {
+      RCLCPP_WARN(get_logger(), "Received goal requiring actuator travel %f exceeding maximum %f, rejecting",
+              actuator_amplitude, wavemaker_maximum_);
+              return rclcpp_action::GoalResponse::REJECT;
+            }
+            goal_pending_ = true;
+            actuator_amplitude_ = actuator_amplitude;
+            omega_ = omega;
 
 
     return rclcpp_action::GoalResponse::ACCEPT_AND_DEFER;
@@ -193,14 +226,16 @@ const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
     }).detach();
   }
 
-  void execute_goal(
+void execute_goal(
     std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
 {
     auto result = std::make_shared<MoveWavemaker::Result>();
+    auto feedback = std::make_shared<MoveWavemaker::Feedback>();
 
     goal_handle->execute();
+    const auto start_time = std::chrono::steady_clock::now();
+    rclcpp::Rate loop_rate(100);  // 100 Hz control loop
 
-    // Example execution loop
     while (rclcpp::ok()) {
 
         // Check for cancellation
@@ -216,26 +251,32 @@ const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
             return;
         }
 
-        // TODO:
-        //  - compute waveform setpoint
-        //  - send command to driver
-        //  - publish feedback
-        //  - determine when the sequence is complete
+        const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count();
 
-        bool finished = true;  // placeholder
-
-        if (finished) {
-            break;
+        double x, v;
+        if (wavemaker_mode_pregenerated_) {
+            const double a = goal_handle->get_goal()->amplitude;
+            x = a * std::sin(omega_ * t);
+            v = a * omega_ * std::cos(omega_ * t);
+        } else {
+            x = actuator_amplitude_ * std::sin(omega_ * t);
+            v = actuator_amplitude_ * omega_ * std::cos(omega_ * t);
         }
-    }
 
-    // Goal completed successfully
-    goal_handle->succeed(result);
+        double setpoint_position = x;
+        double setpoint_velocity = v;
+        if (actuator_drive_type_ == "angular") {
+            setpoint_position = x / actuator_lead_;
+            setpoint_velocity = v / actuator_lead_;
+        }
 
-    {
-        std::lock_guard<std::mutex> lock(goal_mutex_);
-        goal_handle_.reset();
-        goal_pending_ = false;
+        // TODO: driver_->write_setpoint(setpoint_position, setpoint_velocity);
+
+        feedback->position = x;  // always physical linear position, regardless of drive type
+        feedback->elapsed_time = t;
+        goal_handle->publish_feedback(feedback);
+
+        loop_rate.sleep();
     }
 }
 
@@ -293,14 +334,17 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   std::string wavemaker_id_;
   double wavemaker_maximum_;
   bool wavemaker_mode_pregenerated_;
-  double mu_;
-  double S_;
-  double water_depth_; 
+  double actuator_amplitude_;
+  double flap_attachment_height_;
+  double water_depth_;
   double omega_;
+  double actuator_lead_;
+  std::string actuator_drive_type_;
   std::mutex goal_mutex_;
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
   bool goal_pending_{false};
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
+  rclcpp::CallbackGroup::SharedPtr action_callback_group_;
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;
