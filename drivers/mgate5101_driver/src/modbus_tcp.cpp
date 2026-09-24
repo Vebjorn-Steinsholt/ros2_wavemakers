@@ -1,18 +1,33 @@
 #include "mgate/modbus_tcp.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #pragma comment(lib, "Ws2_32.lib")
+#else
+  #include <sys/types.h>
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <netinet/tcp.h>
+  #include <arpa/inet.h>
+  #include <netdb.h>
+  #include <unistd.h>
+  #include <fcntl.h>
+  #include <cerrno>
+  using SOCKET = int;
+  constexpr int INVALID_SOCKET = -1;
+  constexpr int SOCKET_ERROR   = -1;
+#endif
 
 #include <cstring>
-
-#pragma comment(lib, "Ws2_32.lib")
 
 namespace mgate {
 namespace {
 
 constexpr std::uintptr_t kInvalid = static_cast<std::uintptr_t>(INVALID_SOCKET);
 
+#ifdef _WIN32
 struct WsaInit {
     bool ok = false;
     WsaInit() {
@@ -27,6 +42,69 @@ struct WsaInit {
 bool ensure_wsa() {
     static WsaInit g;
     return g.ok;
+}
+#else
+bool ensure_wsa() { return true; }  // no-op on POSIX
+#endif
+
+// --- Platform shims for the parts that differ between Winsock and POSIX ---
+
+inline void close_socket(SOCKET s) {
+#ifdef _WIN32
+    ::closesocket(s);
+#else
+    ::close(s);
+#endif
+}
+
+inline void shutdown_socket(SOCKET s) {
+#ifdef _WIN32
+    ::shutdown(s, SD_BOTH);
+#else
+    ::shutdown(s, SHUT_RDWR);
+#endif
+}
+
+inline bool set_nonblocking(SOCKET s, bool enable) {
+#ifdef _WIN32
+    u_long mode = enable ? 1 : 0;
+    return ::ioctlsocket(s, FIONBIO, &mode) == 0;
+#else
+    int flags = ::fcntl(s, F_GETFL, 0);
+    if (flags < 0) return false;
+    flags = enable ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+    return ::fcntl(s, F_SETFL, flags) == 0;
+#endif
+}
+
+inline bool connect_in_progress() {
+#ifdef _WIN32
+    return ::WSAGetLastError() == WSAEWOULDBLOCK;
+#else
+    return errno == EINPROGRESS;
+#endif
+}
+
+inline bool recv_timed_out() {
+#ifdef _WIN32
+    return ::WSAGetLastError() == WSAETIMEDOUT;
+#else
+    return errno == EWOULDBLOCK || errno == EAGAIN;
+#endif
+}
+
+inline void set_recv_send_timeout(SOCKET s, int timeout_ms) {
+#ifdef _WIN32
+    DWORD to = static_cast<DWORD>(timeout_ms);
+    ::setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&to), sizeof(to));
+    ::setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&to), sizeof(to));
+#else
+    timeval tv{};
+    tv.tv_sec  = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    ::setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    ::setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
 }
 
 inline std::uint8_t hi(std::uint16_t v) { return static_cast<std::uint8_t>(v >> 8); }
@@ -84,14 +162,14 @@ bool ModbusTcpClient::is_connected() const noexcept { return sock_ != kInvalid; 
 
 void ModbusTcpClient::drop() {
     if (sock_ != kInvalid) {
-        ::closesocket(static_cast<SOCKET>(sock_));
+        close_socket(static_cast<SOCKET>(sock_));
         sock_ = kInvalid;
     }
 }
 
 void ModbusTcpClient::disconnect() {
     if (sock_ != kInvalid) {
-        ::shutdown(static_cast<SOCKET>(sock_), SD_BOTH);
+        shutdown_socket(static_cast<SOCKET>(sock_));
         drop();
     }
 }
@@ -118,13 +196,12 @@ Result ModbusTcpClient::connect(const std::string& host, std::uint16_t port, int
         SOCKET s = ::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (s == INVALID_SOCKET) continue;
 
-        u_long nonblocking = 1;
-        ::ioctlsocket(s, FIONBIO, &nonblocking);
+        set_nonblocking(s, true);
 
         int rc = ::connect(s, ai->ai_addr, static_cast<int>(ai->ai_addrlen));
         if (rc == SOCKET_ERROR) {
-            if (::WSAGetLastError() != WSAEWOULDBLOCK) {
-                ::closesocket(s);
+            if (!connect_in_progress()) {
+                close_socket(s);
                 continue;
             }
             fd_set wfds;
@@ -135,28 +212,34 @@ Result ModbusTcpClient::connect(const std::string& host, std::uint16_t port, int
             tv.tv_sec  = timeout_ms / 1000;
             tv.tv_usec = (timeout_ms % 1000) * 1000;
 
+#ifdef _WIN32
             rc = ::select(0, nullptr, &wfds, &efds, &tv);
+#else
+            rc = ::select(s + 1, nullptr, &wfds, &efds, &tv);
+#endif
             if (rc <= 0) {
-                ::closesocket(s);
+                close_socket(s);
                 last = (rc == 0) ? Status::Timeout : Status::SocketError;
                 continue;
             }
             int       err = 0;
-            int       len = sizeof(err);
-            if (::getsockopt(s, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&err), &len) != 0 || err != 0) {
-                ::closesocket(s);
+            socklen_t len = sizeof(err);
+#ifdef _WIN32
+            if (::getsockopt(s, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&err),
+                              reinterpret_cast<int*>(&len)) != 0 || err != 0) {
+#else
+            if (::getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0) {
+#endif
+                close_socket(s);
                 continue;
             }
         }
 
-        nonblocking = 0;
-        ::ioctlsocket(s, FIONBIO, &nonblocking);
+        set_nonblocking(s, false);
 
         int one = 1;
         ::setsockopt(s, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&one), sizeof(one));
-        DWORD to = static_cast<DWORD>(timeout_ms);
-        ::setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&to), sizeof(to));
-        ::setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&to), sizeof(to));
+        set_recv_send_timeout(s, timeout_ms);
 
         sock_ = static_cast<std::uintptr_t>(s);
         ::freeaddrinfo(res);
@@ -188,8 +271,7 @@ int ModbusTcpClient::recv_exact(std::uint8_t* p, std::size_t n) {
             continue;
         }
         if (r == 0) return -1;  // peer closed
-        const int e = ::WSAGetLastError();
-        if (e == WSAETIMEDOUT) return 0;
+        if (recv_timed_out()) return 0;
         return -1;
     }
     return 1;

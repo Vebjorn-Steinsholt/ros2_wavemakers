@@ -10,6 +10,7 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "bondcpp/bond.hpp"
 #include "wavemaker_interfaces/action/move_wavemaker.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
@@ -69,7 +70,6 @@ if (actuator_drive_type_ == "angular") {
   actuator_lead_ = lead_m_per_deg * (180.0 / M_PI);  // convert to meters per radian
 }
     action_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-
     action_server_ = rclcpp_action::create_server<MoveWavemaker>(
   shared_from_this(),
   "move_wavemaker",
@@ -78,6 +78,9 @@ if (actuator_drive_type_ == "angular") {
   std::bind(&WavemakerNode::handle_accepted_callback, this, std::placeholders::_1),
   rcl_action_server_get_default_options(),
   action_callback_group_);
+
+  position_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_position", 10);
+  velocity_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_velocity", 10);
 
     RCLCPP_INFO(
       get_logger(), "Configuring from state '%s' as a %s wavemaker",
@@ -155,6 +158,8 @@ if (actuator_drive_type_ == "angular") {
   }
 
 private:
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr position_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr velocity_publisher_;
   std::unique_ptr<bond::Bond> bond_;
   // called periodically while active, or driven by an incoming action goal
 
@@ -270,7 +275,7 @@ void execute_goal(
             setpoint_velocity = v / actuator_lead_;
         }
 
-        // TODO: driver_->write_setpoint(setpoint_position, setpoint_velocity);
+        publish_and_write_setpoint(setpoint_position, setpoint_velocity);
 
         feedback->position = x;  // always physical linear position, regardless of drive type
         feedback->elapsed_time = t;
@@ -280,12 +285,18 @@ void execute_goal(
     }
 }
 
-  void publish_and_write_setpoint()
+  void publish_and_write_setpoint(double position, double velocity)
   {
-    // setpoint = compute_from_current_goal()   // amplitude/period/ramp logic
-    // driver_->write_setpoint(setpoint)         // blocking or async, depends on transport
-    // status = driver_->read_status()           // position, fault flags, etc.
-    // publish_feedback(status)                  // to action feedback / state topic
+        auto position_msg = std_msgs::msg::Float64();
+        auto velocity_msg = std_msgs::msg::Float64();
+        position_msg.data = position;
+        velocity_msg.data = velocity;
+        position_publisher_->publish(position_msg);
+        velocity_publisher_->publish(velocity_msg);
+        // setpoint = compute_from_current_goal()   // amplitude/period/ramp logic
+        // driver_->write_setpoint(setpoint)         // blocking or async, depends on transport
+        // status = driver_->read_status()           // position, fault flags, etc.
+        // publish_feedback(status)                  // to action feedback / state topic
   }
 
   void handle_driver_fault(/* FaultCode code */)
@@ -345,6 +356,7 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   bool goal_pending_{false};
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
+
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;
