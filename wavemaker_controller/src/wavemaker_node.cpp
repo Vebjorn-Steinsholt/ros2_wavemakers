@@ -11,6 +11,7 @@
 #include "bondcpp/bond.hpp"
 #include "wavemaker_interfaces/action/move_wavemaker.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "mgate/mgate_driver.h"   
 
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;

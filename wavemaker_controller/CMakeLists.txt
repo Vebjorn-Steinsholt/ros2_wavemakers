@@ -12,6 +12,7 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(wavemaker_interfaces REQUIRED)
 find_package(bondcpp REQUIRED)   
+find_package(mgate5101_driver REQUIRED)
 
 add_executable(wavemaker_node src/wavemaker_node.cpp)
 ament_target_dependencies(wavemaker_node
@@ -21,11 +22,12 @@ ament_target_dependencies(wavemaker_node
   rclcpp_action
   wavemaker_interfaces
   bondcpp
-)
+  )
 
 install(TARGETS wavemaker_node
   DESTINATION lib/${PROJECT_NAME}
 )
+target_link_libraries(wavemaker_node mgate5101_driver::mgate5101)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
