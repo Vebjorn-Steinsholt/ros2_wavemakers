@@ -2,7 +2,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import EqualsSubstitution, LaunchConfiguration
+from launch.substitutions import EqualsSubstitution, LaunchConfiguration, PythonExpression
 from launch_ros.actions import LifecycleNode, Node
 
 
@@ -16,6 +16,11 @@ def generate_launch_description():
             default_value="ladertanken",
             choices=wavemakers,
             description="Wavemaker to launch",
+        ),
+        DeclareLaunchArgument(
+            "enable_lifecycle_manager",
+            default_value="false",
+            description="Start Nav2 lifecycle manager for the selected wavemaker",
         ),
     ]
 
@@ -49,7 +54,17 @@ def generate_launch_description():
                     "node_names": ["controller"],
                     "bond_timeout": 4.0,
                 }],
-                condition=condition,
+                condition=IfCondition(
+                    PythonExpression([
+                        "'",
+                        LaunchConfiguration("enable_lifecycle_manager"),
+                        "' == 'true' and '",
+                        LaunchConfiguration("wavemaker"),
+                        "' == '",
+                        wavemaker,
+                        "'",
+                    ])
+                ),
             )
         )
 
