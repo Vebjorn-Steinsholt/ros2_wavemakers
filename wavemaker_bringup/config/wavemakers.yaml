@@ -1,7 +1,33 @@
 /wavemakers/ladertanken/controller:
   ros__parameters:
+    driver_address: "192.168.1.70"
+    driver_port: 502
+    driver_unit_id: 1
+
+    input_base_reg: 0
+    input_word_count: 7
+    output_base_reg: 0
+    output_word_count: 6
+    input_uses_fc4: true
+
+    status_base_reg: 768       # 0x0300
+    status_word_count: 9
+
+    poll_interval_ms: 50
+    timeout_ms: 1000
+    reconnect_ms: 2000
+    write_only_dirty: false
+
+    profibus_address: 2
+    max_velocity_rpm: 50.0
+    min_position_deg: -550.0
+    max_position_deg: 500.0
+    in_position_tol_deg: 0.1
+    step_timeout_ms: 10000
+
     wavemaker_type: "flap"
     wavemaker_id: "ladertanken"
+    wavemaker_minimum: 0.0
     wavemaker_maximum: 0.5
     wavemaker_mode_pregenerated: false
     water_depth: 1.0
@@ -13,6 +39,7 @@
   ros__parameters:
     wavemaker_type: "piston"
     wavemaker_id: "lilletanken"
+    wavemaker_minimum: 0.0
     wavemaker_maximum: 0.5
     wavemaker_mode_pregenerated: false
     water_depth: 1.0
@@ -23,6 +50,7 @@
   ros__parameters:
     wavemaker_type: "flap"
     wavemaker_id: "mc_lab"
+    wavemaker_minimum: 0.0
     wavemaker_maximum: 0.5
     wavemaker_mode_pregenerated: false
     water_depth: 1.5

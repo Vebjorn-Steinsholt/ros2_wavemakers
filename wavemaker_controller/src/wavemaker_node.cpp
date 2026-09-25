@@ -1,7 +1,10 @@
 #include <memory>
 #include <string>
+#include <cstdint>
+#include <exception>
 #include <mutex>
 #include <thread>
+#include <atomic>
 
 #include "lifecycle_msgs/msg/transition.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
@@ -11,7 +14,7 @@
 #include "bondcpp/bond.hpp"
 #include "wavemaker_interfaces/action/move_wavemaker.hpp"
 #include "std_msgs/msg/float64.hpp"
-#include "mgate/mgate_driver.h"   
+#include "indradrive_actuator.hpp"
 
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
@@ -29,47 +32,50 @@ public:
       declare_parameter<std::string>("wavemaker_type", "piston");
       declare_parameter<std::string>("driver_address", "");
       declare_parameter<std::string>("wavemaker_id", "");
+      declare_parameter<double>("wavemaker_minimum", 0.0);
       declare_parameter<double>("wavemaker_maximum", 1.0);
       declare_parameter<double>("water_depth", 0.6);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
       declare_parameter<double>("flap_attachment_height", 0.0);
-      declare_parameter<std::string>("actuator_drive_type", "linear");
-      declare_parameter<double>("actuator_lead_m_per_degree", 0.0);
 
     
   }
- 
+
+  ~WavemakerNode() override
+  {
+    abort_active_goal();
+    stop_execution();
+  }
 
   CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
   {
     wavemaker_type_ = get_parameter("wavemaker_type").as_string();
     driver_address_ = get_parameter("driver_address").as_string();
     wavemaker_id_ = get_parameter("wavemaker_id").as_string();
+    wavemaker_minimum_ = get_parameter("wavemaker_minimum").as_double();
     wavemaker_maximum_ = get_parameter("wavemaker_maximum").as_double();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
+
+    if (wavemaker_minimum_ >= wavemaker_maximum_) {
+      RCLCPP_ERROR(
+        get_logger(), "wavemaker_minimum must be less than wavemaker_maximum");
+      return CallbackReturn::FAILURE;
+    }
+    wavemaker_position_offset_ = (wavemaker_minimum_ + wavemaker_maximum_) / 2.0;
     
     if (wavemaker_type_ == "flap" && flap_attachment_height_ <= 0.0) {
       RCLCPP_ERROR(get_logger(), "flap_attachment_height must be set (> 0) for flap-type wavemakers");
       return CallbackReturn::FAILURE;
     }
     
-    actuator_drive_type_ = get_parameter("actuator_drive_type").as_string();
-    if (actuator_drive_type_ != "linear" && actuator_drive_type_ != "angular") {
-      RCLCPP_ERROR(get_logger(), "actuator_drive_type must be 'linear' or 'angular', got '%s'",
-               actuator_drive_type_.c_str());
-               return CallbackReturn::FAILURE;
-              }
-if (actuator_drive_type_ == "angular") {
-  const double lead_m_per_deg = get_parameter("actuator_lead_m_per_degree").as_double();
-  if (lead_m_per_deg <= 0.0) {
-    RCLCPP_ERROR(get_logger(),
-      "actuator_lead_m_per_degree must be set (> 0) when actuator_drive_type is 'angular'");
-    return CallbackReturn::FAILURE;
-  }
-  actuator_lead_ = lead_m_per_deg * (180.0 / M_PI);  // convert to meters per radian
-}
+    try {
+      actuator_ = std::make_unique<wavemaker_controller::IndraDriveActuator>(*this);
+    } catch (const std::exception & error) {
+      RCLCPP_ERROR(get_logger(), "Failed to configure actuator: %s", error.what());
+      return CallbackReturn::FAILURE;
+    }
     action_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     action_server_ = rclcpp_action::create_server<MoveWavemaker>(
   shared_from_this(),
@@ -80,21 +86,11 @@ if (actuator_drive_type_ == "angular") {
   rcl_action_server_get_default_options(),
   action_callback_group_);
 
-  position_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_position", 10);
   velocity_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_velocity", 10);
 
     RCLCPP_INFO(
       get_logger(), "Configuring from state '%s' as a %s wavemaker",
       previous_state.label().c_str(), wavemaker_type_.c_str());
-
-
-
-    // --- driver comms: open but do not command motion ---
-    // driver_ = DriverFactory::create(wavemaker_type_)
-    // if (!driver_->open(driver_address_)) { return CallbackReturn::FAILURE }
-    // driver_->set_fault_callback([this](FaultCode code) { handle_driver_fault(code); })
-    // optionally: driver_->read_firmware_version() / sanity-check handshake
-    // ------------------------------------------------------
 
     return CallbackReturn::SUCCESS;
   }
@@ -109,11 +105,9 @@ if (actuator_drive_type_ == "angular") {
     bond_->setHeartbeatTimeout(4.0);
     bond_->start();
   
-      
-    // --- driver comms: arm actuator, start periodic write loop ---
-    // if (!driver_->enable()) { return CallbackReturn::FAILURE }
-    // command_timer_ = create_wall_timer(10ms, [this] { publish_and_write_setpoint() })
-    // ---------------------------------------------------------------
+    if (!actuator_ || !actuator_->start(get_logger())) {
+      return CallbackReturn::FAILURE;
+    }
 
     return CallbackReturn::SUCCESS;
   }
@@ -122,26 +116,17 @@ if (actuator_drive_type_ == "angular") {
   {
     RCLCPP_INFO(
       get_logger(), "Deactivating from state '%s'", previous_state.label().c_str());
+
+      
+      abort_active_goal();
+      stop_execution();
+      if (actuator_) {
+        actuator_->stop();
+      }
       if(bond_) {
         bond_->breakBond();
         bond_.reset();
       }
-      std::shared_ptr<MoveWavemakerGoalHandle> goal_to_abort;
-      {
-        std::lock_guard<std::mutex> lock(goal_mutex_);
-        goal_to_abort = goal_handle_;
-        goal_handle_.reset();
-        goal_pending_ = false;
-      }
-      if (goal_to_abort && goal_to_abort->is_active()) {
-        auto result = std::make_shared<MoveWavemaker::Result>();
-        goal_to_abort->abort(result);
-      }
-    // --- driver comms: stop motion, keep connection open ---
-    // command_timer_->cancel()
-    // driver_->disable()   // e.g. ramp to zero, then hold/disarm
-    // ------------------------------------------------------
-
     return CallbackReturn::SUCCESS;
   }
 
@@ -149,17 +134,46 @@ if (actuator_drive_type_ == "angular") {
   {
     RCLCPP_INFO(
       get_logger(), "Cleaning up from state '%s'", previous_state.label().c_str());
+      abort_active_goal();
+      stop_execution();
 
     // --- driver comms: full teardown ---
     // driver_->close()
     // driver_.reset()
     // ------------------------------------
+    actuator_.reset();
 
     return CallbackReturn::SUCCESS;
   }
 
 private:
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr position_publisher_;
+  void stop_execution()
+  {
+    stop_execution_.store(true);
+
+    if (execution_thread_.joinable()) {
+      execution_thread_.join();
+    }
+  }
+
+  void abort_active_goal()
+  {
+    std::shared_ptr<MoveWavemakerGoalHandle> goal_to_abort;
+    {
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      goal_to_abort = goal_handle_;
+      goal_handle_.reset();
+      goal_pending_ = false;
+    }
+
+    if (goal_to_abort && goal_to_abort->is_active()) {
+      auto result = std::make_shared<MoveWavemaker::Result>();
+      result->success = false;
+      result->message = "Goal aborted by lifecycle transition";
+      goal_to_abort->abort(result);
+    }
+  }
+
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr velocity_publisher_;
   std::unique_ptr<bond::Bond> bond_;
   // called periodically while active, or driven by an incoming action goal
@@ -172,22 +186,12 @@ private:
     std::lock_guard<std::mutex> lock(goal_mutex_);
    
 
-    if(this->get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
-      RCLCPP_WARN(get_logger(), "Received goal while server inactive, rejecting");
-      return rclcpp_action::GoalResponse::REJECT;
-    }
-     if (goal_pending_ ||(goal_handle_ && goal_handle_->is_active())) {
-      RCLCPP_WARN(get_logger(), "Received new goal while another is active or pending, rejecting");
-      return rclcpp_action::GoalResponse::REJECT;
-     
-    }
-    if (goal->amplitude <= 0.0 || goal->frequency <= 0.0) {
-      RCLCPP_WARN(get_logger(), "Received goal with non-positive amplitude or frequency, rejecting");
+    if (goal->amplitude <= 0.0 || goal->period <= 0.0) {
+      RCLCPP_WARN(get_logger(), "Received goal with non-positive amplitude or period, rejecting");
       return rclcpp_action::GoalResponse::REJECT;
     }
 
-    double f = goal->frequency;
-    double omega = 2.0 * M_PI * f;
+    double omega = 2.0 * M_PI / goal->period;
 
     // goal_callback — replace the x_max block
     double mu = solve_dispersion(omega, water_depth_);
@@ -196,9 +200,13 @@ private:
     if (wavemaker_type_ == "flap") {
       actuator_amplitude *= (flap_attachment_height_ / water_depth_);
     }
-    if (actuator_amplitude > wavemaker_maximum_) {
-      RCLCPP_WARN(get_logger(), "Received goal requiring actuator travel %f exceeding maximum %f, rejecting",
-              actuator_amplitude, wavemaker_maximum_);
+    const double required_minimum = wavemaker_position_offset_ - actuator_amplitude;
+    const double required_maximum = wavemaker_position_offset_ + actuator_amplitude;
+    if (required_minimum < wavemaker_minimum_ || required_maximum > wavemaker_maximum_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Received goal requiring position range [%f, %f] outside wavemaker limits [%f, %f], rejecting",
+        required_minimum, required_maximum, wavemaker_minimum_, wavemaker_maximum_);
               return rclcpp_action::GoalResponse::REJECT;
             }
             goal_pending_ = true;
@@ -221,15 +229,16 @@ const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
     std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
   {
     {
-    std::lock_guard<std::mutex> lock(goal_mutex_);
-    goal_handle_ = goal_handle;
-    goal_pending_ = false;
-  }
-    // Handle the accepted goal
-    std::thread([this, goal_handle]() {
-      // Execute the goal in a separate thread
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      goal_handle_ = goal_handle;
+      goal_pending_ = false;
+    }
+
+    stop_execution();
+    stop_execution_.store(false);
+    execution_thread_ = std::thread([this, goal_handle]() {
       execute_goal(goal_handle);
-    }).detach();
+    });
   }
 
 void execute_goal(
@@ -242,7 +251,7 @@ void execute_goal(
     const auto start_time = std::chrono::steady_clock::now();
     rclcpp::Rate loop_rate(100);  // 100 Hz control loop
 
-    while (rclcpp::ok()) {
+    while (rclcpp::ok() && !stop_execution_.load()) {
 
         // Check for cancellation
         if (goal_handle->is_canceling()) {
@@ -258,41 +267,46 @@ void execute_goal(
         }
 
         const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - start_time).count();
-
         double x, v;
         if (wavemaker_mode_pregenerated_) {
             const double a = goal_handle->get_goal()->amplitude;
-            x = a * std::sin(omega_ * t);
-            v = a * omega_ * std::cos(omega_ * t);
+            const double omega = 2.0 * M_PI / goal_handle->get_goal()->period;
+            x = wavemaker_position_offset_ + a * std::sin(omega * t);
+            v = a * omega * std::cos(omega * t);
         } else {
-            x = actuator_amplitude_ * std::sin(omega_ * t);
-            v = actuator_amplitude_ * omega_ * std::cos(omega_ * t);
+            double actuator_amplitude = actuator_amplitude_;
+            double omega = omega_;
+          x = wavemaker_position_offset_ + actuator_amplitude * std::sin(omega * t);
+          v = actuator_amplitude * omega * std::cos(omega * t);
         }
 
-        double setpoint_position = x;
-        double setpoint_velocity = v;
-        if (actuator_drive_type_ == "angular") {
-            setpoint_position = x / actuator_lead_;
-            setpoint_velocity = v / actuator_lead_;
-        }
+        const auto setpoint = actuator_->to_actuator_setpoint(x, v);
 
-        publish_and_write_setpoint(setpoint_position, setpoint_velocity);
+        publish_and_write_setpoint(setpoint.position, setpoint.velocity);
 
-        feedback->position = x;  // always physical linear position, regardless of drive type
+        feedback->desired_position = x;
+        feedback->actual_position = actuator_->actual_position_m();
         feedback->elapsed_time = t;
         goal_handle->publish_feedback(feedback);
 
         loop_rate.sleep();
     }
+     {
+        std::lock_guard<std::mutex> lock(goal_mutex_);
+
+        if (goal_handle_ == goal_handle) {
+            goal_handle_.reset();
+            goal_pending_ = false;
+        }
+    }
+    
 }
 
   void publish_and_write_setpoint(double position, double velocity)
   {
-        auto position_msg = std_msgs::msg::Float64();
+      (void)position;
         auto velocity_msg = std_msgs::msg::Float64();
-        position_msg.data = position;
         velocity_msg.data = velocity;
-        position_publisher_->publish(position_msg);
         velocity_publisher_->publish(velocity_msg);
         // setpoint = compute_from_current_goal()   // amplitude/period/ramp logic
         // driver_->write_setpoint(setpoint)         // blocking or async, depends on transport
@@ -344,20 +358,22 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   std::string wavemaker_type_;
   std::string driver_address_;
   std::string wavemaker_id_;
+  double wavemaker_minimum_;
   double wavemaker_maximum_;
+  double wavemaker_position_offset_;
   bool wavemaker_mode_pregenerated_;
   double actuator_amplitude_;
   double flap_attachment_height_;
   double water_depth_;
   double omega_;
-  double actuator_lead_;
-  std::string actuator_drive_type_;
   std::mutex goal_mutex_;
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
   bool goal_pending_{false};
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
-
+  std::atomic<bool> stop_execution_{false};
+  std::thread execution_thread_;
+  std::unique_ptr<wavemaker_controller::WavemakerActuator> actuator_;
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;
@@ -375,3 +391,5 @@ int main(int argc, char ** argv)
   rclcpp::shutdown();
   return 0;
 }
+
+

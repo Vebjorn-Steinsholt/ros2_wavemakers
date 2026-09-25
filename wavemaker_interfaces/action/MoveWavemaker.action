@@ -1,11 +1,12 @@
 # Goal
 float64 amplitude
-float64 frequency
+float64 period
 ---
 # Result
 bool success
 string message
 ---
 # Feedback
-float64 position
+float64 desired_position
+float64 actual_position
 float64 elapsed_time

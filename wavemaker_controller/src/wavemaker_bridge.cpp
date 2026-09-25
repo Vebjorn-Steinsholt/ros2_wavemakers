@@ -1,0 +1,53 @@
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
+
+using rclcpp_lifecycle::LifecycleNode;
+using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+
+class WavemakerBridge : public LifecycleNode
+{
+public:
+  explicit WavemakerBridge(const rclcpp::NodeOptions & options)
+  : LifecycleNode("wavemaker_bridge", options)
+  {
+  }
+
+  CallbackReturn on_configure(const rclcpp_lifecycle::State &) override
+  {
+    RCLCPP_INFO(get_logger(), "Configuring...");
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_activate(const rclcpp_lifecycle::State &) override
+  {
+    RCLCPP_INFO(get_logger(), "Activating...");
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_deactivate(const rclcpp_lifecycle::State &) override
+  {
+    RCLCPP_INFO(get_logger(), "Deactivating...");
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_cleanup(const rclcpp_lifecycle::State &) override
+  {
+    RCLCPP_INFO(get_logger(), "Cleaning up...");
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State &) override
+  {
+    RCLCPP_INFO(get_logger(), "Shutting down...");
+    return CallbackReturn::SUCCESS;
+  }
+};
+
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<WavemakerBridge>(rclcpp::NodeOptions());
+  rclcpp::spin(node->get_node_base_interface());
+  rclcpp::shutdown();
+  return 0;
+}

@@ -22,15 +22,15 @@ bool no_error(std::uint16_t sw) { return (sw & indra_sw::kClass1Error) == 0; }
 
 IndraDrive::IndraDrive(MGateDriver& drv, IndraDriveConfig cfg) : drv_(drv), cfg_(std::move(cfg)) {
     drv_.add_tags({
-        {tag("StatusWord"), Area::Input, DataType::U16, 0},
-        {tag("Position"),   Area::Input, DataType::I32, 2,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "deg"},
-        {tag("Velocity"),   Area::Input, DataType::I32, 6,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "rpm"},
-        {tag("DiagNumber"), Area::Input, DataType::U32, 10},
+        {tag("StatusWord"), Area::Input, DataType::U16, 0,  0, 0, ByteOrder::BigEndian, 1.0,    0.0, "",    ""},
+        {tag("Position"),   Area::Input, DataType::I32, 2,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "deg", ""},
+        {tag("Velocity"),   Area::Input, DataType::I32, 6,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "rpm", ""},
+        {tag("DiagNumber"), Area::Input, DataType::U32, 10, 0, 0, ByteOrder::BigEndian, 1.0,    0.0, "",    ""},
 
-        {tag("ControlWord"),    Area::Output, DataType::U16, 0},
-        {tag("TargetPosition"), Area::Output, DataType::I32, 2,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "deg"},
-        {tag("PosVelocity"),    Area::Output, DataType::I32, 6,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "rpm"},
-        {tag("Override"),       Area::Output, DataType::U16, 10, 0, 0, ByteOrder::BigEndian, 0.01,   0.0, "%"},
+        {tag("ControlWord"),    Area::Output, DataType::U16, 0,  0, 0, ByteOrder::BigEndian, 1.0,    0.0, "",    ""},
+        {tag("TargetPosition"), Area::Output, DataType::I32, 2,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "deg", ""},
+        {tag("PosVelocity"),    Area::Output, DataType::I32, 6,  0, 0, ByteOrder::BigEndian, 0.0001, 0.0, "rpm", ""},
+        {tag("Override"),       Area::Output, DataType::U16, 10, 0, 0, ByteOrder::BigEndian, 0.01,   0.0, "%",   ""},
     });
     drv_.set_cycle_callback([this](bool ok, const Result&) { on_cycle(ok); });
 }

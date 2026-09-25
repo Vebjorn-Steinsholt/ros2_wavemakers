@@ -45,6 +45,16 @@ int monitor(MGateDriver& drv, IndraDrive& drive) {
     return 0;
 }
 
+// Hardware test checklist for --move:
+// - Verify the gateway address map, unit ID, input/output sizes, and byte order.
+// - Confirm the drive is mechanically clear, the E-stop is reachable, and the
+//   MGate output fault timeout is configured before enabling the axis.
+// - Run monitor mode first and confirm the status word, position, velocity,
+//   diagnostic number, and PROFIBUS live bit are sensible.
+// - Start with the configured low speed and a small step; confirm the axis
+//   stops at the target, returns to its starting position, and disables cleanly.
+// - Interrupt the test or disconnect the gateway and verify the control word
+//   goes to zero and the drive does not restart without enable().
 int test_move(IndraDrive& drive) {
     constexpr double kStepDeg = 5.0;
     constexpr double kRpm     = 10.0;
