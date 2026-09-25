@@ -99,16 +99,21 @@ public:
   {
     RCLCPP_INFO(
       get_logger(), "Activating from state '%s'", previous_state.label().c_str());
-        bond_ = std::make_unique<bond::Bond>(
-    "bond", get_name(), shared_from_this());
-    bond_->setHeartbeatPeriod(0.10);
-    bond_->setHeartbeatTimeout(4.0);
-    bond_->start();
-  
+
     if (!actuator_ || !actuator_->start(get_logger())) {
       return CallbackReturn::FAILURE;
     }
 
+    bond_ = std::make_unique<bond::Bond>(
+      "bond", get_name(), shared_from_this());
+    bond_->setHeartbeatPeriod(0.10);
+    bond_->setHeartbeatTimeout(4.0);
+    bond_->start();
+
+    {
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      accepting_goals_ = true;
+    }
     return CallbackReturn::SUCCESS;
   }
 
@@ -118,6 +123,10 @@ public:
       get_logger(), "Deactivating from state '%s'", previous_state.label().c_str());
 
       
+    {
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      accepting_goals_ = false;
+    }
       abort_active_goal();
       stop_execution();
       if (actuator_) {
@@ -134,13 +143,63 @@ public:
   {
     RCLCPP_INFO(
       get_logger(), "Cleaning up from state '%s'", previous_state.label().c_str());
-      abort_active_goal();
-      stop_execution();
 
-    // --- driver comms: full teardown ---
-    // driver_->close()
-    // driver_.reset()
-    // ------------------------------------
+    {
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      accepting_goals_ = false;
+    }
+    abort_active_goal();
+    stop_execution();
+    action_server_.reset();
+    action_callback_group_.reset();
+    velocity_publisher_.reset();
+    actuator_.reset();
+
+    return CallbackReturn::SUCCESS;
+  }
+  CallbackReturn on_error(const rclcpp_lifecycle::State & previous_state) override
+  {
+    RCLCPP_ERROR(
+      get_logger(), "Error occurred in state '%s'", previous_state.label().c_str());
+
+    {
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      accepting_goals_ = false;
+    }
+    abort_active_goal();
+
+    stop_execution();
+    if (actuator_) {
+      actuator_->stop();
+    }
+    if(bond_) {
+      bond_->breakBond();
+      bond_.reset();
+    }
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override
+  {
+    RCLCPP_INFO(
+      get_logger(), "Shutting down from state '%s'", previous_state.label().c_str());
+
+    {
+      std::lock_guard<std::mutex> lock(goal_mutex_);
+      accepting_goals_ = false;
+    }
+    abort_active_goal();
+    stop_execution();
+    if (actuator_) {
+      actuator_->stop();
+    }
+    if(bond_) {
+      bond_->breakBond();
+      bond_.reset();
+    }
+    action_server_.reset();
+    action_callback_group_.reset();
+    velocity_publisher_.reset();
     actuator_.reset();
 
     return CallbackReturn::SUCCESS;
@@ -184,7 +243,20 @@ private:
   {
     (void)uuid;
     std::lock_guard<std::mutex> lock(goal_mutex_);
-   
+    const auto current_state = get_current_state();
+    
+    if (!accepting_goals_ || current_state.id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)  {
+        RCLCPP_WARN(
+    get_logger(),
+    "Rejecting goal because the node is not accepting goals. State: %s",
+    current_state.label().c_str());
+      return rclcpp_action::GoalResponse::REJECT;
+    }
+
+    if (goal_pending_ || (goal_handle_ && goal_handle_->is_active())) {
+      RCLCPP_WARN(get_logger(), "Rejecting goal because another goal is active");
+      return rclcpp_action::GoalResponse::REJECT;
+    }
 
     if (goal->amplitude <= 0.0 || goal->period <= 0.0) {
       RCLCPP_WARN(get_logger(), "Received goal with non-positive amplitude or period, rejecting");
@@ -228,10 +300,26 @@ const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
   void handle_accepted_callback(
     std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
   {
+    bool can_start = false;
+
     {
       std::lock_guard<std::mutex> lock(goal_mutex_);
-      goal_handle_ = goal_handle;
-      goal_pending_ = false;
+
+      if (accepting_goals_ &&
+          get_current_state().id() ==
+            lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+        goal_handle_ = goal_handle;
+        goal_pending_ = false;
+        can_start = true;
+      }
+    }
+
+    if (!can_start) {
+      auto result = std::make_shared<MoveWavemaker::Result>();
+      result->success = false;
+      result->message = "Goal rejected because the node is no longer active";
+      goal_handle->abort(result);
+      return;
     }
 
     stop_execution();
@@ -372,6 +460,7 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
   std::atomic<bool> stop_execution_{false};
+  bool accepting_goals_{false};
   std::thread execution_thread_;
   std::unique_ptr<wavemaker_controller::WavemakerActuator> actuator_;
 
