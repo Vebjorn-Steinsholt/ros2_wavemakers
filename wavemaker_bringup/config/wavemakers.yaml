@@ -27,13 +27,16 @@
 
     wavemaker_type: "flap"
     wavemaker_id: "ladertanken"
-    wavemaker_minimum: 0.0
-    wavemaker_maximum: 0.5
+    wavemaker_minimum: 0.0       # Minimum permitted wavemaker position [m]
+    wavemaker_maximum: 0.5       # Maximum permitted wavemaker position [m]
+    wavemaker_upright_position_m: 0.25  # Measured upright flap position [m]; replace before testing
     wavemaker_mode_pregenerated: false
     water_depth: 1.0
     flap_attachment_height: 1.30   # must be > water_depth (1.0)
     actuator_drive_type: "angular"
-    actuator_lead_m_per_degree: 0.01
+    # The controller uses this measured position as the flap's upright/mean position.
+    actuator_upright_angle_deg: 0.0   # Actuator angle when the flap is upright [deg]; replace with measured value
+    actuator_lead_m_per_degree: 0.01  # Calibrated position change per actuator degree [m/deg]
 
 /wavemakers/lilletanken/controller:
   ros__parameters:

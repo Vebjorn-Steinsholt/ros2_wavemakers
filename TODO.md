@@ -57,7 +57,7 @@ x = a + b * theta
 - [ ] Use at least 5 to 10 positions across the full safe travel.
 - [ ] Calculate `b` as the meters-per-degree scale value.
 - [ ] Record `a`, the physical position when the actuator reports zero degrees.
-- [ ] Either mechanically establish actuator zero as wavemaker position zero, or plan a separate angular zero-offset parameter.
+- [ ] Treat actuator zero as the upright flap reference, record its corresponding wavemaker position, and plan a separate angular zero-offset parameter.
 - [ ] Measure while moving in both directions to detect backlash.
 - [ ] Repeat each position to check repeatability.
 - [ ] Check that the relationship is approximately linear.

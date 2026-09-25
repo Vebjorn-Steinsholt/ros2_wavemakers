@@ -34,9 +34,11 @@ public:
       declare_parameter<std::string>("wavemaker_id", "");
       declare_parameter<double>("wavemaker_minimum", 0.0);
       declare_parameter<double>("wavemaker_maximum", 1.0);
+      declare_parameter<double>("wavemaker_upright_position_m", 0.5);
       declare_parameter<double>("water_depth", 0.6);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
       declare_parameter<double>("flap_attachment_height", 0.0);
+      declare_parameter<double>("actuator_upright_angle_deg", 0.0);
 
     
   }
@@ -54,16 +56,25 @@ public:
     wavemaker_id_ = get_parameter("wavemaker_id").as_string();
     wavemaker_minimum_ = get_parameter("wavemaker_minimum").as_double();
     wavemaker_maximum_ = get_parameter("wavemaker_maximum").as_double();
+    wavemaker_position_offset_ = get_parameter("wavemaker_upright_position_m").as_double();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
+    actuator_upright_angle_deg_ = get_parameter("actuator_upright_angle_deg").as_double();
 
     if (wavemaker_minimum_ >= wavemaker_maximum_) {
       RCLCPP_ERROR(
         get_logger(), "wavemaker_minimum must be less than wavemaker_maximum");
       return CallbackReturn::FAILURE;
     }
-    wavemaker_position_offset_ = (wavemaker_minimum_ + wavemaker_maximum_) / 2.0;
+    if (wavemaker_position_offset_ < wavemaker_minimum_ ||
+      wavemaker_position_offset_ > wavemaker_maximum_)
+    {
+      RCLCPP_ERROR(
+        get_logger(),
+        "wavemaker_upright_position_m must be within wavemaker_minimum and wavemaker_maximum");
+      return CallbackReturn::FAILURE;
+    }
     
     if (wavemaker_type_ == "flap" && flap_attachment_height_ <= 0.0) {
       RCLCPP_ERROR(get_logger(), "flap_attachment_height must be set (> 0) for flap-type wavemakers");
@@ -272,6 +283,7 @@ private:
     if (wavemaker_type_ == "flap") {
       actuator_amplitude *= (flap_attachment_height_ / water_depth_);
     }
+    // Enforce x_upright - A >= x_minimum and x_upright + A <= x_maximum.
     const double required_minimum = wavemaker_position_offset_ - actuator_amplitude;
     const double required_maximum = wavemaker_position_offset_ + actuator_amplitude;
     if (required_minimum < wavemaker_minimum_ || required_maximum > wavemaker_maximum_) {
@@ -453,6 +465,7 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   double actuator_amplitude_;
   double flap_attachment_height_;
   double water_depth_;
+  double actuator_upright_angle_deg_;
   double omega_;
   std::mutex goal_mutex_;
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;

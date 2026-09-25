@@ -27,6 +27,8 @@ private:
   std::unique_ptr<mgate::IndraDrive> indradrive_;
   std::string actuator_drive_type_;
   double lead_m_per_degree_;
+  double actuator_upright_angle_deg_;
+  double wavemaker_position_offset_m_;
   int poll_interval_ms_;
 };
 
