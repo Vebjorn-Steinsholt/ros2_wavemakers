@@ -1,7 +1,9 @@
 #include "indradrive_actuator.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cmath>
 #include <exception>
 #include <stdexcept>
 #include <thread>
@@ -157,6 +159,12 @@ bool IndraDriveActuator::start(const rclcpp::Logger & logger)
     return false;
   }
 
+  if (!indradrive_->enable()) {
+    RCLCPP_ERROR(logger, "Failed to enable the drive: %s", indradrive_->last_error().c_str());
+    mgate_driver_->stop();
+    return false;
+  }
+
   RCLCPP_INFO(logger, "Drive status: %s", indradrive_->describe().c_str());
   return true;
 }
@@ -169,6 +177,17 @@ void IndraDriveActuator::stop()
   if (mgate_driver_) {
     mgate_driver_->stop();
   }
+}
+
+bool IndraDriveActuator::write_setpoint(const ActuatorSetpoint & setpoint)
+{
+  if (!indradrive_) {
+    return false;
+  }
+
+  // IndraDrive expects a positive feedrate in rpm; direction comes from the target position.
+  const double velocity_rpm = std::max(0.1, std::abs(setpoint.velocity) / 6.0);
+  return indradrive_->move_to(setpoint.position, velocity_rpm);
 }
 
 bool IndraDriveActuator::is_live() const

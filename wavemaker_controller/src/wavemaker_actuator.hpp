@@ -23,6 +23,7 @@ public:
   virtual std::string status() const = 0;
   virtual double actual_position_m() const = 0;
   virtual ActuatorSetpoint to_actuator_setpoint(double position_m, double velocity_mps) const = 0;
+  virtual bool write_setpoint(const ActuatorSetpoint & setpoint) = 0;
 };
 
 }  // namespace wavemaker_controller

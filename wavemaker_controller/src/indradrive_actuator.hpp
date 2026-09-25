@@ -21,6 +21,7 @@ public:
   std::string status() const override;
   double actual_position_m() const override;
   ActuatorSetpoint to_actuator_setpoint(double position_m, double velocity_mps) const override;
+  bool write_setpoint(const ActuatorSetpoint & setpoint) override;
 
 private:
   std::unique_ptr<mgate::MGateDriver> mgate_driver_;

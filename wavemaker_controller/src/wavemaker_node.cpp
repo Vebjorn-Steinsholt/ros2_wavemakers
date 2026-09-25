@@ -382,7 +382,22 @@ void execute_goal(
 
         const auto setpoint = actuator_->to_actuator_setpoint(x, v);
 
-        publish_and_write_setpoint(setpoint.position, setpoint.velocity);
+        if (!publish_and_write_setpoint(setpoint.position, setpoint.velocity)) {
+          RCLCPP_ERROR(get_logger(), "Failed to write actuator setpoint");
+          auto failure = std::make_shared<MoveWavemaker::Result>();
+          failure->success = false;
+          failure->message = "Actuator rejected setpoint";
+          goal_handle->abort(failure);
+          actuator_->stop();
+          {
+            std::lock_guard<std::mutex> lock(goal_mutex_);
+            if (goal_handle_ == goal_handle) {
+              goal_handle_.reset();
+              goal_pending_ = false;
+            }
+          }
+          return;
+        }
 
         feedback->desired_position = x;
         feedback->actual_position = actuator_->actual_position_m();
@@ -402,16 +417,12 @@ void execute_goal(
     
 }
 
-  void publish_and_write_setpoint(double position, double velocity)
+  bool publish_and_write_setpoint(double position, double velocity)
   {
-      (void)position;
-        auto velocity_msg = std_msgs::msg::Float64();
-        velocity_msg.data = velocity;
-        velocity_publisher_->publish(velocity_msg);
-        // setpoint = compute_from_current_goal()   // amplitude/period/ramp logic
-        // driver_->write_setpoint(setpoint)         // blocking or async, depends on transport
-        // status = driver_->read_status()           // position, fault flags, etc.
-        // publish_feedback(status)                  // to action feedback / state topic
+    auto velocity_msg = std_msgs::msg::Float64();
+    velocity_msg.data = velocity;
+    velocity_publisher_->publish(velocity_msg);
+    return actuator_->write_setpoint({position, velocity});
   }
 
   void handle_driver_fault(/* FaultCode code */)
