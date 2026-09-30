@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/wavemaker_node" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/wavemaker_bridge" "TARGETS" "wavemaker_node" "wavemaker_bridge" "DESTINATION" "lib/wavemaker_controller")

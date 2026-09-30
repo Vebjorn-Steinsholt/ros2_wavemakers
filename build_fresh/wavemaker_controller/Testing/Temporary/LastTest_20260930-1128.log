@@ -1,0 +1,58 @@
+Start testing: Sep 30 13:28 CEST
+----------------------------------------------------------
+2/6 Testing: test_wavemaker_node
+2/6 Test: test_wavemaker_node
+Command: "/usr/bin/python3" "-u" "/opt/ros/jazzy/share/ament_cmake_test/cmake/run_test.py" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml" "--package-name" "wavemaker_controller" "--output-file" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_gtest/test_wavemaker_node.txt" "--command" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node" "--gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml"
+Directory: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller
+"test_wavemaker_node" start time: Sep 30 13:28 CEST
+Output:
+----------------------------------------------------------
+-- run_test.py: invoking following command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller':
+ - /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node --gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml
+Running main() from /opt/ros/jazzy/src/gtest_vendor/src/gtest_main.cc
+[==========] Running 5 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 5 tests from WavemakerNodeTest
+[ RUN      ] WavemakerNodeTest.LifecycleConfigureActivateDeactivate
+[INFO] [1790767735.266844081] [lifecycle_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767735.266887254] [lifecycle_test.controller]: Activating from state 'inactive'
+[INFO] [1790767735.267253624] [lifecycle_test.controller]: Deactivating from state 'active'
+[       OK ] WavemakerNodeTest.LifecycleConfigureActivateDeactivate (409 ms)
+[ RUN      ] WavemakerNodeTest.PregeneratedActionCompletesAndStopsActuator
+[INFO] [1790767735.673195195] [completion_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767735.673216137] [completion_test.controller]: Activating from state 'inactive'
+[       OK ] WavemakerNodeTest.PregeneratedActionCompletesAndStopsActuator (307 ms)
+[ RUN      ] WavemakerNodeTest.CancelledActionStopsActuator
+[INFO] [1790767735.979637056] [cancel_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767735.979674879] [cancel_test.controller]: Activating from state 'inactive'
+[INFO] [1790767736.012836054] [cancel_test.controller]: Received request to cancel goal
+[       OK ] WavemakerNodeTest.CancelledActionStopsActuator (307 ms)
+[ RUN      ] WavemakerNodeTest.SinusoidalGoalBlendsFromMeasuredPosition
+[INFO] [1790767736.287420760] [smooth_start_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767736.287444093] [smooth_start_test.controller]: Activating from state 'inactive'
+[INFO] [1790767736.320038909] [smooth_start_test.controller]: Received request to cancel goal
+[       OK ] WavemakerNodeTest.SinusoidalGoalBlendsFromMeasuredPosition (308 ms)
+[ RUN      ] WavemakerNodeTest.AngularDriveLimitsOverrideWavemakerMeterBounds
+[INFO] [1790767736.596320208] [angular_limits_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767736.596342175] [angular_limits_test.controller]: Activating from state 'inactive'
+[       OK ] WavemakerNodeTest.AngularDriveLimitsOverrideWavemakerMeterBounds (307 ms)
+[----------] 5 tests from WavemakerNodeTest (1641 ms total)
+
+[----------] Global test environment tear-down
+[==========] 5 tests from 1 test suite ran. (1642 ms total)
+[  PASSED  ] 5 tests.
+-- run_test.py: return code 0
+-- run_test.py: inject classname prefix into gtest result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml'
+-- run_test.py: verify result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml'
+<end of output>
+Test time =   1.70 sec
+----------------------------------------------------------
+Test Passed.
+"test_wavemaker_node" end time: Sep 30 13:28 CEST
+"test_wavemaker_node" time elapsed: 00:00:01
+----------------------------------------------------------
+
+End testing: Sep 30 13:28 CEST
+
+gtest =   1.70 sec*proc
+

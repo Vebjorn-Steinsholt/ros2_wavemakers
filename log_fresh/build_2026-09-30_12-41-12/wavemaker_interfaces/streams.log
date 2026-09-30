@@ -1,0 +1,207 @@
+[0.008s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/wavemaker_interfaces -DCMAKE_BUILD_TYPE=RelWithDebInfo -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces
+[0.055s] -- The C compiler identification is GNU 13.3.0
+[0.106s] -- The CXX compiler identification is GNU 13.3.0
+[0.130s] -- Detecting C compiler ABI info
+[0.204s] -- Detecting C compiler ABI info - done
+[0.214s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.214s] -- Detecting C compile features
+[0.214s] -- Detecting C compile features - done
+[0.222s] -- Detecting CXX compiler ABI info
+[0.302s] -- Detecting CXX compiler ABI info - done
+[0.309s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.309s] -- Detecting CXX compile features
+[0.310s] -- Detecting CXX compile features - done
+[0.314s] -- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[0.446s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[0.506s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.558s] -- Found rosidl_default_generators: 1.6.1 (/opt/ros/jazzy/share/rosidl_default_generators/cmake)
+[0.572s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.642s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.702s] -- Found rosidl_adapter: 4.6.9 (/opt/ros/jazzy/share/rosidl_adapter/cmake)
+[1.356s] -- Found ament_cmake_ros: 0.12.1 (/opt/ros/jazzy/share/ament_cmake_ros/cmake)
+[1.857s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.480s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.486s] -- Found python_cmake_module: 0.11.1 (/opt/ros/jazzy/share/python_cmake_module/cmake)
+[2.634s] -- Found PythonExtra: /usr/bin/python3  
+[3.037s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter Development NumPy Development.Module Development.Embed 
+[3.095s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[3.102s] -- Configuring done (3.1s)
+[3.127s] -- Generating done (0.0s)
+[3.136s] -- Build files have been written to: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces
+[3.144s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/wavemaker_interfaces -DCMAKE_BUILD_TYPE=RelWithDebInfo -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces
+[3.145s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces -- -j20 -l20
+[3.190s] [  2%] [34m[1mGenerating type hashes for ROS interfaces[0m
+[3.190s] [  5%] [34m[1mGenerating Rust code for ROS interfaces[0m
+[3.199s] [  5%] Built target ament_cmake_python_symlink_wavemaker_interfaces
+[3.357s] [  5%] Built target wavemaker_interfaces__rosidl_generator_type_description
+[3.368s] [  8%] [34m[1mGenerating C code for ROS interfaces[0m
+[3.379s] [ 11%] [34m[1mGenerating C++ code for ROS interfaces[0m
+[3.387s] running egg_info
+[3.387s] creating wavemaker_interfaces.egg-info
+[3.403s] writing wavemaker_interfaces.egg-info/PKG-INFO
+[3.403s] writing dependency_links to wavemaker_interfaces.egg-info/dependency_links.txt
+[3.404s] writing top-level names to wavemaker_interfaces.egg-info/top_level.txt
+[3.404s] writing manifest file 'wavemaker_interfaces.egg-info/SOURCES.txt'
+[3.411s] [ 11%] Built target wavemaker_interfaces__rs
+[3.450s] reading manifest file 'wavemaker_interfaces.egg-info/SOURCES.txt'
+[3.450s] writing manifest file 'wavemaker_interfaces.egg-info/SOURCES.txt'
+[3.472s] [ 11%] Built target ament_cmake_python_build_wavemaker_interfaces_egg
+[3.668s] [ 11%] Built target wavemaker_interfaces__cpp
+[3.670s] [ 20%] [32mBuilding C object CMakeFiles/wavemaker_interfaces__rosidl_generator_c.dir/rosidl_generator_c/wavemaker_interfaces/action/detail/move_wavemaker__description.c.o[0m
+[3.671s] [ 20%] [32mBuilding C object CMakeFiles/wavemaker_interfaces__rosidl_generator_c.dir/rosidl_generator_c/wavemaker_interfaces/action/detail/move_wavemaker__type_support.c.o[0m
+[3.671s] [ 20%] [32mBuilding C object CMakeFiles/wavemaker_interfaces__rosidl_generator_c.dir/rosidl_generator_c/wavemaker_interfaces/action/detail/move_wavemaker__functions.c.o[0m
+[4.278s] [ 22%] [32m[1mLinking C shared library libwavemaker_interfaces__rosidl_generator_c.so[0m
+[4.313s] [ 22%] Built target wavemaker_interfaces__rosidl_generator_c
+[4.325s] [ 25%] [34m[1mGenerating C introspection for ROS interfaces[0m
+[4.326s] [ 31%] [34m[1mGenerating C type support for eProsima Fast-RTPS[0m
+[4.326s] [ 31%] [34m[1mGenerating C++ type support for eProsima Fast-RTPS[0m
+[4.329s] [ 34%] [34m[1mGenerating C type support dispatch for ROS interfaces[0m
+[4.332s] [ 37%] [34m[1mGenerating C++ type support dispatch for ROS interfaces[0m
+[4.333s] [ 40%] [34m[1mGenerating C++ introspection for ROS interfaces[0m
+[4.571s] [ 42%] [32mBuilding CXX object CMakeFiles/wavemaker_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/wavemaker_interfaces/action/move_wavemaker__type_support.cpp.o[0m
+[4.607s] [ 45%] [32mBuilding CXX object CMakeFiles/wavemaker_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/wavemaker_interfaces/action/move_wavemaker__type_support.cpp.o[0m
+[4.608s] [ 48%] [32mBuilding CXX object CMakeFiles/wavemaker_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/wavemaker_interfaces/action/detail/move_wavemaker__type_support.cpp.o[0m
+[4.624s] [ 51%] [32mBuilding C object CMakeFiles/wavemaker_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/wavemaker_interfaces/action/detail/move_wavemaker__type_support.c.o[0m
+[4.663s] [ 54%] [32m[1mLinking CXX shared library libwavemaker_interfaces__rosidl_typesupport_c.so[0m
+[4.703s] [ 54%] Built target wavemaker_interfaces__rosidl_typesupport_c
+[4.712s] [ 57%] [32mBuilding CXX object CMakeFiles/wavemaker_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/wavemaker_interfaces/action/detail/dds_fastrtps/move_wavemaker__type_support.cpp.o[0m
+[4.737s] [ 60%] [32m[1mLinking C shared library libwavemaker_interfaces__rosidl_typesupport_introspection_c.so[0m
+[4.743s] [ 62%] [32mBuilding CXX object CMakeFiles/wavemaker_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/wavemaker_interfaces/action/detail/move_wavemaker__type_support_c.cpp.o[0m
+[4.772s] [ 62%] Built target wavemaker_interfaces__rosidl_typesupport_introspection_c
+[5.205s] [ 65%] [32m[1mLinking CXX shared library libwavemaker_interfaces__rosidl_typesupport_cpp.so[0m
+[5.271s] [ 65%] Built target wavemaker_interfaces__rosidl_typesupport_cpp
+[5.486s] [ 68%] [32m[1mLinking CXX shared library libwavemaker_interfaces__rosidl_typesupport_introspection_cpp.so[0m
+[5.547s] [ 71%] [32m[1mLinking CXX shared library libwavemaker_interfaces__rosidl_typesupport_fastrtps_c.so[0m
+[5.550s] [ 71%] Built target wavemaker_interfaces__rosidl_typesupport_introspection_cpp
+[5.611s] [ 71%] Built target wavemaker_interfaces__rosidl_typesupport_fastrtps_c
+[5.931s] [ 74%] [32m[1mLinking CXX shared library libwavemaker_interfaces__rosidl_typesupport_fastrtps_cpp.so[0m
+[5.988s] [ 74%] Built target wavemaker_interfaces__rosidl_typesupport_fastrtps_cpp
+[6.005s] [ 74%] Built target wavemaker_interfaces
+[6.022s] [ 77%] [34m[1mGenerating Python code for ROS interfaces[0m
+[6.386s] [ 77%] Built target wavemaker_interfaces__py
+[6.404s] [ 80%] [32mBuilding C object CMakeFiles/wavemaker_interfaces__rosidl_generator_py.dir/rosidl_generator_py/wavemaker_interfaces/action/_move_wavemaker_s.c.o[0m
+[6.707s] [ 82%] [32m[1mLinking C shared library libwavemaker_interfaces__rosidl_generator_py.so[0m
+[6.743s] [ 82%] Built target wavemaker_interfaces__rosidl_generator_py
+[6.763s] [ 91%] [32mBuilding C object CMakeFiles/wavemaker_interfaces_s__rosidl_typesupport_fastrtps_c.dir/rosidl_generator_py/wavemaker_interfaces/_wavemaker_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c.o[0m
+[6.763s] [ 91%] [32mBuilding C object CMakeFiles/wavemaker_interfaces_s__rosidl_typesupport_introspection_c.dir/rosidl_generator_py/wavemaker_interfaces/_wavemaker_interfaces_s.ep.rosidl_typesupport_introspection_c.c.o[0m
+[6.764s] [ 91%] [32mBuilding C object CMakeFiles/wavemaker_interfaces_s__rosidl_typesupport_c.dir/rosidl_generator_py/wavemaker_interfaces/_wavemaker_interfaces_s.ep.rosidl_typesupport_c.c.o[0m
+[6.928s] [ 94%] [32m[1mLinking C shared module rosidl_generator_py/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_fastrtps_c.so[0m
+[6.931s] [ 97%] [32m[1mLinking C shared module rosidl_generator_py/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_introspection_c.so[0m
+[6.933s] [100%] [32m[1mLinking C shared module rosidl_generator_py/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_c.so[0m
+[6.955s] [100%] Built target wavemaker_interfaces_s__rosidl_typesupport_c
+[6.958s] [100%] Built target wavemaker_interfaces_s__rosidl_typesupport_introspection_c
+[6.958s] [100%] Built target wavemaker_interfaces_s__rosidl_typesupport_fastrtps_c
+[6.968s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces -- -j20 -l20
+[6.969s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces
+[6.978s] -- Install configuration: "RelWithDebInfo"
+[6.979s] -- Execute custom install script
+[6.979s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/ament_index/resource_index/rosidl_interfaces/wavemaker_interfaces
+[6.991s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/action/MoveWavemaker.json
+[7.007s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__functions.h
+[7.026s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__struct.h
+[7.047s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__type_support.h
+[7.064s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/move_wavemaker.h
+[7.074s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/msg/rosidl_generator_c__visibility_control.h
+[7.080s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/library_path.sh
+[7.088s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/library_path.dsv
+[7.095s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__rosidl_typesupport_fastrtps_c.h
+[7.101s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[7.107s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__rosidl_typesupport_introspection_c.h
+[7.114s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[7.122s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__builder.hpp
+[7.128s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__struct.hpp
+[7.134s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__traits.hpp
+[7.141s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__type_support.hpp
+[7.147s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/move_wavemaker.hpp
+[7.154s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp
+[7.162s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__rosidl_typesupport_fastrtps_cpp.hpp
+[7.169s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[7.175s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/include/wavemaker_interfaces/wavemaker_interfaces/action/detail/move_wavemaker__rosidl_typesupport_introspection_cpp.hpp
+[7.182s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/pythonpath.sh
+[7.189s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/pythonpath.dsv
+[7.195s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces-0.0.0-py3.12.egg-info/PKG-INFO
+[7.203s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces-0.0.0-py3.12.egg-info/SOURCES.txt
+[7.209s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces-0.0.0-py3.12.egg-info/dependency_links.txt
+[7.217s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces-0.0.0-py3.12.egg-info/top_level.txt
+[7.224s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/__init__.py
+[7.229s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/_wavemaker_interfaces_s.ep.rosidl_typesupport_c.c
+[7.236s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/_wavemaker_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c
+[7.242s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/_wavemaker_interfaces_s.ep.rosidl_typesupport_introspection_c.c
+[7.248s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/action/__init__.py
+[7.255s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/action/_move_wavemaker.py
+[7.262s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/action/_move_wavemaker_s.c
+[7.268s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_c.so
+[7.275s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_fastrtps_c.so
+[7.282s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_introspection_c.so
+[7.289s] -- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_fastrtps_c.so
+[7.289s] -- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_introspection_c.so
+[7.289s] -- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_c.so
+[7.290s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/rust/Cargo.toml
+[7.295s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/rust/build.rs
+[7.303s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/rust/src/action.rs
+[7.309s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/rust/src/action/rmw.rs
+[7.316s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/rust/src/lib.rs
+[7.323s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/action/MoveWavemaker.idl
+[7.330s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/action/MoveWavemaker.action
+[7.338s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/ament_index/resource_index/package_run_dependencies/wavemaker_interfaces
+[7.345s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/ament_index/resource_index/parent_prefix_path/wavemaker_interfaces
+[7.351s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/ament_prefix_path.sh
+[7.357s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/ament_prefix_path.dsv
+[7.364s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/path.sh
+[7.372s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/environment/path.dsv
+[7.378s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/local_setup.bash
+[7.386s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/local_setup.sh
+[7.392s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/local_setup.zsh
+[7.399s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/local_setup.dsv
+[7.406s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/package.dsv
+[7.413s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/ament_index/resource_index/packages/wavemaker_interfaces
+[7.422s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/rosidl_cmake-extras.cmake
+[7.428s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/ament_cmake_export_dependencies-extras.cmake
+[7.437s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/ament_cmake_export_include_directories-extras.cmake
+[7.447s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/ament_cmake_export_libraries-extras.cmake
+[7.463s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/ament_cmake_export_targets-extras.cmake
+[7.483s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[7.501s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[7.518s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/rosidl_cmake_aggregate_target-extras.cmake
+[7.538s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfacesConfig.cmake
+[7.556s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfacesConfig-version.cmake
+[7.568s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/package.xml
+[7.575s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_generator_c.so
+[7.575s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_generator_c.so" to ""
+[7.575s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_fastrtps_c.so
+[7.576s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_fastrtps_c.so" to ""
+[7.576s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_introspection_c.so
+[7.576s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_introspection_c.so" to ""
+[7.576s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_c.so
+[7.576s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_c.so" to ""
+[7.576s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_fastrtps_cpp.so
+[7.577s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_fastrtps_cpp.so" to ""
+[7.577s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_introspection_cpp.so
+[7.578s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_introspection_cpp.so" to ""
+[7.578s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_cpp.so
+[7.578s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_typesupport_cpp.so" to ""
+[7.614s] Listing '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces'...
+[7.614s] Compiling '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/__init__.py'...
+[7.614s] Listing '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/action'...
+[7.614s] Compiling '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/action/__init__.py'...
+[7.614s] Compiling '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/python3.12/site-packages/wavemaker_interfaces/action/_move_wavemaker.py'...
+[7.618s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_generator_py.so
+[7.618s] -- Set non-toolchain portion of runtime path of "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/lib/libwavemaker_interfaces__rosidl_generator_py.so" to ""
+[7.618s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_generator_cExport.cmake
+[7.618s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_generator_cExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_typesupport_fastrtps_cExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_typesupport_fastrtps_cExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_introspection_cExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_introspection_cExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_cExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_cExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_generator_cppExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_typesupport_fastrtps_cppExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_typesupport_fastrtps_cppExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_introspection_cppExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_introspection_cppExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_cppExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/wavemaker_interfaces__rosidl_typesupport_cppExport-relwithdebinfo.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_generator_pyExport.cmake
+[7.619s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces/share/wavemaker_interfaces/cmake/export_wavemaker_interfaces__rosidl_generator_pyExport-relwithdebinfo.cmake
+[7.621s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces

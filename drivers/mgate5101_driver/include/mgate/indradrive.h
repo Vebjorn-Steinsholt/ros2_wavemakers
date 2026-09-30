@@ -24,6 +24,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 
@@ -59,10 +60,10 @@ struct IndraDriveConfig {
     std::string name_prefix = "Drv.";  // tag names: <prefix>StatusWord etc.
     int         profibus_address = 2;  // for the gateway live list check
 
-    // Command limits enforced by move_to(). Defaults: drive travel limits
-    // S-0-0049 / S-0-0050, and a conservative speed cap for commissioning.
-    double min_position_deg = -550.0;
-    double max_position_deg = 500.0;
+    // Command limits enforced by move_to(). Position units are selected by
+    // the controller: degrees for angular drives and meters for linear drives.
+    double min_position = -550.0;
+    double max_position = 500.0;
     double max_velocity_rpm = 100.0;
     double in_position_tol_deg = 0.1;  // S-0-0057 position window
 
@@ -71,6 +72,8 @@ struct IndraDriveConfig {
 
 class IndraDrive {
 public:
+    using FaultCallback = std::function<void(const std::string&)>;
+
     // Registers the drive's tags on `drv`. Call before drv.start().
     // Installs drv's cycle callback (the driver has one slot).
     IndraDrive(MGateDriver& drv, IndraDriveConfig cfg = {});
@@ -84,6 +87,7 @@ public:
     bool          faulted() const { return fault_.load(); }
     std::string   fault_reason() const;
     std::string   describe() const;     // one-line human-readable status
+    void          set_fault_callback(FaultCallback callback);
 
     // --- commands (blocking; return false and log why on failure) ----------
     // Pulse the clear-errors bit and wait for the class 1 error to go away.
@@ -124,6 +128,8 @@ private:
     mutable std::mutex fault_mtx_;
     std::string        fault_reason_;
     std::string        last_error_;
+    mutable std::mutex callback_mtx_;
+    FaultCallback      fault_callback_;
 };
 
 }  // namespace mgate

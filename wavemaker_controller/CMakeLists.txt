@@ -13,6 +13,7 @@ find_package(rclcpp_action REQUIRED)
 find_package(wavemaker_interfaces REQUIRED)
 find_package(bondcpp REQUIRED)   
 find_package(mgate5101_driver REQUIRED)
+find_package(std_msgs REQUIRED)
 
 add_executable(wavemaker_node
   src/wavemaker_node.cpp
@@ -25,6 +26,8 @@ ament_target_dependencies(wavemaker_node
   rclcpp_action
   wavemaker_interfaces
   bondcpp
+  std_msgs
+  mgate5101_driver
   )
 
 add_executable(wavemaker_bridge src/wavemaker_bridge.cpp)
@@ -39,10 +42,38 @@ install(TARGETS wavemaker_node wavemaker_bridge
 target_link_libraries(wavemaker_node mgate5101_driver::mgate5101)
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(test_indradrive_actuator
+    test/test_indradrive_actuator.cpp
+    src/indradrive_actuator.cpp
+  )
+  target_include_directories(test_indradrive_actuator PRIVATE src)
+  ament_target_dependencies(test_indradrive_actuator
+    rclcpp
+    rclcpp_lifecycle
+  )
+  target_link_libraries(test_indradrive_actuator mgate5101_driver::mgate5101)
+
+  ament_add_gtest(test_wavemaker_node
+    test/test_wavemaker_node.cpp
+    src/indradrive_actuator.cpp
+  )
+  target_include_directories(test_wavemaker_node PRIVATE src)
+  ament_target_dependencies(test_wavemaker_node
+    lifecycle_msgs
+    rclcpp
+    rclcpp_lifecycle
+    rclcpp_action
+    wavemaker_interfaces
+    bondcpp
+    std_msgs
+  )
+  target_link_libraries(test_wavemaker_node mgate5101_driver::mgate5101)
 endif()
 
 ament_package()

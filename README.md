@@ -111,17 +111,30 @@ Replace `ladertanken` with `lilletanken` or `mc_lab` when testing another wavema
 Monitor controller feedback during testing:
 
 ```bash
-ros2 topic echo /wavemakers/ladertanken/controller/wavemaker_velocity
+ros2 topic echo /wavemakers/ladertanken/wavemaker_velocity
 ```
 
 Send a small action goal only after the controller is active and the physical safety checks are complete:
 
 ```bash
 ros2 action send_goal --feedback \
-  /wavemakers/ladertanken/controller/move_wavemaker \
+  /wavemakers/ladertanken/move_wavemaker \
   wavemaker_interfaces/action/MoveWavemaker \
-  "{amplitude: 0.001, period: 10.0}"
+  "{amplitude: 0.00005, period: 10.0}"
 ```
+
+For the current ladertanken depth, attachment height, and conversion, this amplitude produces about 1.2 degrees of actuator amplitude. Recalculate it if those parameters differ. In non-pregenerated mode, the first period uses a quintic smoothstep blend from the measured current position into the upright-centered sinusoid. This avoids a startup position/velocity step, but can still move the actuator toward the upright position; confirm that travel is safe before sending a goal.
+
+When `wavemaker_mode_pregenerated` is enabled, provide absolute wavemaker positions in meters and their fixed sample interval instead:
+
+```bash
+ros2 action send_goal --feedback \
+  /wavemakers/ladertanken/move_wavemaker \
+  wavemaker_interfaces/action/MoveWavemaker \
+  "{positions: [0.0, 0.00053, 0.0], sample_interval: 1.0}"
+```
+
+The controller linearly interpolates between samples, checks each position against the configured travel limits, and completes the action after the final sample. With the current ladertanken conversion, `0.00053 m` corresponds to one degree of actuator travel.
 
 The controller configuration is in:
 

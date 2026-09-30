@@ -7,36 +7,51 @@
 #include <exception>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 namespace wavemaker_controller {
+
+namespace {
+
+template<typename T>
+void declare_parameter_if_missing(
+  rclcpp_lifecycle::LifecycleNode & node, const std::string & name, const T & default_value)
+{
+  if (!node.has_parameter(name)) {
+    node.declare_parameter<T>(name, default_value);
+  }
+}
+
+}  // namespace
 
 IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
 : lead_m_per_degree_(0.0), actuator_upright_angle_deg_(0.0),
   wavemaker_position_offset_m_(0.0), poll_interval_ms_(50)
 {
-  node.declare_parameter<std::string>("driver_address", "");
-  node.declare_parameter<int>("driver_port", 502);
-  node.declare_parameter<int>("driver_unit_id", 1);
-  node.declare_parameter<int>("input_base_reg", 0);
-  node.declare_parameter<int>("input_word_count", 0);
-  node.declare_parameter<int>("output_base_reg", 0x0800);
-  node.declare_parameter<int>("output_word_count", 0);
-  node.declare_parameter<bool>("input_uses_fc4", true);
-  node.declare_parameter<int>("status_base_reg", 0);
-  node.declare_parameter<int>("status_word_count", 0);
-  node.declare_parameter<bool>("status_uses_fc4", true);
-  node.declare_parameter<int>("poll_interval_ms", 50);
-  node.declare_parameter<int>("timeout_ms", 1000);
-  node.declare_parameter<int>("reconnect_ms", 2000);
-  node.declare_parameter<bool>("write_only_dirty", true);
-  node.declare_parameter<int>("profibus_address", 2);
-  node.declare_parameter<double>("min_position_deg", -550.0);
-  node.declare_parameter<double>("max_position_deg", 500.0);
-  node.declare_parameter<double>("max_velocity_rpm", 100.0);
-  node.declare_parameter<double>("in_position_tol_deg", 0.1);
-  node.declare_parameter<int>("step_timeout_ms", 10000);
-  node.declare_parameter<std::string>("actuator_drive_type", "linear");
-  node.declare_parameter<double>("actuator_lead_m_per_degree", 0.0);
+  declare_parameter_if_missing(node, "driver_port", 502);
+  declare_parameter_if_missing(node, "driver_unit_id", 1);
+  declare_parameter_if_missing(node, "input_base_reg", 0);
+  declare_parameter_if_missing(node, "input_word_count", 0);
+  declare_parameter_if_missing(node, "output_base_reg", 0x0800);
+  declare_parameter_if_missing(node, "output_word_count", 0);
+  declare_parameter_if_missing(node, "input_uses_fc4", true);
+  declare_parameter_if_missing(node, "status_base_reg", 0);
+  declare_parameter_if_missing(node, "status_word_count", 0);
+  declare_parameter_if_missing(node, "status_uses_fc4", true);
+  declare_parameter_if_missing(node, "poll_interval_ms", 50);
+  declare_parameter_if_missing(node, "timeout_ms", 1000);
+  declare_parameter_if_missing(node, "reconnect_ms", 2000);
+  declare_parameter_if_missing(node, "write_only_dirty", true);
+  declare_parameter_if_missing(node, "profibus_address", 2);
+  declare_parameter_if_missing(node, "min_position_deg", -550.0);
+  declare_parameter_if_missing(node, "max_position_deg", 500.0);
+  declare_parameter_if_missing(node, "min_position_m", 0.0);
+  declare_parameter_if_missing(node, "max_position_m", 1.0);
+  declare_parameter_if_missing(node, "max_velocity_rpm", 100.0);
+  declare_parameter_if_missing(node, "in_position_tol_deg", 0.1);
+  declare_parameter_if_missing(node, "step_timeout_ms", 10000);
+  declare_parameter_if_missing(node, "actuator_drive_type", std::string("linear"));
+  declare_parameter_if_missing(node, "actuator_lead_m_per_degree", 0.0);
 
   lead_m_per_degree_ = node.get_parameter("actuator_lead_m_per_degree").as_double();
   actuator_upright_angle_deg_ = node.get_parameter("actuator_upright_angle_deg").as_double();
@@ -100,13 +115,18 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
 
   mgate::IndraDriveConfig drive_config;
   drive_config.profibus_address = profibus_address;
-  drive_config.min_position_deg = node.get_parameter("min_position_deg").as_double();
-  drive_config.max_position_deg = node.get_parameter("max_position_deg").as_double();
+  if (actuator_drive_type_ == "angular") {
+    drive_config.min_position = node.get_parameter("min_position_deg").as_double();
+    drive_config.max_position = node.get_parameter("max_position_deg").as_double();
+  } else {
+    drive_config.min_position = node.get_parameter("min_position_m").as_double();
+    drive_config.max_position = node.get_parameter("max_position_m").as_double();
+  }
   drive_config.max_velocity_rpm = node.get_parameter("max_velocity_rpm").as_double();
   drive_config.in_position_tol_deg = node.get_parameter("in_position_tol_deg").as_double();
   drive_config.step_timeout_ms = node.get_parameter("step_timeout_ms").as_int();
 
-  if (drive_config.min_position_deg >= drive_config.max_position_deg ||
+  if (drive_config.min_position >= drive_config.max_position ||
       drive_config.max_velocity_rpm <= 0.0 || drive_config.in_position_tol_deg < 0.0 ||
       drive_config.step_timeout_ms <= 0) {
     throw std::invalid_argument("invalid IndraDrive limits or timeout");
@@ -114,6 +134,11 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
 
   mgate_driver_ = std::make_unique<mgate::MGateDriver>(gateway_config);
   indradrive_ = std::make_unique<mgate::IndraDrive>(*mgate_driver_, drive_config);
+}
+
+void IndraDriveActuator::set_fault_callback(WavemakerActuator::FaultCallback callback)
+{
+  indradrive_->set_fault_callback(std::move(callback));
 }
 
 bool IndraDriveActuator::start(const rclcpp::Logger & logger)
@@ -193,6 +218,22 @@ bool IndraDriveActuator::write_setpoint(const ActuatorSetpoint & setpoint)
 bool IndraDriveActuator::is_live() const
 {
   return indradrive_ && indradrive_->slave_live();
+}
+
+bool IndraDriveActuator::faulted() const
+{
+  return indradrive_ && indradrive_->faulted();
+}
+
+std::string IndraDriveActuator::fault_reason() const
+{
+  if (!indradrive_) {
+    return "actuator is not configured";
+  }
+  if (indradrive_->faulted()) {
+    return indradrive_->fault_reason();
+  }
+  return indradrive_->last_error();
 }
 
 std::string IndraDriveActuator::status() const

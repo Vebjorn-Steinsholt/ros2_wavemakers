@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Site BuildName="(empty)"
+	BuildStamp="20260930-1119-Experimental"
+	Name="hydrolab-linux-Precision-3580"
+	Generator="ctest-3.28.3"
+	CompilerName="/usr/bin/c++"
+	CompilerVersion="13.3.0"
+	OSName="Linux"
+	Hostname="hydrolab-linux-Precision-3580"
+	OSRelease="7.0.0-34-generic"
+	OSVersion="#34~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 15:38:29 UTC 2"
+	OSPlatform="x86_64"
+	Is64Bits="1"
+	VendorString="GenuineIntel"
+	VendorID="Intel Corporation"
+	FamilyID="6"
+	ModelID="186"
+	ProcessorCacheSize="24576"
+	NumberOfLogicalCPU="20"
+	NumberOfPhysicalCPU="14"
+	TotalVirtualMemory="8191"
+	TotalPhysicalMemory="63982"
+	LogicalProcessorsPerPhysical="1"
+	ProcessorClockFrequency="399.828"
+	>
+	<Testing>
+		<StartDateTime>Sep 30 13:19 CEST</StartDateTime>
+		<StartTestTime>1790767197</StartTestTime>
+		<TestList>
+			<Test>./test_indradrive_actuator</Test>
+			<Test>./test_wavemaker_node</Test>
+		</TestList>
+		<Test Status="passed">
+			<Name>test_indradrive_actuator</Name>
+			<Path>.</Path>
+			<FullName>./test_indradrive_actuator</FullName>
+			<FullCommandLine>/usr/bin/python3 "-u" "/opt/ros/jazzy/share/ament_cmake_test/cmake/run_test.py" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml" "--package-name" "wavemaker_controller" "--output-file" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_gtest/test_indradrive_actuator.txt" "--command" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_indradrive_actuator" "--gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml"</FullCommandLine>
+			<Results>
+				<NamedMeasurement type="numeric/double" name="Execution Time">
+					<Value>0.674288</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="numeric/double" name="Processors">
+					<Value>1</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Completion Status">
+					<Value>Completed</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Command Line">
+					<Value>/usr/bin/python3 "-u" "/opt/ros/jazzy/share/ament_cmake_test/cmake/run_test.py" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml" "--package-name" "wavemaker_controller" "--output-file" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_gtest/test_indradrive_actuator.txt" "--command" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_indradrive_actuator" "--gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml"</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Environment">
+					<Value>#CTEST_RESOURCE_GROUP_COUNT=</Value>
+				</NamedMeasurement>
+				<Measurement>
+					<Value>-- run_test.py: invoking following command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller':
+ - /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_indradrive_actuator --gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml
+Running main() from /opt/ros/jazzy/src/gtest_vendor/src/gtest_main.cc
+[==========] Running 2 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 2 tests from IndraDriveActuatorTest
+[ RUN      ] IndraDriveActuatorTest.ConvertsAngularWavemakerSetpoint
+[       OK ] IndraDriveActuatorTest.ConvertsAngularWavemakerSetpoint (408 ms)
+[ RUN      ] IndraDriveActuatorTest.CanBeRecreatedAfterParametersAreDeclared
+[       OK ] IndraDriveActuatorTest.CanBeRecreatedAfterParametersAreDeclared (207 ms)
+[----------] 2 tests from IndraDriveActuatorTest (615 ms total)
+
+[----------] Global test environment tear-down
+[==========] 2 tests from 1 test suite ran. (615 ms total)
+[  PASSED  ] 2 tests.
+-- run_test.py: return code 0
+-- run_test.py: inject classname prefix into gtest result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml'
+-- run_test.py: verify result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_indradrive_actuator.gtest.xml'
+</Value>
+				</Measurement>
+			</Results>
+			<Labels>
+				<Label>gtest</Label>
+			</Labels>
+		</Test>
+		<Test Status="passed">
+			<Name>test_wavemaker_node</Name>
+			<Path>.</Path>
+			<FullName>./test_wavemaker_node</FullName>
+			<FullCommandLine>/usr/bin/python3 "-u" "/opt/ros/jazzy/share/ament_cmake_test/cmake/run_test.py" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml" "--package-name" "wavemaker_controller" "--output-file" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_gtest/test_wavemaker_node.txt" "--command" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node" "--gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml"</FullCommandLine>
+			<Results>
+				<NamedMeasurement type="numeric/double" name="Execution Time">
+					<Value>1.50612</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="numeric/double" name="Processors">
+					<Value>1</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Completion Status">
+					<Value>Completed</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Command Line">
+					<Value>/usr/bin/python3 "-u" "/opt/ros/jazzy/share/ament_cmake_test/cmake/run_test.py" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml" "--package-name" "wavemaker_controller" "--output-file" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_gtest/test_wavemaker_node.txt" "--command" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node" "--gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml"</Value>
+				</NamedMeasurement>
+				<NamedMeasurement type="text/string" name="Environment">
+					<Value>#CTEST_RESOURCE_GROUP_COUNT=</Value>
+				</NamedMeasurement>
+				<Measurement>
+					<Value>-- run_test.py: invoking following command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller':
+ - /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node --gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml
+Running main() from /opt/ros/jazzy/src/gtest_vendor/src/gtest_main.cc
+[==========] Running 4 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 4 tests from WavemakerNodeTest
+[ RUN      ] WavemakerNodeTest.LifecycleConfigureActivateDeactivate
+[INFO] [1790767198.238816408] [lifecycle_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767198.238870787] [lifecycle_test.controller]: Activating from state 'inactive'
+[INFO] [1790767198.239322665] [lifecycle_test.controller]: Deactivating from state 'active'
+[       OK ] WavemakerNodeTest.LifecycleConfigureActivateDeactivate (409 ms)
+[ RUN      ] WavemakerNodeTest.PregeneratedActionCompletesAndStopsActuator
+[INFO] [1790767198.640988845] [completion_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767198.641013868] [completion_test.controller]: Activating from state 'inactive'
+[       OK ] WavemakerNodeTest.PregeneratedActionCompletesAndStopsActuator (309 ms)
+[ RUN      ] WavemakerNodeTest.CancelledActionStopsActuator
+[INFO] [1790767198.948094829] [cancel_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767198.948117037] [cancel_test.controller]: Activating from state 'inactive'
+[INFO] [1790767198.981337565] [cancel_test.controller]: Received request to cancel goal
+[       OK ] WavemakerNodeTest.CancelledActionStopsActuator (308 ms)
+[ RUN      ] WavemakerNodeTest.AngularDriveLimitsOverrideWavemakerMeterBounds
+[INFO] [1790767199.258616907] [angular_limits_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[INFO] [1790767199.258649429] [angular_limits_test.controller]: Activating from state 'inactive'
+[       OK ] WavemakerNodeTest.AngularDriveLimitsOverrideWavemakerMeterBounds (406 ms)
+[----------] 4 tests from WavemakerNodeTest (1433 ms total)
+
+[----------] Global test environment tear-down
+[==========] 4 tests from 1 test suite ran. (1434 ms total)
+[  PASSED  ] 4 tests.
+-- run_test.py: return code 0
+-- run_test.py: inject classname prefix into gtest result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml'
+-- run_test.py: verify result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml'
+</Value>
+				</Measurement>
+			</Results>
+			<Labels>
+				<Label>gtest</Label>
+			</Labels>
+		</Test>
+		<EndDateTime>Sep 30 13:19 CEST</EndDateTime>
+		<EndTestTime>1790767199</EndTestTime>
+		<ElapsedMinutes>0</ElapsedMinutes>
+	</Testing>
+</Site>

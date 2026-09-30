@@ -1,0 +1,17 @@
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/lib/wavemaker_controller/wavemaker_node
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/lib/wavemaker_controller/wavemaker_bridge
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/ament_index/resource_index/package_run_dependencies/wavemaker_controller
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/ament_index/resource_index/parent_prefix_path/wavemaker_controller
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/environment/ament_prefix_path.sh
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/environment/ament_prefix_path.dsv
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/environment/path.sh
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/environment/path.dsv
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/local_setup.bash
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/local_setup.sh
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/local_setup.zsh
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/local_setup.dsv
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/package.dsv
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/ament_index/resource_index/packages/wavemaker_controller
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/cmake/wavemaker_controllerConfig.cmake
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/cmake/wavemaker_controllerConfig-version.cmake
+/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller/share/wavemaker_controller/package.xml

@@ -1,0 +1,71 @@
+[0.023s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller': CMAKE_PREFIX_PATH=/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_bringup:/home/hydrolab-linux/ros_ws/install/wavemaker_bringup:/home/hydrolab-linux/ros_ws/install/wavemaker_controller:/home/hydrolab-linux/ros_ws/install/wavemaker_interfaces:/home/hydrolab-linux/ros_ws/install/my_robot_bringup:/home/hydrolab-linux/ros_ws/install/turtlesim_project_cpp:/home/hydrolab-linux/ros_ws/install/turtlebot_bringup:/home/hydrolab-linux/ros_ws/install/rpi_bringup:/home/hydrolab-linux/ros_ws/install/ros2_pca9685:/home/hydrolab-linux/ros_ws/install/qualisys_driver:/home/hydrolab-linux/ros_ws/install/my_cpp_pkg:/home/hydrolab-linux/ros_ws/install/lifecycle_cpp:/home/hydrolab-linux/ros_ws/install/final_project:/home/hydrolab-linux/ros_ws/install/actions_cpp:/home/hydrolab-linux/ros_ws/install/my_robot_interfaces:/home/hydrolab-linux/ros_ws/install/my_robot_description:/home/hydrolab-linux/ros_ws/install/cybership_mocap:/home/hydrolab-linux/ros_ws/install/mocap4r2_msgs:/home/hydrolab-linux/ros_ws/install/mgate5101_driver:/home/hydrolab-linux/ros_ws/install/executors_cpp:/home/hydrolab-linux/ros_ws/install/dynamixel_servo_ros:/home/hydrolab-linux/ros_ws/install/cybership_viz:/home/hydrolab-linux/ros_ws/install/cybership_utilities:/home/hydrolab-linux/ros_ws/install/cybership_thrusters:/home/hydrolab-linux/ros_ws/install/cybership_tests:/home/hydrolab-linux/ros_ws/install/cybership_teleop:/home/hydrolab-linux/ros_ws/install/cybership_simulator:/home/hydrolab-linux/ros_ws/install/cybership_observer:/home/hydrolab-linux/ros_ws/install/cybership_controller:/home/hydrolab-linux/ros_ws/install/cybership_interfaces:/home/hydrolab-linux/ros_ws/install/cybership_dp:/home/hydrolab-linux/ros_ws/install/cybership_description:/home/hydrolab-linux/ros_ws/install/cybership_config:/home/hydrolab-linux/ros_ws/install/cybership_bringup:/home/hydrolab-linux/ros_ws/install/components_cpp:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/ctest -C RelWithDebInfo -D ExperimentalTest --no-compress-output -V --force-new-ctest-process -R test_wavemaker_node
+[0.031s] UpdateCTestConfiguration  from :/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/CTestConfiguration.ini
+[0.031s] Parse Config file:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/CTestConfiguration.ini
+[0.031s]    Site: hydrolab-linux-Precision-3580
+[0.031s]    Build name: (empty)
+[0.031s]  Add coverage exclude regular expressions.
+[0.031s] Create new tag: 20260930-1128 - Experimental
+[0.031s] UpdateCTestConfiguration  from :/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/CTestConfiguration.ini
+[0.031s] Parse Config file:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/CTestConfiguration.ini
+[0.031s] Test project /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller
+[0.031s] Constructing a list of tests
+[0.031s] Done constructing a list of tests
+[0.031s] Updating test list for fixtures
+[0.031s] Added 0 tests to meet fixture requirements
+[0.032s] Checking test dependency graph...
+[0.032s] Checking test dependency graph end
+[0.032s] test 2
+[0.032s]     Start 2: test_wavemaker_node
+[0.032s] 
+[0.032s] 2: Test command: /usr/bin/python3 "-u" "/opt/ros/jazzy/share/ament_cmake_test/cmake/run_test.py" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml" "--package-name" "wavemaker_controller" "--output-file" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_gtest/test_wavemaker_node.txt" "--command" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node" "--gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml"
+[0.032s] 2: Working Directory: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller
+[0.032s] 2: Test timeout computed to be: 60
+[0.073s] 2: -- run_test.py: invoking following command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller':
+[0.073s] 2:  - /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_wavemaker_node --gtest_output=xml:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml
+[0.082s] 2: Running main() from /opt/ros/jazzy/src/gtest_vendor/src/gtest_main.cc
+[0.082s] 2: [==========] Running 5 tests from 1 test suite.
+[0.082s] 2: [----------] Global test environment set-up.
+[0.083s] 2: [----------] 5 tests from WavemakerNodeTest
+[0.083s] 2: [ RUN      ] WavemakerNodeTest.LifecycleConfigureActivateDeactivate
+[0.089s] 2: [INFO] [1790767735.266844081] [lifecycle_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[0.089s] 2: [INFO] [1790767735.266887254] [lifecycle_test.controller]: Activating from state 'inactive'
+[0.089s] 2: [INFO] [1790767735.267253624] [lifecycle_test.controller]: Deactivating from state 'active'
+[0.492s] 2: [       OK ] WavemakerNodeTest.LifecycleConfigureActivateDeactivate (409 ms)
+[0.492s] 2: [ RUN      ] WavemakerNodeTest.PregeneratedActionCompletesAndStopsActuator
+[0.495s] 2: [INFO] [1790767735.673195195] [completion_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[0.496s] 2: [INFO] [1790767735.673216137] [completion_test.controller]: Activating from state 'inactive'
+[0.799s] 2: [       OK ] WavemakerNodeTest.PregeneratedActionCompletesAndStopsActuator (307 ms)
+[0.799s] 2: [ RUN      ] WavemakerNodeTest.CancelledActionStopsActuator
+[0.802s] 2: [INFO] [1790767735.979637056] [cancel_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[0.802s] 2: [INFO] [1790767735.979674879] [cancel_test.controller]: Activating from state 'inactive'
+[0.835s] 2: [INFO] [1790767736.012836054] [cancel_test.controller]: Received request to cancel goal
+[1.107s] 2: [       OK ] WavemakerNodeTest.CancelledActionStopsActuator (307 ms)
+[1.107s] 2: [ RUN      ] WavemakerNodeTest.SinusoidalGoalBlendsFromMeasuredPosition
+[1.110s] 2: [INFO] [1790767736.287420760] [smooth_start_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[1.110s] 2: [INFO] [1790767736.287444093] [smooth_start_test.controller]: Activating from state 'inactive'
+[1.142s] 2: [INFO] [1790767736.320038909] [smooth_start_test.controller]: Received request to cancel goal
+[1.416s] 2: [       OK ] WavemakerNodeTest.SinusoidalGoalBlendsFromMeasuredPosition (308 ms)
+[1.416s] 2: [ RUN      ] WavemakerNodeTest.AngularDriveLimitsOverrideWavemakerMeterBounds
+[1.419s] 2: [INFO] [1790767736.596320208] [angular_limits_test.controller]: Configuring from state 'unconfigured' as a piston wavemaker
+[1.419s] 2: [INFO] [1790767736.596342175] [angular_limits_test.controller]: Activating from state 'inactive'
+[1.724s] 2: [       OK ] WavemakerNodeTest.AngularDriveLimitsOverrideWavemakerMeterBounds (307 ms)
+[1.724s] 2: [----------] 5 tests from WavemakerNodeTest (1641 ms total)
+[1.724s] 2: 
+[1.724s] 2: [----------] Global test environment tear-down
+[1.724s] 2: [==========] 5 tests from 1 test suite ran. (1642 ms total)
+[1.724s] 2: [  PASSED  ] 5 tests.
+[1.726s] 2: -- run_test.py: return code 0
+[1.726s] 2: -- run_test.py: inject classname prefix into gtest result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml'
+[1.726s] 2: -- run_test.py: verify result file '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/test_results/wavemaker_controller/test_wavemaker_node.gtest.xml'
+[1.734s] 1/1 Test #2: test_wavemaker_node ..............   Passed    1.70 sec
+[1.734s] 
+[1.734s] The following tests passed:
+[1.734s] 	test_wavemaker_node
+[1.735s] 
+[1.735s] [0;32m100% tests passed[0;0m, 0 tests failed[0;0m out of 1
+[1.735s] 
+[1.735s] Label Time Summary:
+[1.735s] gtest    =   1.70 sec*proc (1 test)
+[1.735s] 
+[1.735s] Total Test time (real) =   1.70 sec
+[1.740s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller' returned '0': CMAKE_PREFIX_PATH=/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_controller:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_interfaces:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver:/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/wavemaker_bringup:/home/hydrolab-linux/ros_ws/install/wavemaker_bringup:/home/hydrolab-linux/ros_ws/install/wavemaker_controller:/home/hydrolab-linux/ros_ws/install/wavemaker_interfaces:/home/hydrolab-linux/ros_ws/install/my_robot_bringup:/home/hydrolab-linux/ros_ws/install/turtlesim_project_cpp:/home/hydrolab-linux/ros_ws/install/turtlebot_bringup:/home/hydrolab-linux/ros_ws/install/rpi_bringup:/home/hydrolab-linux/ros_ws/install/ros2_pca9685:/home/hydrolab-linux/ros_ws/install/qualisys_driver:/home/hydrolab-linux/ros_ws/install/my_cpp_pkg:/home/hydrolab-linux/ros_ws/install/lifecycle_cpp:/home/hydrolab-linux/ros_ws/install/final_project:/home/hydrolab-linux/ros_ws/install/actions_cpp:/home/hydrolab-linux/ros_ws/install/my_robot_interfaces:/home/hydrolab-linux/ros_ws/install/my_robot_description:/home/hydrolab-linux/ros_ws/install/cybership_mocap:/home/hydrolab-linux/ros_ws/install/mocap4r2_msgs:/home/hydrolab-linux/ros_ws/install/mgate5101_driver:/home/hydrolab-linux/ros_ws/install/executors_cpp:/home/hydrolab-linux/ros_ws/install/dynamixel_servo_ros:/home/hydrolab-linux/ros_ws/install/cybership_viz:/home/hydrolab-linux/ros_ws/install/cybership_utilities:/home/hydrolab-linux/ros_ws/install/cybership_thrusters:/home/hydrolab-linux/ros_ws/install/cybership_tests:/home/hydrolab-linux/ros_ws/install/cybership_teleop:/home/hydrolab-linux/ros_ws/install/cybership_simulator:/home/hydrolab-linux/ros_ws/install/cybership_observer:/home/hydrolab-linux/ros_ws/install/cybership_controller:/home/hydrolab-linux/ros_ws/install/cybership_interfaces:/home/hydrolab-linux/ros_ws/install/cybership_dp:/home/hydrolab-linux/ros_ws/install/cybership_description:/home/hydrolab-linux/ros_ws/install/cybership_config:/home/hydrolab-linux/ros_ws/install/cybership_bringup:/home/hydrolab-linux/ros_ws/install/components_cpp:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/ctest -C RelWithDebInfo -D ExperimentalTest --no-compress-output -V --force-new-ctest-process -R test_wavemaker_node

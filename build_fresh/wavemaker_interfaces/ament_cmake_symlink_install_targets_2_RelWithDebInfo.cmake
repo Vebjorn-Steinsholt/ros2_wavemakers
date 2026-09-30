@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces/rosidl_generator_py/wavemaker_interfaces/wavemaker_interfaces_s__rosidl_typesupport_c.so" "TARGETS" "wavemaker_interfaces_s__rosidl_typesupport_c" "DESTINATION" "lib/python3.12/site-packages/wavemaker_interfaces")

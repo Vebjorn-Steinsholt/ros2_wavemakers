@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 #include <thread>
+#include <utility>
 
 namespace mgate {
 namespace {
@@ -65,6 +66,11 @@ std::string IndraDrive::fault_reason() const {
     return fault_reason_;
 }
 
+void IndraDrive::set_fault_callback(FaultCallback callback) {
+    std::lock_guard<std::mutex> lk(callback_mtx_);
+    fault_callback_ = std::move(callback);
+}
+
 std::string IndraDrive::describe() const {
     const std::uint16_t sw   = status_word();
     const std::uint32_t diag = diag_number();
@@ -89,11 +95,23 @@ void IndraDrive::set_control(std::uint16_t cw) { drv_.write_int(tag("ControlWord
 void IndraDrive::latch_fault(const std::string& why) {
     set_control(0);
     enabled_.store(false);
+    bool newly_latched = false;
     {
         std::lock_guard<std::mutex> lk(fault_mtx_);
-        if (!fault_.load()) fault_reason_ = why;
+        if (!fault_.load()) {
+            fault_reason_ = why;
+            newly_latched = true;
+        }
     }
     fault_.store(true);
+    if (newly_latched) {
+        FaultCallback callback;
+        {
+            std::lock_guard<std::mutex> lk(callback_mtx_);
+            callback = fault_callback_;
+        }
+        if (callback) callback(why);
+    }
 }
 
 void IndraDrive::on_cycle(bool ok) {
@@ -193,13 +211,13 @@ bool IndraDrive::enable() {
     return true;
 }
 
-bool IndraDrive::move_to(double position_deg, double velocity_rpm) {
+bool IndraDrive::move_to(double position, double velocity_rpm) {
     if (!enabled_.load() || fault_.load()) return fail("move_to: drive not enabled" +
                                                        (fault_.load() ? " (" + fault_reason() + ")" : std::string()));
-    if (position_deg < cfg_.min_position_deg || position_deg > cfg_.max_position_deg) {
+    if (position < cfg_.min_position || position > cfg_.max_position) {
         char buf[128];
-        std::snprintf(buf, sizeof(buf), "move_to: %.4f deg outside [%.1f, %.1f]", position_deg,
-                      cfg_.min_position_deg, cfg_.max_position_deg);
+        std::snprintf(buf, sizeof(buf), "move_to: %.4f outside [%.1f, %.1f]", position,
+                      cfg_.min_position, cfg_.max_position);
         return fail(buf);
     }
     if (!(velocity_rpm > 0.0) || velocity_rpm > cfg_.max_velocity_rpm) {
@@ -211,7 +229,7 @@ bool IndraDrive::move_to(double position_deg, double velocity_rpm) {
     // Velocity first: if a cycle goes out between the two writes, the new
     // target is never paired with a stale velocity.
     drv_.write(tag("PosVelocity"), velocity_rpm);
-    drv_.write(tag("TargetPosition"), position_deg);
+    drv_.write(tag("TargetPosition"), position);
     return true;
 }
 

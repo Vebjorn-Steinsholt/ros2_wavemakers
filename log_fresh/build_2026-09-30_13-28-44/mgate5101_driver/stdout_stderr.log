@@ -1,0 +1,44 @@
+-- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Configuring done (0.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver
+[ 55%] Built target mgate5101
+[ 77%] Built target test_mapping
+[100%] Built target mgate_example
+-- Install configuration: "RelWithDebInfo"
+-- Execute custom install script
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/indradrive.h
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/mgate_driver.h
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/modbus_tcp.h
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/process_image.h
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/Info_eng.txt
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/Info_ger.txt
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX010107.gsd
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX020107.gsd
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX030107.gsd
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX_D0107.dib
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX_R0107.dib
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX_S0107.dib
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/library_path.sh
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/library_path.dsv
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/ament_index/resource_index/package_run_dependencies/mgate5101_driver
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/ament_index/resource_index/parent_prefix_path/mgate5101_driver
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/path.sh
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/path.dsv
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.bash
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.sh
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.zsh
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.dsv
+-- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/package.dsv
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/ament_index/resource_index/packages/mgate5101_driver
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverConfig.cmake
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverConfig-version.cmake
+-- Up-to-date symlink: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/package.xml
+-- Up-to-date: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/lib/libmgate5101.a
+-- Up-to-date: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverTargetsExport.cmake
+-- Up-to-date: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverTargetsExport-relwithdebinfo.cmake

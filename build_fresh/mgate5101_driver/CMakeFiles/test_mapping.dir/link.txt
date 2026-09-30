@@ -1,0 +1,1 @@
+/usr/bin/c++ -O2 -g -DNDEBUG CMakeFiles/test_mapping.dir/tests/test_mapping.cpp.o -o test_mapping  libmgate5101.a 

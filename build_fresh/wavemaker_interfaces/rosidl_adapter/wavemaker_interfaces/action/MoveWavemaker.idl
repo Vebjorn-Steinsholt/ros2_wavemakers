@@ -1,0 +1,40 @@
+// generated from rosidl_adapter/resource/action.idl.em
+// with input from wavemaker_interfaces/action/MoveWavemaker.action
+// generated code does not contain a copyright notice
+
+
+module wavemaker_interfaces {
+  module action {
+    @verbatim (language="comment", text=
+      "Goal" "\n"
+      "Used when wavemaker_mode_pregenerated is false.")
+    struct MoveWavemaker_Goal {
+      double amplitude;
+
+      double period;
+
+      @verbatim (language="comment", text=
+        "Absolute wavemaker positions in meters, sampled at this fixed interval." "\n"
+        "Used when wavemaker_mode_pregenerated is true.")
+      sequence<double> positions;
+
+      double sample_interval;
+    };
+    @verbatim (language="comment", text=
+      "Result")
+    struct MoveWavemaker_Result {
+      boolean success;
+
+      string message;
+    };
+    @verbatim (language="comment", text=
+      "Feedback")
+    struct MoveWavemaker_Feedback {
+      double desired_position;
+
+      double actual_position;
+
+      double elapsed_time;
+    };
+  };
+};

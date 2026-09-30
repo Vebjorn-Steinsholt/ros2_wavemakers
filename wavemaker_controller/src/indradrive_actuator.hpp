@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -14,10 +15,13 @@ class IndraDriveActuator final : public WavemakerActuator
 {
 public:
   explicit IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node);
+  void set_fault_callback(FaultCallback callback) override;
 
   bool start(const rclcpp::Logger & logger) override;
   void stop() override;
   bool is_live() const override;
+  bool faulted() const override;
+  std::string fault_reason() const override;
   std::string status() const override;
   double actual_position_m() const override;
   ActuatorSetpoint to_actuator_setpoint(double position_m, double velocity_mps) const override;

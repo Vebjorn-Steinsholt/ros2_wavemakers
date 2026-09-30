@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "wavemaker_interfaces__rs",
+		"source" : "/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_interfaces/wavemaker_interfaces__rs"
+	}
+}

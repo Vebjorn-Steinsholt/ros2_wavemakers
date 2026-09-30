@@ -1,0 +1,4 @@
+source;share/mgate5101_driver/local_setup.bash
+source;share/mgate5101_driver/local_setup.dsv
+source;share/mgate5101_driver/local_setup.sh
+source;share/mgate5101_driver/local_setup.zsh

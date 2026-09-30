@@ -1,0 +1,66 @@
+[0.010s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/drivers/mgate5101_driver -DCMAKE_BUILD_TYPE=RelWithDebInfo -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver
+[0.071s] -- The CXX compiler identification is GNU 13.3.0
+[0.094s] -- Detecting CXX compiler ABI info
+[0.191s] -- Detecting CXX compiler ABI info - done
+[0.198s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.198s] -- Detecting CXX compile features
+[0.198s] -- Detecting CXX compile features - done
+[0.203s] -- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[0.353s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[0.404s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.516s] -- Configuring done (0.5s)
+[0.520s] -- Generating done (0.0s)
+[0.521s] -- Build files have been written to: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver
+[0.525s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/drivers/mgate5101_driver -DCMAKE_BUILD_TYPE=RelWithDebInfo -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver
+[0.525s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver -- -j20 -l20
+[0.570s] [ 11%] [32mBuilding CXX object CMakeFiles/mgate5101.dir/src/indradrive.cpp.o[0m
+[0.572s] [ 44%] [32mBuilding CXX object CMakeFiles/mgate5101.dir/src/modbus_tcp.cpp.o[0m
+[0.572s] [ 44%] [32mBuilding CXX object CMakeFiles/mgate5101.dir/src/mgate_driver.cpp.o[0m
+[0.572s] [ 44%] [32mBuilding CXX object CMakeFiles/mgate5101.dir/src/process_image.cpp.o[0m
+[1.653s] [ 55%] [32m[1mLinking CXX static library libmgate5101.a[0m
+[1.695s] [ 55%] Built target mgate5101
+[1.715s] [ 66%] [32mBuilding CXX object CMakeFiles/mgate_example.dir/examples/example_main.cpp.o[0m
+[1.715s] [ 77%] [32mBuilding CXX object CMakeFiles/test_mapping.dir/tests/test_mapping.cpp.o[0m
+[2.036s] [ 88%] [32m[1mLinking CXX executable test_mapping[0m
+[2.097s] [ 88%] Built target test_mapping
+[2.193s] [100%] [32m[1mLinking CXX executable mgate_example[0m
+[2.268s] [100%] Built target mgate_example
+[2.276s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver -- -j20 -l20
+[2.285s] Invoking command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver
+[2.290s] -- Install configuration: "RelWithDebInfo"
+[2.291s] -- Execute custom install script
+[2.292s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/indradrive.h
+[2.299s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/mgate_driver.h
+[2.306s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/modbus_tcp.h
+[2.314s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/include/mgate/process_image.h
+[2.324s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/Info_eng.txt
+[2.331s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/Info_ger.txt
+[2.338s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX010107.gsd
+[2.347s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX020107.gsd
+[2.356s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX030107.gsd
+[2.366s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX_D0107.dib
+[2.376s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX_R0107.dib
+[2.385s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/resources/profibus_gsd/profibus_gsd/RX_S0107.dib
+[2.395s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/library_path.sh
+[2.402s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/library_path.dsv
+[2.410s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/ament_index/resource_index/package_run_dependencies/mgate5101_driver
+[2.420s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/ament_index/resource_index/parent_prefix_path/mgate5101_driver
+[2.430s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/ament_prefix_path.sh
+[2.440s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/ament_prefix_path.dsv
+[2.449s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/path.sh
+[2.456s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/environment/path.dsv
+[2.464s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.bash
+[2.474s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.sh
+[2.484s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.zsh
+[2.491s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/local_setup.dsv
+[2.498s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/package.dsv
+[2.508s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/ament_index/resource_index/packages/mgate5101_driver
+[2.519s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/ament_cmake_export_targets-extras.cmake
+[2.527s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/ament_cmake_export_include_directories-extras.cmake
+[2.537s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverConfig.cmake
+[2.547s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverConfig-version.cmake
+[2.557s] -- Symlinking: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/package.xml
+[2.567s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/lib/libmgate5101.a
+[2.570s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverTargetsExport.cmake
+[2.570s] -- Installing: /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverTargetsExport-relwithdebinfo.cmake
+[2.572s] Invoked command in '/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/hydrolab-linux/ros_ws/install/turtlesim_gotta_catch_em_all:/home/hydrolab-linux/ros_ws/install/rpi_tests:/home/hydrolab-linux/ros_ws/install/rpi_linmot:/home/hydrolab-linux/ros_ws/install/rpi_arduino:/home/hydrolab-linux/ros_ws/install/my_py_pkg:/home/hydrolab-linux/ros_ws/install/move_robot:/home/hydrolab-linux/ros_ws/install/actions_py:/home/hydrolab-linux/ros_ws/install/lifecycle_py:/home/hydrolab-linux/ros_ws/install/joy_teleop_bridge:/home/hydrolab-linux/ros_ws/install/executors_py:/home/hydrolab-linux/ros_ws/install/components_py:/home/hydrolab-linux/ros_ws/install/bno055:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/mgate5101_driver
