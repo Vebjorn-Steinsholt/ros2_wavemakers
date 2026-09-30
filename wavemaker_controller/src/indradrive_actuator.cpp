@@ -194,6 +194,13 @@ bool IndraDriveActuator::start(const rclcpp::Logger & logger)
   return true;
 }
 
+void IndraDriveActuator::halt()
+{
+  if (indradrive_) {
+    indradrive_->halt();
+  }
+}
+
 void IndraDriveActuator::stop()
 {
   if (indradrive_) {

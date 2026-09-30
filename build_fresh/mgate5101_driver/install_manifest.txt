@@ -1,3 +1,0 @@
-/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/lib/libmgate5101.a
-/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverTargetsExport.cmake
-/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/install_fresh/mgate5101_driver/share/mgate5101_driver/cmake/mgate5101_driverTargetsExport-relwithdebinfo.cmake

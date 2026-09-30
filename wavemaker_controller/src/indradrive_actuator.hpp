@@ -18,6 +18,7 @@ public:
   void set_fault_callback(FaultCallback callback) override;
 
   bool start(const rclcpp::Logger & logger) override;
+  void halt() override;
   void stop() override;
   bool is_live() const override;
   bool faulted() const override;

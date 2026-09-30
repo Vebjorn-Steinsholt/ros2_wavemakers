@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmgate5101.a CMakeFiles/mgate5101.dir/src/modbus_tcp.cpp.o CMakeFiles/mgate5101.dir/src/process_image.cpp.o CMakeFiles/mgate5101.dir/src/mgate_driver.cpp.o CMakeFiles/mgate5101.dir/src/indradrive.cpp.o
-/usr/bin/ranlib libmgate5101.a

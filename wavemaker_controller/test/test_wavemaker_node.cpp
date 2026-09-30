@@ -2,6 +2,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <limits>
 #include <string>
 #include <thread>
 #include <utility>
@@ -37,6 +38,11 @@ public:
     return true;
   }
 
+  void halt() override
+  {
+    ++halt_count;
+  }
+
   void stop() override
   {
     ++stop_count;
@@ -64,18 +70,23 @@ public:
     }
     last_position = setpoint.position;
     last_velocity = setpoint.velocity;
+    minimum_position = std::min(minimum_position, setpoint.position);
+    maximum_position = std::max(maximum_position, setpoint.position);
     ++write_count;
     return true;
   }
 
   bool started{false};
   int stop_count{0};
+  int halt_count{0};
   std::atomic<int> write_count{0};
   double actual_position{0.25};
   double first_position{0.0};
   double first_velocity{0.0};
   double last_position{0.0};
   double last_velocity{0.0};
+  double minimum_position{std::numeric_limits<double>::infinity()};
+  double maximum_position{-std::numeric_limits<double>::infinity()};
   std::mutex setpoint_mutex;
   FaultCallback fault_callback_;
 };
@@ -113,6 +124,26 @@ rclcpp::NodeOptions angular_node_options(const std::string & ns)
       rclcpp::Parameter("actuator_lead_m_per_degree", 0.001),
       rclcpp::Parameter("min_position_deg", -100.0),
       rclcpp::Parameter("max_position_deg", 100.0),
+    });
+}
+
+rclcpp::NodeOptions one_sided_node_options(const std::string & ns)
+{
+  return rclcpp::NodeOptions()
+    .arguments({"--ros-args", "-r", "__ns:=" + ns})
+    .parameter_overrides({
+      rclcpp::Parameter("wavemaker_type", "flap"),
+      rclcpp::Parameter("wavemaker_minimum", 0.25),
+      rclcpp::Parameter("wavemaker_maximum", 0.5),
+      rclcpp::Parameter("wavemaker_upright_position_m", 0.25),
+      rclcpp::Parameter("wavemaker_upright_is_minimum", true),
+      rclcpp::Parameter("wavemaker_mode_pregenerated", false),
+      rclcpp::Parameter("water_depth", 1.0),
+      rclcpp::Parameter("flap_attachment_height", 1.3),
+      rclcpp::Parameter("actuator_upright_angle_deg", 0.0),
+      rclcpp::Parameter("actuator_drive_type", "linear"),
+      rclcpp::Parameter("min_position_m", 0.25),
+      rclcpp::Parameter("max_position_m", 0.5),
     });
 }
 
@@ -172,7 +203,7 @@ TEST_F(WavemakerNodeTest, LifecycleConfigureActivateDeactivate)
   EXPECT_GE(fake->stop_count, 1);
 }
 
-TEST_F(WavemakerNodeTest, PregeneratedActionCompletesAndStopsActuator)
+TEST_F(WavemakerNodeTest, PregeneratedActionCompletesAndKeepsActuatorEnabled)
 {
   FakeActuator * fake = nullptr;
   auto factory = [&fake](rclcpp_lifecycle::LifecycleNode &) {
@@ -206,10 +237,11 @@ TEST_F(WavemakerNodeTest, PregeneratedActionCompletesAndStopsActuator)
   auto result_future = client->async_get_result(goal_handle);
   ASSERT_TRUE(spin_until(executor, result_future, std::chrono::seconds(2)));
   EXPECT_EQ(result_future.get().code, rclcpp_action::ResultCode::SUCCEEDED);
-  EXPECT_GE(fake->stop_count, 1);
+  EXPECT_EQ(fake->halt_count, 1);
+  EXPECT_TRUE(fake->started);
 }
 
-TEST_F(WavemakerNodeTest, CancelledActionStopsActuator)
+TEST_F(WavemakerNodeTest, CancelledActionHaltsAndAcceptsNextGoal)
 {
   FakeActuator * fake = nullptr;
   auto factory = [&fake](rclcpp_lifecycle::LifecycleNode &) {
@@ -251,7 +283,30 @@ TEST_F(WavemakerNodeTest, CancelledActionStopsActuator)
   auto result_future = client->async_get_result(goal_handle);
   ASSERT_TRUE(spin_until(executor, result_future, std::chrono::seconds(2)));
   EXPECT_EQ(result_future.get().code, rclcpp_action::ResultCode::CANCELED);
-  EXPECT_GE(fake->stop_count, 1);
+  EXPECT_EQ(fake->halt_count, 1);
+  EXPECT_TRUE(fake->started);
+
+  const int writes_after_cancel = fake->write_count.load();
+  auto second_goal_future = client->async_send_goal(goal);
+  ASSERT_TRUE(spin_until(executor, second_goal_future, std::chrono::seconds(1)));
+  auto second_goal_handle = second_goal_future.get();
+  ASSERT_NE(second_goal_handle, nullptr);
+
+  const auto second_write_deadline =
+    std::chrono::steady_clock::now() + std::chrono::seconds(1);
+  while (fake->write_count.load() <= writes_after_cancel &&
+    std::chrono::steady_clock::now() < second_write_deadline)
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_GT(fake->write_count.load(), writes_after_cancel);
+
+  client->async_cancel_goal(second_goal_handle);
+  auto second_result_future = client->async_get_result(second_goal_handle);
+  ASSERT_TRUE(spin_until(executor, second_result_future, std::chrono::seconds(2)));
+  EXPECT_EQ(second_result_future.get().code, rclcpp_action::ResultCode::CANCELED);
+  EXPECT_EQ(fake->halt_count, 2);
 }
 
 TEST_F(WavemakerNodeTest, SinusoidalGoalBlendsFromMeasuredPosition)
@@ -297,6 +352,60 @@ TEST_F(WavemakerNodeTest, SinusoidalGoalBlendsFromMeasuredPosition)
     std::lock_guard<std::mutex> lock(fake->setpoint_mutex);
     EXPECT_NEAR(fake->first_position, fake->actual_position, 1e-5);
     EXPECT_NEAR(fake->first_velocity, 0.0, 1e-5);
+  }
+
+  client->async_cancel_goal(goal_handle);
+  auto result_future = client->async_get_result(goal_handle);
+  ASSERT_TRUE(spin_until(executor, result_future, std::chrono::seconds(2)));
+  EXPECT_EQ(result_future.get().code, rclcpp_action::ResultCode::CANCELED);
+  EXPECT_EQ(fake->halt_count, 1);
+}
+
+TEST_F(WavemakerNodeTest, UprightMinimumWaveformNeverCommandsBehindUpright)
+{
+  FakeActuator * fake = nullptr;
+  auto factory = [&fake](rclcpp_lifecycle::LifecycleNode &) {
+    auto actuator = std::make_unique<FakeActuator>();
+    fake = actuator.get();
+    fake->actual_position = 0.25;
+    return actuator;
+  };
+  auto node = std::make_shared<WavemakerNode>(
+    one_sided_node_options("/upright_minimum_test"), factory);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
+
+  auto client_node = std::make_shared<rclcpp::Node>(
+    "upright_minimum_client", node_options("/upright_minimum_test", false));
+  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node->get_node_base_interface());
+  executor.add_node(client_node);
+
+  ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  MoveWavemaker::Goal goal;
+  goal.amplitude = 0.00001;
+  goal.period = 0.5;
+  auto goal_future = client->async_send_goal(goal);
+  ASSERT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
+  auto goal_handle = goal_future.get();
+  ASSERT_NE(goal_handle, nullptr);
+
+  const auto write_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+  while (fake->write_count.load() < 120 && std::chrono::steady_clock::now() < write_deadline) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  ASSERT_GE(fake->write_count.load(), 120);
+  {
+    std::lock_guard<std::mutex> lock(fake->setpoint_mutex);
+    EXPECT_GE(fake->minimum_position, 0.25 - 1e-9);
+    EXPECT_GT(fake->maximum_position, 0.25);
+    EXPECT_LE(fake->maximum_position, 0.5);
   }
 
   client->async_cancel_goal(goal_handle);

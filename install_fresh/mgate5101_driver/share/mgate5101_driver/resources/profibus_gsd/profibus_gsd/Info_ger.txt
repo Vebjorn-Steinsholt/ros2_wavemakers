@@ -1,1 +1,0 @@
-/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/drivers/mgate5101_driver/resources/profibus_gsd/Info_ger.txt

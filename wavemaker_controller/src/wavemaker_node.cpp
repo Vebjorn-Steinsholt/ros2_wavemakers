@@ -8,6 +8,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <rmw/types.h>
 
 #include "lifecycle_msgs/msg/transition.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
@@ -16,11 +17,14 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "bondcpp/bond.hpp"
 #include "wavemaker_interfaces/action/move_wavemaker.hpp"
+#include "wavemaker_interfaces/srv/cancel_all_goals.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "indradrive_actuator.hpp"
 
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
+
+using CancelAllGoals = wavemaker_interfaces::srv::CancelAllGoals;
 
 
 
@@ -43,6 +47,7 @@ public:
       declare_parameter<std::string>("driver_address", "");
       declare_parameter<std::string>("wavemaker_id", "");
       declare_parameter<double>("wavemaker_upright_position_m", 0.0);
+      declare_parameter<bool>("wavemaker_upright_is_minimum", false);
       declare_parameter<double>("water_depth", 0.6);
       declare_parameter<bool>("wavemaker_mode_pregenerated", false);
       declare_parameter<double>("flap_attachment_height", 0.0);
@@ -73,6 +78,7 @@ public:
     driver_address_ = get_parameter("driver_address").as_string();
     wavemaker_id_ = get_parameter("wavemaker_id").as_string();
     wavemaker_position_offset_ = get_parameter("wavemaker_upright_position_m").as_double();
+    upright_is_minimum_ = get_parameter("wavemaker_upright_is_minimum").as_bool();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
@@ -129,6 +135,14 @@ public:
       goal_position_minimum_ = wavemaker_minimum_;
       goal_position_maximum_ = wavemaker_maximum_;
     }
+    if (upright_is_minimum_ &&
+      std::abs(wavemaker_position_offset_ - goal_position_minimum_) > 1e-9)
+    {
+      RCLCPP_ERROR(
+        get_logger(), "wavemaker_upright_position_m must equal the minimum when "
+        "wavemaker_upright_is_minimum is true");
+      return CallbackReturn::FAILURE;
+    }
     
     if (wavemaker_type_ == "flap" && (flap_attachment_height_ <= 0.0 || flap_attachment_height_<water_depth_)) {
       RCLCPP_ERROR(get_logger(), "flap_attachment_height must be set (> 0) and greater than water_depth for flap-type wavemakers");
@@ -161,6 +175,67 @@ public:
   rcl_action_server_get_default_options(),
   action_callback_group_);
 
+  cancel_service_callback_group_ =
+    create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  
+  cancel_client_callback_group_ =
+    create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+  
+  cancel_client_ = rclcpp_action::create_client<MoveWavemaker>(
+    shared_from_this(), "move_wavemaker", cancel_client_callback_group_);
+  
+  cancel_service_ = create_service<CancelAllGoals>(
+  "cancel_all_goals",
+  [this](
+    std::shared_ptr<rclcpp::Service<CancelAllGoals>> service,
+    std::shared_ptr<rmw_request_id_t> request_id,
+    std::shared_ptr<CancelAllGoals::Request> request)
+  {
+    auto respond =
+      [service, request_id, requester = request->requester](
+        uint8_t status, uint32_t count, const std::string & message)
+      {
+        auto response = std::make_shared<CancelAllGoals::Response>();
+        response->status = status;
+        response->goals_canceling = count;
+        response->requester = requester;
+        response->message = message;
+        service->send_response(*request_id, *response);
+      };
+
+    if (!cancel_client_ || !cancel_client_->action_server_is_ready()) {
+      respond(
+        CancelAllGoals::Response::SERVER_UNAVAILABLE,
+        0, "Action server is unavailable");
+      return;
+    }
+
+    cancel_client_->async_cancel_all_goals(
+      [respond](auto cancel_reply)
+      {
+        const auto count =
+          static_cast<uint32_t>(cancel_reply->goals_canceling.size());
+
+        if (cancel_reply->return_code !=
+          action_msgs::srv::CancelGoal::Response::ERROR_NONE)
+        {
+          respond(
+            CancelAllGoals::Response::REQUEST_REJECTED,
+            count, "Action server rejected cancellation");
+        } else if (count == 0) {
+          respond(
+            CancelAllGoals::Response::NO_ACTIVE_GOALS,
+            0, "No active goals");
+        } else {
+          respond(
+            CancelAllGoals::Response::REQUEST_ACCEPTED,
+            count, "Cancellation accepted");
+        }
+      });
+  },
+  rclcpp::ServicesQoS(),
+  cancel_service_callback_group_);
+  
   velocity_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_velocity", 10);
   fault_timer_ = create_wall_timer(
     std::chrono::milliseconds(100),
@@ -237,6 +312,10 @@ public:
     }
     action_server_.reset();
     action_callback_group_.reset();
+    cancel_service_.reset();
+    cancel_client_.reset();
+    cancel_service_callback_group_.reset();
+    cancel_client_callback_group_.reset();
     velocity_publisher_.reset();
     fault_timer_.reset();
    
@@ -314,7 +393,7 @@ private:
           return false;
         }
       }
-      const double duration = goal.sample_interval *
+      const double duration = goal.sample_interval * 
         static_cast<double>(goal.positions.size() - 1);
       if (!std::isfinite(duration)) {
         RCLCPP_WARN(get_logger(), "Pregenerated trajectory duration is not finite");
@@ -338,8 +417,10 @@ private:
       actuator_amplitude_ *= (flap_attachment_height_ / water_depth_);
     }
 
-    const double required_minimum = wavemaker_position_offset_ - actuator_amplitude_;
-    const double required_maximum = wavemaker_position_offset_ + actuator_amplitude_;
+    const double required_minimum = upright_is_minimum_ ?
+      wavemaker_position_offset_ : wavemaker_position_offset_ - actuator_amplitude_;
+    const double required_maximum = wavemaker_position_offset_ +
+      actuator_amplitude_ * (upright_is_minimum_ ? 2.0 : 1.0);
     if (required_minimum < goal_position_minimum_ ||
       required_maximum > goal_position_maximum_)
     {
@@ -369,6 +450,34 @@ private:
     double & position, double & velocity) const
   {
     if (!wavemaker_mode_pregenerated_) {
+      if (upright_is_minimum_) {
+        if (elapsed < startup_transition_duration_) {
+          const double u = elapsed / startup_transition_duration_;
+          const double u2 = u * u;
+          const double u3 = u2 * u;
+          const double u4 = u3 * u;
+          const double u5 = u4 * u;
+          const double blend = 10.0 * u3 - 15.0 * u4 + 6.0 * u5;
+          const double blend_velocity =
+            (30.0 * u2 - 60.0 * u3 + 30.0 * u4) / startup_transition_duration_;
+          const double wave_position = wavemaker_position_offset_ +
+            actuator_amplitude_ * (1.0 - std::cos(omega_ * elapsed));
+          const double wave_velocity = actuator_amplitude_ * omega_ *
+            std::sin(omega_ * elapsed);
+
+          position = trajectory_start_position_ +
+            blend * (wave_position - trajectory_start_position_);
+          velocity = blend_velocity * (wave_position - trajectory_start_position_) +
+            blend * wave_velocity;
+        } else {
+          const double wave_elapsed = elapsed - startup_transition_duration_;
+          position = wavemaker_position_offset_ +
+            actuator_amplitude_ * (1.0 - std::cos(omega_ * wave_elapsed));
+          velocity = actuator_amplitude_ * omega_ * std::sin(omega_ * wave_elapsed);
+        }
+        return false;
+      }
+
       const double wave_elapsed = elapsed - startup_transition_duration_;
       const double wave_position = wavemaker_position_offset_ +
         actuator_amplitude_ * std::sin(omega_ * wave_elapsed);
@@ -530,15 +639,19 @@ void execute_goal(
 
         // Check for cancellation
         if (goal_handle->is_canceling()) {
-            goal_handle->canceled(result);
-            actuator_->stop();
+            actuator_->halt();
 
             {
                 std::lock_guard<std::mutex> lock(goal_mutex_);
+              if (goal_handle_ == goal_handle) {
                 goal_handle_.reset();
                 goal_pending_ = false;
+              }
             }
 
+            result->success = false;
+            result->message = "Goal canceled; actuator halted and remains enabled";
+            goal_handle->canceled(result);
             return;
         }
 
@@ -574,7 +687,7 @@ void execute_goal(
         goal_handle->publish_feedback(feedback);
 
         if (trajectory_complete) {
-          actuator_->stop();
+          actuator_->halt();
           result->success = true;
           result->message = "Pregenerated trajectory completed";
           goal_handle->succeed(result);
@@ -682,6 +795,7 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   double wavemaker_maximum_;
   double goal_position_minimum_;
   double goal_position_maximum_;
+  bool upright_is_minimum_{false};
   double trajectory_start_position_{0.0};
   double startup_transition_duration_{0.0};
   double wavemaker_position_offset_;
@@ -696,7 +810,10 @@ double compute_stroke(double mu, double target_H, const std::string & type)
   std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
   bool goal_pending_{false};
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
-  rclcpp::CallbackGroup::SharedPtr action_callback_group_;
+  rclcpp::CallbackGroup::SharedPtr cancel_service_callback_group_;
+  rclcpp::CallbackGroup::SharedPtr cancel_client_callback_group_;
+  rclcpp_action::Client<MoveWavemaker>::SharedPtr cancel_client_;
+  rclcpp::Service<CancelAllGoals>::SharedPtr cancel_service_;  rclcpp::CallbackGroup::SharedPtr action_callback_group_;
   rclcpp::TimerBase::SharedPtr fault_timer_;
   std::atomic<bool> stop_execution_{false};
   std::atomic<bool> fault_pending_{false};

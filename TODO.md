@@ -118,7 +118,7 @@ Do not begin physical motion testing until the safety and calibration sections a
   ros2 topic echo $NS/wavemaker_velocity
   ros2 topic hz $NS/wavemaker_velocity
   ```
-- [ ] With the flap disconnected and secured, send a very small, low-frequency goal (`amplitude: 0.00005` is about 1.2 degrees of actuator amplitude for the current ladertanken settings):
+- [ ] With the flap disconnected and secured, send a very small, low-frequency goal (`amplitude: 0.00005` is about 2.4 degrees of forward travel for the current ladertanken settings):
   ```bash
   ros2 action send_goal --feedback \
     $ACTION \

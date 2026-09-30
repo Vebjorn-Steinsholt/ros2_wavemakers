@@ -123,7 +123,7 @@ ros2 action send_goal --feedback \
   "{amplitude: 0.00005, period: 10.0}"
 ```
 
-For the current ladertanken depth, attachment height, and conversion, this amplitude produces about 1.2 degrees of actuator amplitude. Recalculate it if those parameters differ. In non-pregenerated mode, the first period uses a quintic smoothstep blend from the measured current position into the upright-centered sinusoid. This avoids a startup position/velocity step, but can still move the actuator toward the upright position; confirm that travel is safe before sending a goal.
+With `wavemaker_upright_is_minimum` enabled, the actuator starts at upright and follows a forward-only cycle up to twice the computed half-stroke, then returns to upright. For the current ladertanken depth, attachment height, and conversion, this amplitude produces about 2.4 degrees of forward travel. Recalculate it if those parameters differ. The first period uses a quintic smoothstep blend from the measured current position into the cycle.
 
 When `wavemaker_mode_pregenerated` is enabled, provide absolute wavemaker positions in meters and their fixed sample interval instead:
 
@@ -134,7 +134,7 @@ ros2 action send_goal --feedback \
   "{positions: [0.0, 0.00053, 0.0], sample_interval: 1.0}"
 ```
 
-The controller linearly interpolates between samples, checks each position against the configured travel limits, and completes the action after the final sample. With the current ladertanken conversion, `0.00053 m` corresponds to one degree of actuator travel.
+The controller linearly interpolates between samples, checks each position against the configured travel limits, and completes the action after the final sample. With the current ladertanken conversion, `0.00053 m` corresponds to one degree of actuator travel. Keep every sample at or above the upright minimum for one-sided wavemakers.
 
 The controller configuration is in:
 

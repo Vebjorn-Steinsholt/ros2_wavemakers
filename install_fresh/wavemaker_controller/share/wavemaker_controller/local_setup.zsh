@@ -1,1 +1,0 @@
-/home/hydrolab-linux/ros_ws/src/ros2_wavemakers/build_fresh/wavemaker_controller/ament_cmake_environment_hooks/local_setup.zsh

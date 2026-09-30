@@ -1,1 +1,0 @@
-/usr/bin/c++ -O2 -g -DNDEBUG CMakeFiles/mgate_example.dir/examples/example_main.cpp.o -o mgate_example  libmgate5101.a 

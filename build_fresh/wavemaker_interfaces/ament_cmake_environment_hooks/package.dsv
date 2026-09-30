@@ -1,4 +1,0 @@
-source;share/wavemaker_interfaces/local_setup.bash
-source;share/wavemaker_interfaces/local_setup.dsv
-source;share/wavemaker_interfaces/local_setup.sh
-source;share/wavemaker_interfaces/local_setup.zsh

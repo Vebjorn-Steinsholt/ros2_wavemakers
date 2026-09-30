@@ -1,3 +1,0 @@
-test_indradrive_actuator 1 0.674288
-test_wavemaker_node 2 0.851073
----

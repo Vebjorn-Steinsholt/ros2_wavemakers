@@ -34,7 +34,10 @@ add_executable(wavemaker_bridge src/wavemaker_bridge.cpp)
 ament_target_dependencies(wavemaker_bridge
   rclcpp
   rclcpp_lifecycle
-  )
+  rclcpp_action
+  wavemaker_interfaces
+  std_msgs
+)
 
 install(TARGETS wavemaker_node wavemaker_bridge
   DESTINATION lib/${PROJECT_NAME}

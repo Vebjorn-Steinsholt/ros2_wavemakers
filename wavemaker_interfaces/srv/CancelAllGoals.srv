@@ -1,0 +1,11 @@
+string requester
+---
+uint8 REQUEST_ACCEPTED=0
+uint8 NO_ACTIVE_GOALS=1
+uint8 SERVER_UNAVAILABLE=2
+uint8 REQUEST_REJECTED=3
+
+uint8 status
+uint32 goals_canceling
+string requester
+string message

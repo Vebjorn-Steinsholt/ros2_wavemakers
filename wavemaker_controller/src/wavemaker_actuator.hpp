@@ -22,6 +22,7 @@ public:
 
   virtual void set_fault_callback(FaultCallback callback) = 0;
   virtual bool start(const rclcpp::Logger & logger) = 0;
+  virtual void halt() = 0;
   virtual void stop() = 0;
   virtual bool is_live() const = 0;
   virtual bool faulted() const = 0;

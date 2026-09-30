@@ -1,8 +1,0 @@
-setup.py
-wavemaker_interfaces/__init__.py
-wavemaker_interfaces.egg-info/PKG-INFO
-wavemaker_interfaces.egg-info/SOURCES.txt
-wavemaker_interfaces.egg-info/dependency_links.txt
-wavemaker_interfaces.egg-info/top_level.txt
-wavemaker_interfaces/action/__init__.py
-wavemaker_interfaces/action/_move_wavemaker.py
