@@ -48,6 +48,7 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
   declare_parameter_if_missing(node, "min_position_m", 0.0);
   declare_parameter_if_missing(node, "max_position_m", 1.0);
   declare_parameter_if_missing(node, "max_velocity_rpm", 100.0);
+  declare_parameter_if_missing(node, "hold_velocity_rpm", 10.0);
   declare_parameter_if_missing(node, "in_position_tol_deg", 0.1);
   declare_parameter_if_missing(node, "step_timeout_ms", 10000);
   declare_parameter_if_missing(node, "actuator_drive_type", std::string("linear"));
@@ -131,6 +132,13 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
       drive_config.step_timeout_ms <= 0) {
     throw std::invalid_argument("invalid IndraDrive limits or timeout");
   }
+  hold_velocity_rpm_ = node.get_parameter("hold_velocity_rpm").as_double();
+  if (!(hold_velocity_rpm_ > 0.0) || hold_velocity_rpm_ > drive_config.max_velocity_rpm) {
+    throw std::invalid_argument("hold_velocity_rpm must be > 0 and <= max_velocity_rpm");
+  }
+  max_velocity_rpm_ = drive_config.max_velocity_rpm;
+  min_position_ = drive_config.min_position;
+  max_position_ = drive_config.max_position;
 
   mgate_driver_ = std::make_unique<mgate::MGateDriver>(gateway_config);
   indradrive_ = std::make_unique<mgate::IndraDrive>(*mgate_driver_, drive_config);
@@ -143,6 +151,7 @@ void IndraDriveActuator::set_fault_callback(WavemakerActuator::FaultCallback cal
 
 bool IndraDriveActuator::start(const rclcpp::Logger & logger)
 {
+  has_target_ = false;  // enable() parks the target on the current position
   mgate_driver_->start();
   if (!mgate_driver_->wait_for_data(5000)) {
     mgate_driver_->stop();
@@ -196,13 +205,20 @@ bool IndraDriveActuator::start(const rclcpp::Logger & logger)
 
 void IndraDriveActuator::halt()
 {
-  if (indradrive_) {
-    indradrive_->halt();
+  if (!indradrive_ || indradrive_->faulted()) {
+    return;
   }
+  // Hold position instead of IndraDrive::halt(): Drive Halt makes the drive ignore
+  // TargetPosition until enable() runs again, so the next goal or return would not move.
+  // Hold the last commanded target rather than the polled position, which can be one
+  // gateway cycle old, so a stop at speed does not move back.
+  const double target = has_target_ ? last_target_.load() : indradrive_->position_deg();
+  indradrive_->move_to(std::clamp(target, min_position_, max_position_), hold_velocity_rpm_);
 }
 
 void IndraDriveActuator::stop()
 {
+  has_target_ = false;
   if (indradrive_) {
     indradrive_->disable();
   }
@@ -217,9 +233,29 @@ bool IndraDriveActuator::write_setpoint(const ActuatorSetpoint & setpoint)
     return false;
   }
 
+  // setpoint.velocity is the positioning-speed limit for this move, not a target speed.
   // IndraDrive expects a positive feedrate in rpm; direction comes from the target position.
   const double velocity_rpm = std::max(0.1, std::abs(setpoint.velocity) / 6.0);
-  return indradrive_->move_to(setpoint.position, velocity_rpm);
+  if (!indradrive_->move_to(setpoint.position, velocity_rpm)) {
+    return false;
+  }
+  last_target_ = setpoint.position;
+  has_target_ = true;
+  return true;
+}
+
+int IndraDriveActuator::update_period_ms() const
+{
+  // The MGate driver sends the staged outputs once per poll cycle.
+  return poll_interval_ms_;
+}
+
+double IndraDriveActuator::max_velocity_mps() const
+{
+  // Inverse of write_setpoint(): rpm = |velocity in actuator units per second| / 6.
+  const double actuator_units_per_s = max_velocity_rpm_ * 6.0;
+  return actuator_drive_type_ == "angular" ?
+    actuator_units_per_s * lead_m_per_degree_ : actuator_units_per_s;
 }
 
 bool IndraDriveActuator::is_live() const

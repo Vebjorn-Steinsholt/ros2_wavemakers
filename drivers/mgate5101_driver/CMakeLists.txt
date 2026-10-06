@@ -31,6 +31,10 @@ endif()
 add_executable(mgate_example examples/example_main.cpp)
 target_link_libraries(mgate_example PRIVATE mgate5101)
 
+# Hardware tool: measures cycle times to choose poll_interval_ms. Writes zeros (drive off).
+add_executable(poll_rate_probe examples/poll_rate_probe.cpp)
+target_link_libraries(poll_rate_probe PRIVATE mgate5101)
+
 # test_mapping is self-contained.
 # test_driver removed from build: requires the Python stub server
 # (tests/stub_server.py, listens on 127.0.0.1:1502) and is not needed
@@ -42,6 +46,7 @@ add_executable(test_mapping tests/test_mapping.cpp)
 target_link_libraries(test_mapping PRIVATE mgate5101)
 add_test(NAME mapping COMMAND test_mapping)
 
+install(TARGETS poll_rate_probe DESTINATION lib/${PROJECT_NAME})
 install(TARGETS mgate5101
     EXPORT mgate5101_driverTargets
     ARCHIVE DESTINATION lib

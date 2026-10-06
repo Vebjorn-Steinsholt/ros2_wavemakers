@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -27,6 +28,8 @@ public:
   double actual_position_m() const override;
   ActuatorSetpoint to_actuator_setpoint(double position_m, double velocity_mps) const override;
   bool write_setpoint(const ActuatorSetpoint & setpoint) override;
+  double max_velocity_mps() const override;
+  int update_period_ms() const override;
 
 private:
   std::unique_ptr<mgate::MGateDriver> mgate_driver_;
@@ -36,6 +39,14 @@ private:
   double actuator_upright_angle_deg_;
   double wavemaker_position_offset_m_;
   int poll_interval_ms_;
+  // Drive limits in actuator units, and the speed cap used when holding position.
+  double min_position_{0.0};
+  double max_position_{0.0};
+  double hold_velocity_rpm_{10.0};
+  double max_velocity_rpm_{0.0};
+  // Last target accepted by move_to(); halt() holds here instead of using Drive Halt.
+  std::atomic<double> last_target_{0.0};
+  std::atomic<bool> has_target_{false};
 };
 
 }  // namespace wavemaker_controller

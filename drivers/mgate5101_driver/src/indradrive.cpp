@@ -51,6 +51,8 @@ bool IndraDrive::slave_live() const {
     // Gateway input memory: 1536..1537 status word (bits 1:0 = 11 Operate),
     // 1538.. live list, one bit per PROFIBUS address. Status area starts at
     // byte 1536, so byte b of the area is register b/2, high byte when even.
+    // The snapshot is not cleared when polling stops, so it is stale while offline.
+    if (!drv_.online()) return false;
     const auto st = drv_.status_snapshot();
     if (st.empty() || (st[0] & 0x3u) != 0x3u) return false;
 

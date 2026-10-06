@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 
 drivers/mgate5101_driver/compile_commands.json
+wavemaker_controller/src/wavemaker_node.cpp
+wavemaker_controller/test

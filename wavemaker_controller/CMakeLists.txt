@@ -14,10 +14,13 @@ find_package(wavemaker_interfaces REQUIRED)
 find_package(bondcpp REQUIRED)   
 find_package(mgate5101_driver REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 add_executable(wavemaker_node
   src/wavemaker_node.cpp
   src/indradrive_actuator.cpp
+  src/wave_math.cpp
+  src/wave_trajectory.cpp
 )
 ament_target_dependencies(wavemaker_node
   lifecycle_msgs
@@ -35,8 +38,10 @@ ament_target_dependencies(wavemaker_bridge
   rclcpp
   rclcpp_lifecycle
   rclcpp_action
+  bondcpp
   wavemaker_interfaces
   std_msgs
+  std_srvs
 )
 
 install(TARGETS wavemaker_node wavemaker_bridge
@@ -62,9 +67,18 @@ if(BUILD_TESTING)
   )
   target_link_libraries(test_indradrive_actuator mgate5101_driver::mgate5101)
 
+  ament_add_gtest(test_wave_trajectory
+    test/test_wave_trajectory.cpp
+    src/wave_math.cpp
+    src/wave_trajectory.cpp
+  )
+  target_include_directories(test_wave_trajectory PRIVATE src)
+
   ament_add_gtest(test_wavemaker_node
     test/test_wavemaker_node.cpp
     src/indradrive_actuator.cpp
+    src/wave_math.cpp
+    src/wave_trajectory.cpp
   )
   target_include_directories(test_wavemaker_node PRIVATE src)
   ament_target_dependencies(test_wavemaker_node

@@ -1,4 +1,5 @@
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -74,6 +75,33 @@ TEST_F(IndraDriveActuatorTest, ConvertsAngularWavemakerSetpoint)
   EXPECT_FALSE(actuator.faulted());
   EXPECT_TRUE(actuator.fault_reason().empty());
 
+}
+
+TEST_F(IndraDriveActuatorTest, RejectsHoldVelocityAboveDriveMaximum)
+{
+  auto options = actuator_options();
+  options.append_parameter_override("hold_velocity_rpm", 60.0);  // max_velocity_rpm is 50
+  auto node = std::make_shared<rclcpp_lifecycle::LifecycleNode>(
+    "actuator_hold_velocity_test", options);
+  node->declare_parameter<std::string>("driver_address", "127.0.0.1");
+  node->declare_parameter<double>("actuator_upright_angle_deg", 12.0);
+  node->declare_parameter<double>("wavemaker_upright_position_m", 0.25);
+
+  EXPECT_THROW(wavemaker_controller::IndraDriveActuator actuator(*node), std::invalid_argument);
+}
+
+TEST_F(IndraDriveActuatorTest, HaltBeforeStartDoesNotThrow)
+{
+  auto node = std::make_shared<rclcpp_lifecycle::LifecycleNode>(
+    "actuator_halt_test", actuator_options());
+  node->declare_parameter<std::string>("driver_address", "127.0.0.1");
+  node->declare_parameter<double>("actuator_upright_angle_deg", 12.0);
+  node->declare_parameter<double>("wavemaker_upright_position_m", 0.25);
+  wavemaker_controller::IndraDriveActuator actuator(*node);
+
+  // The drive is not enabled, so move_to() refuses the hold; halt() must still be safe.
+  EXPECT_NO_THROW(actuator.halt());
+  EXPECT_FALSE(actuator.faulted());
 }
 
 TEST_F(IndraDriveActuatorTest, CanBeRecreatedAfterParametersAreDeclared)

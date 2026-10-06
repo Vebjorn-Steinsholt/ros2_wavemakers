@@ -20,15 +20,15 @@
 
     profibus_address: 2
     max_velocity_rpm: 50.0
-    min_position_deg: 0.0       # Controller-side lower limit: upright reference
+    min_position_deg: -500.0    # Controller-side limit, symmetric with max_position_deg
     max_position_deg: 500.0
     in_position_tol_deg: 0.1
     step_timeout_ms: 10000
 
     wavemaker_type: "flap"
     wavemaker_id: "ladertanken"
-    wavemaker_upright_position_m: 0.0  # Upright/lower travel reference [m]
-    wavemaker_upright_is_minimum: true
+    wavemaker_upright_position_m: 0.0  # Upright oscillation center [m]
+    wavemaker_upright_is_minimum: false
     wavemaker_mode_pregenerated: false
     water_depth: 1.0
     flap_attachment_height: 1.30   # must be > water_depth (1.0)
@@ -57,7 +57,7 @@
     wavemaker_minimum: 0.0
     wavemaker_maximum: 0.5
     wavemaker_upright_position_m: 0.0
-    wavemaker_upright_is_minimum: true
+    wavemaker_upright_is_minimum: false
     wavemaker_mode_pregenerated: false
     water_depth: 1.5
     flap_attachment_height: 1.95   # must be > water_depth (1.5)
