@@ -22,7 +22,7 @@ using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface
 
 class WavemakerBridge : public LifecycleNode
 {
-  private:
+private:
   enum class State { Inactive, Idle, Starting, Running, Stopping };
 
   static const char * state_name(State state)
@@ -36,6 +36,7 @@ class WavemakerBridge : public LifecycleNode
     }
     return "unknown";
   }
+
 public:
   explicit WavemakerBridge(const rclcpp::NodeOptions & options)
   : LifecycleNode("wavemaker_bridge", options)
@@ -50,12 +51,12 @@ public:
     RCLCPP_INFO(get_logger(), "Configuring...");
     action_client_ = rclcpp_action::create_client<MoveWavemaker>(
       shared_from_this(), "move_wavemaker");
-      const auto status_qos = rclcpp::QoS(1).reliable().transient_local();
-      state_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
+    const auto status_qos = rclcpp::QoS(1).reliable().transient_local();
+    state_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
         *this, "wavemaker_state", status_qos);
-      message_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
+    message_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
         *this, "wavemaker_message", status_qos);
-        publish_state(State::Inactive, "configured");
+    publish_state(State::Inactive, "configured");
     return CallbackReturn::SUCCESS;
 
   }
@@ -88,7 +89,7 @@ public:
     stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
       "stop", 10,
       std::bind(&WavemakerBridge::stop_callback, this, std::placeholders::_1));
-       start_subscription_ = create_subscription<std_msgs::msg::Bool>(
+    start_subscription_ = create_subscription<std_msgs::msg::Bool>(
       "start", command_qos, [this](std_msgs::msg::Bool::ConstSharedPtr msg) {
         if (msg->data) {
           start();
@@ -102,18 +103,20 @@ public:
         std::shared_ptr<std_srvs::srv::Trigger::Request>)
       {
         // Reply later, from the cancel callback, so the executor is never blocked.
-        stop("Stopped by stop service", [this, service, request_id](bool ok, const std::string & message) {
-            std_srvs::srv::Trigger::Response response;
-            response.success = ok;
-            response.message = message;
-            try {
-              service->send_response(*request_id, response);
-            } catch (const std::exception & error) {
-              RCLCPP_WARN(get_logger(), "Could not send stop reply: %s", error.what());
-            }
+        stop("Stopped by stop service",
+        [this, service, request_id](bool ok, const std::string & message) {
+          std_srvs::srv::Trigger::Response response;
+          response.success = ok;
+          response.message = message;
+          try {
+            service->send_response(*request_id, response);
+          } catch (const std::exception & error) {
+            RCLCPP_WARN(get_logger(), "Could not send stop reply: %s", error.what());
+          }
           });
       });
-    pre_shutdown_callback_handle_ = get_node_base_interface()->get_context()->add_pre_shutdown_callback(
+    pre_shutdown_callback_handle_ =
+      get_node_base_interface()->get_context()->add_pre_shutdown_callback(
       [this]() {
         stop("Bridge is shutting down");
       });
@@ -133,7 +136,7 @@ public:
     action_client_.reset();
     state_publisher_.reset();
     message_publisher_.reset();
-  
+
     return CallbackReturn::SUCCESS;
   }
 
@@ -148,10 +151,11 @@ public:
     cleanup_helper("Bridge error");
     return CallbackReturn::SUCCESS;
   }
-  bool heartbeat_alive() const 
-    {
-      return heartbeat_seen_ && (std::chrono::steady_clock::now() - last_heartbeat_ < heartbeat_timeout_);
-    }
+  bool heartbeat_alive() const
+  {
+    return heartbeat_seen_ &&
+           (std::chrono::steady_clock::now() - last_heartbeat_ < heartbeat_timeout_);
+  }
   void watch()
   {
     if ((state_ == State::Starting || state_ == State::Running) && !heartbeat_alive()) {
@@ -164,27 +168,25 @@ public:
 
   void start()
   {
-    if (state_ != State::Idle){
+    if (state_ != State::Idle) {
       report(std::string("start refused: wave is ") + state_name(state_) + "; stop it first");
       return;
     }
-    if (!(amplitude_>0.0) || !(period_>0.0)||!std::isfinite(amplitude_)||
-    !std::isfinite(period_))
+    if (!(amplitude_ > 0.0) || !(period_ > 0.0) || !std::isfinite(amplitude_) ||
+      !std::isfinite(period_))
     {
       report("start refused: amplitude and period must be positive and finite");
       return;
     }
-    if(!heartbeat_alive()){
+    if(!heartbeat_alive()) {
       report("start refused: Labview heartbeat not alive");
       return;
     }
-    if (!action_client_ || !action_client_->action_server_is_ready())
-    {
+    if (!action_client_ || !action_client_->action_server_is_ready()) {
       report("start refused: action server not available");
       return;
     }
 
-    
 
     MoveWavemaker::Goal goal;
     goal.amplitude = amplitude_;
@@ -194,16 +196,17 @@ public:
       [this](MoveWavemakerGoalHandle::SharedPtr handle) {on_goal_response(handle);};
     options.result_callback =
       [this](const MoveWavemakerGoalHandle::WrappedResult & result) {on_goal_result(result);};
-      goal_requested_ = true;
-      publish_state(State::Starting, "Starting wavemaker");
-      action_client_->async_send_goal(goal, options);
+    goal_requested_ = true;
+    publish_state(State::Starting, "Starting wavemaker");
+    action_client_->async_send_goal(goal, options);
   }
 
   void cleanup_helper(const std::string & reason)
   {
     stop(reason);
     finish_stop(false, "Bridge is no longer active");
-    get_node_base_interface()->get_context()->remove_pre_shutdown_callback(pre_shutdown_callback_handle_);
+    get_node_base_interface()->get_context()->remove_pre_shutdown_callback(
+      pre_shutdown_callback_handle_);
     watch_timer_.reset();
     stop_service_.reset();
     heartbeat_subscription_.reset();
@@ -218,32 +221,35 @@ public:
     publish_state(State::Inactive, reason);
   }
 
-  void amplitude_callback(const std_msgs::msg::Float64::SharedPtr msg){
+  void amplitude_callback(const std_msgs::msg::Float64::SharedPtr msg)
+  {
     amplitude_ = msg->data;
 
   }
 
- 
 
-  void period_callback(const std_msgs::msg::Float64::SharedPtr msg){
+  void period_callback(const std_msgs::msg::Float64::SharedPtr msg)
+  {
     period_ = msg->data;
   }
 
-  void stop_callback(const std_msgs::msg::Bool::SharedPtr msg){
+  void stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
+  {
     if (msg->data) {
       stop("Operator pressed stop");
     }
   }
-  void stop(const std::string & reason, StopDone done = nullptr) {
+  void stop(const std::string & reason, StopDone done = nullptr)
+  {
 
     if (goal_requested_) {
       cancel_on_accept_ = true;
     }
     const bool ours = goal_requested_ || goal_handle_;
-    if (ours){
+    if (ours) {
       publish_state(State::Stopping, reason);
     }
-    if(!action_client_|| !action_client_->action_server_is_ready()){
+    if(!action_client_ || !action_client_->action_server_is_ready()) {
       report("Stop: Move Wavemaker action is not available");
       if (done) {
         done(false, "Move Wavemaker action is not available");
@@ -271,10 +277,10 @@ public:
           });
         }
       });
-    }
-    
-    void publish_state(State state, const std::string & message)
-    {
+  }
+
+  void publish_state(State state, const std::string & message)
+  {
     state_ = state;
     last_message_ = message;
     if (state_publisher_) {
@@ -371,14 +377,14 @@ public:
   unsigned int watch_ticks_{0};
   StopDone stop_done_;
   rclcpp::TimerBase::SharedPtr stop_timeout_;
-  State state_ = State::Inactive; 
+  State state_ = State::Inactive;
   std::string last_message_;
   std::unique_ptr<bond::Bond> bond_;
   double amplitude_ = 0.0;
   double period_ = 0.0;
   rclcpp::PreShutdownCallbackHandle pre_shutdown_callback_handle_;
-  
-};  
+
+};
 
 int main(int argc, char * argv[])
 {

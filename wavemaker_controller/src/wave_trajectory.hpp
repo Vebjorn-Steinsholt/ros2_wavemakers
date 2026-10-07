@@ -13,6 +13,8 @@ struct WavemakerGeometry
   double flap_attachment_height{0.0};
   double upright_position{0.0};
   bool upright_is_minimum{false};
+  // Measured / theoretical wave height; the stroke is divided by it. 1.0 = linear theory.
+  double transfer_gain{1.0};
 };
 
 // Regular wave with a quintic blend from the start position over one period.

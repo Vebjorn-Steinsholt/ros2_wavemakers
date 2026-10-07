@@ -10,7 +10,8 @@
 #include "mgate/indradrive.h"
 #include "mgate/mgate_driver.h"
 
-namespace wavemaker_controller {
+namespace wavemaker_controller
+{
 
 class IndraDriveActuator final : public WavemakerActuator
 {

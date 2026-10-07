@@ -70,6 +70,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | `wavemaker_upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
 | `wavemaker_upright_is_minimum` | `true`: the wave runs from upright to one side only. `false`: symmetric around upright. |
 | `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `amplitude` and `period`. |
+| `wavemaker_transfer_gain` | Measured / target wave height for regular waves (default 1.0 = linear theory). The stroke is divided by it; to correct from wave-probe data, new gain = old gain × measured / target. Not applied to pregenerated waves. |
 
 ### Actuator and limits
 
@@ -226,6 +227,7 @@ Replies when the cancel is accepted, not when the paddle has stopped.
 | `wavemaker_setpoint` | Paddle position sent to the drive, m (after clamping to the limits). |
 | `wavemaker_position` | Measured paddle position, m. |
 | `wavemaker_velocity` | Trajectory velocity, m/s. |
+| `wavemaker_actuator_setpoint` | Debug: `wavemaker_setpoint` as sent to the drive, in actuator units (degrees for an angular drive). |
 
 Plot setpoint against position to see how well the drive tracks:
 
@@ -255,7 +257,7 @@ ros2 run rqt_plot rqt_plot /wavemakers/ladertanken/wavemaker_setpoint/data \
 | Setpoint rejected by the drive | Same as a fault: goal aborted, drive stopped, controller deactivated. |
 | Lifecycle deactivate / cleanup / shutdown | Running goal aborted, return stopped, drive disabled. |
 | Ctrl-C on the controller | The node stops the drive in its destructor. |
-| PC or controller crashes | The gateway keeps the last outputs unless its **output fault timeout** is set. Configure it on the MGate (fault value 0, a few times `poll_interval_ms`, e.g. 200–300 ms) so the drive switches off by itself. |
+| PC or controller crashes | The gateway keeps the last outputs unless its **output fault timeout** is set. Configure it on the MGate (fault value 0, a few times `poll_interval_ms`, e.g. 500 ms, longer than the ~210 ms stalls seen on ladertanken) so the drive switches off by itself. |
 
 ## Choosing the poll interval
 

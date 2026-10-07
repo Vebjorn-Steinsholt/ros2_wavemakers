@@ -9,9 +9,11 @@
 #include <thread>
 #include <utility>
 
-namespace wavemaker_controller {
+namespace wavemaker_controller
+{
 
-namespace {
+namespace
+{
 
 template<typename T>
 void declare_parameter_if_missing(
@@ -81,9 +83,10 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
     throw std::invalid_argument("driver_address must be set before configuring the drive");
   }
   if (port < 1 || port > 65535 || unit_id < 0 || unit_id > 255 ||
-      input_base < 0 || input_base > 65535 || input_count <= 0 || input_count > 65535 ||
-      output_base < 0 || output_base > 65535 || output_count <= 0 || output_count > 65535 ||
-      status_base < 0 || status_base > 65535 || status_count < 0 || status_count > 65535) {
+    input_base < 0 || input_base > 65535 || input_count <= 0 || input_count > 65535 ||
+    output_base < 0 || output_base > 65535 || output_count <= 0 || output_count > 65535 ||
+    status_base < 0 || status_base > 65535 || status_count < 0 || status_count > 65535)
+  {
     throw std::invalid_argument("invalid Modbus register or connection configuration");
   }
 
@@ -110,7 +113,8 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
   gateway_config.write_only_dirty = node.get_parameter("write_only_dirty").as_bool();
 
   if (gateway_config.poll_interval_ms <= 0 || gateway_config.timeout_ms <= 0 ||
-      gateway_config.reconnect_ms <= 0) {
+    gateway_config.reconnect_ms <= 0)
+  {
     throw std::invalid_argument("poll_interval_ms, timeout_ms, and reconnect_ms must be positive");
   }
 
@@ -128,8 +132,9 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
   drive_config.step_timeout_ms = node.get_parameter("step_timeout_ms").as_int();
 
   if (drive_config.min_position >= drive_config.max_position ||
-      drive_config.max_velocity_rpm <= 0.0 || drive_config.in_position_tol_deg < 0.0 ||
-      drive_config.step_timeout_ms <= 0) {
+    drive_config.max_velocity_rpm <= 0.0 || drive_config.in_position_tol_deg < 0.0 ||
+    drive_config.step_timeout_ms <= 0)
+  {
     throw std::invalid_argument("invalid IndraDrive limits or timeout");
   }
   hold_velocity_rpm_ = node.get_parameter("hold_velocity_rpm").as_double();
@@ -169,7 +174,8 @@ bool IndraDriveActuator::start(const rclcpp::Logger & logger)
     return false;
   }
   if (second_stats.read_errors > first_stats.read_errors ||
-      second_stats.write_errors > first_stats.write_errors) {
+    second_stats.write_errors > first_stats.write_errors)
+  {
     RCLCPP_ERROR(logger, "MGate communication errors increased");
     mgate_driver_->stop();
     return false;
@@ -255,7 +261,7 @@ double IndraDriveActuator::max_velocity_mps() const
   // Inverse of write_setpoint(): rpm = |velocity in actuator units per second| / 6.
   const double actuator_units_per_s = max_velocity_rpm_ * 6.0;
   return actuator_drive_type_ == "angular" ?
-    actuator_units_per_s * lead_m_per_degree_ : actuator_units_per_s;
+         actuator_units_per_s * lead_m_per_degree_ : actuator_units_per_s;
 }
 
 bool IndraDriveActuator::is_live() const
@@ -288,8 +294,8 @@ double IndraDriveActuator::actual_position_m() const
 {
   const double position_deg = indradrive_->position_deg();
   return actuator_drive_type_ == "angular" ?
-    wavemaker_position_offset_m_ +
-    (position_deg - actuator_upright_angle_deg_) * lead_m_per_degree_ : position_deg;
+         wavemaker_position_offset_m_ +
+         (position_deg - actuator_upright_angle_deg_) * lead_m_per_degree_ : position_deg;
 }
 
 ActuatorSetpoint IndraDriveActuator::to_actuator_setpoint(

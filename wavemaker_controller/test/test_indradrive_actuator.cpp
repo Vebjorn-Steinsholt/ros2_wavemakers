@@ -8,38 +8,39 @@
 
 #include "indradrive_actuator.hpp"
 
-namespace {
+namespace
+{
 
 rclcpp::NodeOptions actuator_options()
 {
   return rclcpp::NodeOptions().parameter_overrides({
-    rclcpp::Parameter("driver_address", "127.0.0.1"),
-    rclcpp::Parameter("driver_port", 1502),
-    rclcpp::Parameter("driver_unit_id", 1),
-    rclcpp::Parameter("input_base_reg", 0),
-    rclcpp::Parameter("input_word_count", 7),
-    rclcpp::Parameter("output_base_reg", 0),
-    rclcpp::Parameter("output_word_count", 6),
-    rclcpp::Parameter("input_uses_fc4", true),
-    rclcpp::Parameter("status_base_reg", 768),
-    rclcpp::Parameter("status_word_count", 9),
-    rclcpp::Parameter("status_uses_fc4", true),
-    rclcpp::Parameter("poll_interval_ms", 50),
-    rclcpp::Parameter("timeout_ms", 1000),
-    rclcpp::Parameter("reconnect_ms", 2000),
-    rclcpp::Parameter("write_only_dirty", false),
-    rclcpp::Parameter("profibus_address", 2),
-    rclcpp::Parameter("min_position_deg", -550.0),
-    rclcpp::Parameter("max_position_deg", 500.0),
-    rclcpp::Parameter("min_position_m", 0.0),
-    rclcpp::Parameter("max_position_m", 0.5),
-    rclcpp::Parameter("max_velocity_rpm", 50.0),
-    rclcpp::Parameter("in_position_tol_deg", 0.1),
-    rclcpp::Parameter("step_timeout_ms", 10000),
-    rclcpp::Parameter("actuator_drive_type", "angular"),
-    rclcpp::Parameter("actuator_lead_m_per_degree", 0.00053),
-    rclcpp::Parameter("actuator_upright_angle_deg", 12.0),
-    rclcpp::Parameter("wavemaker_upright_position_m", 0.25),
+      rclcpp::Parameter("driver_address", "127.0.0.1"),
+      rclcpp::Parameter("driver_port", 1502),
+      rclcpp::Parameter("driver_unit_id", 1),
+      rclcpp::Parameter("input_base_reg", 0),
+      rclcpp::Parameter("input_word_count", 7),
+      rclcpp::Parameter("output_base_reg", 0),
+      rclcpp::Parameter("output_word_count", 6),
+      rclcpp::Parameter("input_uses_fc4", true),
+      rclcpp::Parameter("status_base_reg", 768),
+      rclcpp::Parameter("status_word_count", 9),
+      rclcpp::Parameter("status_uses_fc4", true),
+      rclcpp::Parameter("poll_interval_ms", 50),
+      rclcpp::Parameter("timeout_ms", 1000),
+      rclcpp::Parameter("reconnect_ms", 2000),
+      rclcpp::Parameter("write_only_dirty", false),
+      rclcpp::Parameter("profibus_address", 2),
+      rclcpp::Parameter("min_position_deg", -550.0),
+      rclcpp::Parameter("max_position_deg", 500.0),
+      rclcpp::Parameter("min_position_m", 0.0),
+      rclcpp::Parameter("max_position_m", 0.5),
+      rclcpp::Parameter("max_velocity_rpm", 50.0),
+      rclcpp::Parameter("in_position_tol_deg", 0.1),
+      rclcpp::Parameter("step_timeout_ms", 10000),
+      rclcpp::Parameter("actuator_drive_type", "angular"),
+      rclcpp::Parameter("actuator_lead_m_per_degree", 0.00053),
+      rclcpp::Parameter("actuator_upright_angle_deg", 12.0),
+      rclcpp::Parameter("wavemaker_upright_position_m", 0.25),
   });
 }
 

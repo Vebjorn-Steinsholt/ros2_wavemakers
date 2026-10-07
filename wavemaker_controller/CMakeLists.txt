@@ -11,7 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(wavemaker_interfaces REQUIRED)
-find_package(bondcpp REQUIRED)   
+find_package(bondcpp REQUIRED)
 find_package(mgate5101_driver REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -31,7 +31,7 @@ ament_target_dependencies(wavemaker_node
   bondcpp
   std_msgs
   mgate5101_driver
-  )
+)
 
 add_executable(wavemaker_bridge src/wavemaker_bridge.cpp)
 ament_target_dependencies(wavemaker_bridge

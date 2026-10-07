@@ -12,30 +12,27 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 
 ### Before any motion
 
-- [ ] **1. Mechanical end stops are present and software cannot drive past them.** (rig)
-
-- [ ] **2. Software limits match the real safe travel.** (rig)
-  - Ladertanken: controller limits are −500° to 500° (`min_position_deg` / `max_position_deg`); the drive is set to −550° / 500° in IndraWorks. Verify the controller range against the physical safe travel, and that the resulting limits cannot move the flap past its stops.
-  - Linear drives: confirm the configured minimum and maximum (0.0–0.5 m in `wavemakers.yaml`).
+- [ ] **1. Software travel limits on ladertanken.** (rig)
+  There are no mechanical end stops, so the software and drive limits are the only travel limits. The flap top has never moved more than ±5 cm, so the controller limits are now ±94° (`min_position_deg` / `max_position_deg`, ±4.98 cm with 0.00053 m/deg).
   - Confirm the 50 rpm speed limit (`max_velocity_rpm`).
 
+- [ ] **2. Linear drive limits.** (rig)
+  Confirm the configured minimum and maximum (0.0–0.5 m in `wavemakers.yaml`) for lilletanken and mc_lab.
+
 - [ ] **3. Direction, feedback and zero are correct.** (rig)
-  - Positive command gives the expected physical direction; position feedback changes with the expected sign.
-  - Set the physical upright reference, reset the encoder to 0° there, then verify and record the zero.
+  - Positive command gives the expected physical direction. The drive moves positive in degrees first, as commanded (2026-10-07); which way the paddle moves has not been seen yet. Check it with someone at the paddle or a phone camera, at the latest when the flap is reconnected (item 11).
+  - Done 2026-10-07: position feedback follows the setpoint with the same sign; `return_to_upright` settles at 0° (±0.002° in the drive software), the upright reference.
   - Angular conversion (`actuator_lead_m_per_degree: 0.00053`) matches the real mechanism; see [Actuator conversion calibration](#actuator-conversion-calibration).
 
 - [ ] **4. Communication is correct and stable.** (rig)
   - IP address, Modbus port, unit ID and PROFIBUS address are correct and unique.
-  - Cable shielding, grounding, power and network connections are secure. The PC must be on the gateway's wired network (it was on Wi-Fi only on 2026-10-06 and could not reach 192.168.1.70).
-  - The drive has no active faults and reports live on PROFIBUS; the MGate shows no read/write errors (`mgate_example` in monitor mode).
+  - Cable shielding, grounding, power and network connections are secure.
+  - The drive has no active faults and reports live on PROFIBUS (`mgate_example` in monitor mode).
 
 - [ ] **5. Make the gateway switch the drive off if the PC or the node dies.** (rig; MGate configuration)
   The MGate keeps sending the last outputs (Drive On, Drive Start, last target) if Modbus writes stop. Our driver only sets control word 0 while its process is alive.
-  - On the MGate's output module, set a fault value timeout of a few poll intervals (e.g. 200–300 ms) with fault value 0 (MGate manual p. 28). Test by killing the controller while the drive is enabled; the drive must switch off.
+  - On the MGate's output module, set a fault value timeout of about 500 ms (it must ride out the ~210 ms gateway stalls; see *Verified so far*) with fault value 0 (MGate manual p. 28). Test by killing the controller while the drive is enabled; the drive must switch off.
   - Change the `write_only_dirty` default in `IndraDriveActuator` to `false` (it is `true`; only ladertanken sets `false`). The fault timeout relies on writes every cycle.
-
-- [ ] **6. Choose the poll interval.** (rig)
-  Run `ros2 run mgate5101_driver poll_rate_probe` (controller stopped) and set `poll_interval_ms` in `wavemakers.yaml` to the shortest usable interval; the control loop follows it. Keep the MGate fault timeout (item 5) at several times it.
 
 - [ ] **7. Lifecycle without motion.** (rig)
   Configure, activate, deactivate, cleanup and configure again with no goal; activation must cause no motion.
@@ -43,12 +40,12 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 ### First motion
 
 - [ ] **8. First motor test with the flap disconnected.** (rig)
-  The flap is already disconnected and secured. Run a very small, slow wave (`amplitude: 0.00005`, `period: 10.0`, about ±1.2° on ladertanken) and confirm position and velocity feedback.
-  - Measure the position oscillation while the drive holds still, e.g. with the IndraWorks oscilloscope, or from `wavemaker_position` at the end of a `return_to_upright` (the topic is only published during motion). It must stay well below the 2 mm return-to-upright tolerance (`return_to_upright_default_tolerance_m`).
+  The flap is already disconnected and secured. Run a very small, slow wave (`amplitude: 0.00005`, `period: 10.0`; about ±1.9° on ladertanken at 0.73 m water depth, more in shallower water) and confirm position and velocity feedback.
 
 - [ ] **9. Confirm the drive keeps following after a stop.** (rig)
   `IndraDriveActuator::halt()` holds the last commanded target instead of using Drive Halt, which made the drive ignore later setpoints. Every stop, cancel and return relies on this.
-  - Run a wave, stop it, start a second wave and check the paddle moves; run `return_to_upright` after a wave; stop at speed and check the paddle stops without moving back.
+  - Done 2026-10-07: after a Ctrl-C cancel, a new wave starts and the paddle moves, and `return_to_upright` brings it back to 0° (drive reading −0.0020° to +0.0017° at rest).
+  - Still to check: stop at speed (Ctrl-C as the paddle passes the middle) and check it stops without moving back.
 
 - [ ] **10. Stopping and failures while moving.** (rig)
   Test while a wave runs: cancel / bridge stop, lifecycle deactivation (goal aborted, drive disabled), emergency stop, network and gateway disconnection. The actuator must disable safely after deactivation or communication loss.
@@ -66,6 +63,8 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 
 - [ ] **13. Tune the drive's speed cap.** (rig)
   Plot `wavemaker_setpoint` against `wavemaker_position`. If the paddle lags at its fastest point, raise `positioning_velocity_margin` (default 1.2); if it moves in steps, lower it or the drive's acceleration (`S-0-0260`).
+  - Also look for setpoint freezes of about 0.2 s (gateway stalls; see *Verified so far*). If they occur, check `nstat -az TcpRetransSegs` before and after (it prints the total since boot) and the cable and switch; if they persist, raise `poll_interval_ms`.
+  - Activation measures one gateway cycle and fails if it is slow; retry once before suspecting anything else.
 
 - [ ] **14. Complete and record the conversion calibration.** (rig)
   Record the angle/position pairs, measure in both directions (backlash), repeat positions, check linearity, validate with positions not used for the fit. See [Actuator conversion calibration](#actuator-conversion-calibration).
@@ -93,6 +92,12 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 
 - [ ] **22. `cancel_all_goals` can report `SERVER_UNAVAILABLE` right after configure.** (`wavemaker_controller/src/wavemaker_node.cpp`)
   `action_server_is_ready()` is false until discovery completes; wait up to about 1 s before replying.
+
+- [ ] **33. Calibrate the wave-height transfer gain.** (rig; wave probes, flap connected)
+  `wavemaker_transfer_gain` (default 1.0 = linear theory, in `wavemakers.yaml`) divides the stroke of regular waves to correct the generated height. Run regular waves over the periods and heights in use, measure the height with wave probes away from the paddle, and set new gain = old gain × measured / target.
+  - If the ratio varies with period, one gain is not enough; record the ratios and decide whether the gain should depend on period.
+  - Recheck after changing the water depth or the calibration from item 14.
+  - Not applied to pregenerated waves; decide whether it should be.
 
 ## Low
 
@@ -124,7 +129,7 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
   `amplitude`, `period` and `stop` use depth 10 instead of `command_qos`; the `stop` topic and `stop` service share a name (consider renaming the service, e.g. `stop_wave`).
 
 - [ ] **32. Clean-up.**
-  Remove the unused `driver_address_` / `wavemaker_id_` members and the commented-out members at the end of `WavemakerNode`; run `ament_uncrustify --reformat` on `wavemaker_bridge.cpp`, `indradrive_actuator.cpp/.hpp`, `wavemaker_actuator.hpp` and both test files; fix the whitespace on lines 14 and 24 of `wavemaker_controller/CMakeLists.txt`; set the license in `wavemaker_controller/package.xml`.
+  Remove the unused `driver_address_` / `wavemaker_id_` members and the commented-out members at the end of `WavemakerNode`; set the license in `wavemaker_controller/package.xml`. (Formatting and CMake lint fixed 2026-10-07.)
 
 ## Verified so far
 
@@ -135,12 +140,17 @@ Kept as a record of physical checks already done.
 - Full travel is physically clear (wavemaker, actuator, tank walls, personnel area).
 - The actuator is mounted rigidly, without backlash or free play.
 - Wavemaker type, flap attachment height and water depth match `wavemakers.yaml`.
-- Drive limits −550° / 500° are configured in IndraWorks.
+- Drive limits −550° / 500° are configured in IndraWorks and are kept there by decision (2026-10-07); the controller's ±94° is the travel limit.
+- No mechanical end stops. The flap top has never moved more than ±5 cm (confirmed with colleagues, 2026-10-07).
 - `wavemaker_upright_position_m` matches the physical upright: 0.0 m for ladertanken.
 - Activation caused no physical motion.
-- Small position oscillation at standstill (the servo holding position) is accepted; it shows as larger velocity oscillation, but the controller only uses position. Its size is checked in item 8.
+- Small position oscillation at standstill (the servo holding position) is accepted; it shows as larger velocity oscillation, but the controller only uses position. Measured below ±0.5° (≈ ±0.27 mm on ladertanken), well inside the 2 mm return-to-upright tolerance (≈ 3.8°).
 - The flap is mechanically disconnected and secured for the first motor tests.
-- Calibration: 5–10 positions used; scale `b = 0.053 / 100 = 0.00053 m/deg`; offset `a = 0.0 m`; actuator zero = upright (`actuator_upright_angle_deg: 0.0`).
+- Calibration: 5–10 positions used, measured at the flap top, which is at `flap_attachment_height`; scale `b = 0.053 / 100 = 0.00053 m/deg`; offset `a = 0.0 m`; actuator zero = upright (`actuator_upright_angle_deg: 0.0`).
+- The PC reaches the gateway at 192.168.1.70 over the wired network.
+- Poll interval (2026-10-07): `poll_interval_ms` is 20 ms (50 before). Normal gateway cycles take 4–8 ms with no read/write errors or reconnects. The 10 s sweep had single cycles of about 210 ms at 40, 10, 5 and 2 ms; at 2 ms nearly every cycle stalled, so the stalls grow with polling rate (the gateway, or packets lost under load). A 60 s run at 20 ms had none (3000 cycles, max 8.1 ms). Stalls during waves are watched in item 13.
+- First motion, flap disconnected (2026-10-07): wave `amplitude: 0.0005`, `period: 10.0` (about ±1 cm at the flap top, ±19.5°); `wavemaker_position` follows `wavemaker_setpoint` with the same sign and size.
+- Larger wave, flap disconnected (2026-10-07): `amplitude: 0.002`, `period: 10.0` runs as calculated (first movement positive, peaks about ±79°, ±4.1 cm at the flap top); Ctrl-C stops and holds.
 - Terminal-mode launch, interface inspection, configure without activate, and goal rejection while inactive.
 
 ## Actuator conversion calibration

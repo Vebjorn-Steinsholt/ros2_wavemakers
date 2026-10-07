@@ -60,6 +60,7 @@ public:
     declare_parameter<double>("wavemaker_upright_position_m", 0.0);
     declare_parameter<bool>("wavemaker_upright_is_minimum", false);
     declare_parameter<double>("water_depth", 0.6);
+    declare_parameter<double>("wavemaker_transfer_gain", 1.0);
     declare_parameter<bool>("wavemaker_mode_pregenerated", false);
     declare_parameter<double>("flap_attachment_height", 0.0);
     declare_parameter<double>("actuator_upright_angle_deg", 0.0);
@@ -106,6 +107,7 @@ public:
     upright_is_minimum_ = get_parameter("wavemaker_upright_is_minimum").as_bool();
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
+    wavemaker_transfer_gain_ = get_parameter("wavemaker_transfer_gain").as_double();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
     actuator_upright_angle_deg_ = get_parameter("actuator_upright_angle_deg").as_double();
     actuator_drive_type_ = get_parameter("actuator_drive_type").as_string();
@@ -184,6 +186,10 @@ public:
     }
     if (water_depth_ <= 0.0) {
       RCLCPP_ERROR(get_logger(), "water_depth must be set (> 0)");
+      return CallbackReturn::FAILURE;
+    }
+    if (wavemaker_transfer_gain_ <= 0.0 || !std::isfinite(wavemaker_transfer_gain_)) {
+      RCLCPP_ERROR(get_logger(), "wavemaker_transfer_gain must be finite and > 0");
       return CallbackReturn::FAILURE;
     }
     return_max_velocity_mps_ = get_parameter("return_to_upright_max_velocity_mps").as_double();
@@ -429,6 +435,10 @@ public:
     setpoint_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_setpoint", 10);
     velocity_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_velocity", 10);
     position_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_position", 10);
+    // Debug: the setpoint position as sent to the drive, in actuator units (degrees for an
+    // angular drive), published with the others.
+    actuator_setpoint_publisher_ =
+      create_publisher<std_msgs::msg::Float64>("wavemaker_actuator_setpoint", 10);
     fault_timer_ = create_wall_timer(
       std::chrono::milliseconds(100),
       [this]() {process_driver_fault();});
@@ -547,6 +557,7 @@ private:
     setpoint_publisher_.reset();
     velocity_publisher_.reset();
     position_publisher_.reset();
+    actuator_setpoint_publisher_.reset();
     fault_timer_.reset();
     actuator_.reset();
   }
@@ -604,7 +615,7 @@ private:
 
     trajectory_.configure(
       {wavemaker_type_, water_depth_, flap_attachment_height_, wavemaker_position_offset_,
-        upright_is_minimum_},
+        upright_is_minimum_, wavemaker_transfer_gain_},
       goal.amplitude, goal.period, start_position);
 
     const double required_minimum = trajectory_.required_minimum();
@@ -731,6 +742,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr setpoint_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr velocity_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr position_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr actuator_setpoint_publisher_;
   std::unique_ptr<bond::Bond> bond_;
 
   rclcpp_action::GoalResponse goal_callback(
@@ -994,8 +1006,9 @@ private:
   // Takes the paddle setpoint in metres. Clamps it to the configured limits before
   // converting, because the start-position check allows a paddle up to
   // return_default_tolerance_m_ outside them and the drive rejects any target outside its
-  // limits. Publishes the setpoint and its trajectory velocity (m, m/s) and the measured
-  // position. The drive gets velocity_cap_mps as its positioning-speed limit.
+  // limits. Publishes the setpoint and its trajectory velocity (m, m/s), the measured
+  // position, and the setpoint in actuator units. The drive gets velocity_cap_mps as its
+  // positioning-speed limit.
   bool publish_and_write_setpoint(double position_m, double velocity_mps, double velocity_cap_mps)
   {
     const double clamped_position =
@@ -1011,8 +1024,12 @@ private:
     position_msg.data = actuator_->actual_position_m();
     position_publisher_->publish(position_msg);
 
-    return actuator_->write_setpoint(
-      actuator_->to_actuator_setpoint(clamped_position, velocity_cap_mps));
+    const auto actuator_setpoint =
+      actuator_->to_actuator_setpoint(clamped_position, velocity_cap_mps);
+    std_msgs::msg::Float64 actuator_setpoint_msg;
+    actuator_setpoint_msg.data = actuator_setpoint.position;
+    actuator_setpoint_publisher_->publish(actuator_setpoint_msg);
+    return actuator_->write_setpoint(actuator_setpoint);
   }
 
   void handle_driver_fault(const std::string & reason)
@@ -1081,6 +1098,7 @@ private:
   double return_min_duration_s_{1.0};
   double return_default_tolerance_m_{0.002};
   double return_timeout_margin_s_{2.0};
+  double wavemaker_transfer_gain_{1.0};
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
   rclcpp::CallbackGroup::SharedPtr cancel_service_callback_group_;

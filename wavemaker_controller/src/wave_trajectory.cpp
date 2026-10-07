@@ -44,7 +44,8 @@ void WaveTrajectory::configure(
 {
   omega_ = 2.0 * M_PI / period;
   const double mu = solve_dispersion(omega_, geometry.water_depth);
-  const double stroke = compute_stroke(mu, wave_amplitude * 2, geometry.type);
+  const double stroke =
+    compute_stroke(mu, wave_amplitude * 2, geometry.type) / geometry.transfer_gain;
   amplitude_ = stroke / 2.0;
   if (geometry.type == "flap") {
     amplitude_ *= geometry.flap_attachment_height / geometry.water_depth;

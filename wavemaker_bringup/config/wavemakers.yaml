@@ -13,15 +13,17 @@
     status_base_reg: 768       # 0x0300
     status_word_count: 9
 
-    poll_interval_ms: 50
+    poll_interval_ms: 20      # poll_rate_probe 2026-10-07: cycles 4-8 ms, rare ~210 ms stalls
     timeout_ms: 1000
     reconnect_ms: 2000
     write_only_dirty: false
 
     profibus_address: 2
     max_velocity_rpm: 50.0
-    min_position_deg: -500.0    # Controller-side limit, symmetric with max_position_deg
-    max_position_deg: 500.0
+    # No mechanical end stops: these are the travel limits. The flap top has never moved more
+    # than +/-5 cm; 94 deg * 0.00053 m/deg = 4.98 cm.
+    min_position_deg: -94.0
+    max_position_deg: 94.0
     in_position_tol_deg: 0.1
     step_timeout_ms: 10000
 
@@ -30,12 +32,15 @@
     wavemaker_upright_position_m: 0.0  # Upright oscillation center [m]
     wavemaker_upright_is_minimum: false
     wavemaker_mode_pregenerated: false
-    water_depth: 1.0
-    flap_attachment_height: 1.30   # must be > water_depth (1.0)
+    water_depth: 0.73              # changes with the tank fill; set before each configure
+    flap_attachment_height: 1.30   # flap top; must be > water_depth
     actuator_drive_type: "angular"
     # Encoder zero is set with the flap at its upright reference.
     actuator_upright_angle_deg: 0.0
     actuator_lead_m_per_degree: 0.00053  # 5.3 cm flap change per 100 deg [m/deg]
+    # Measured / target wave height (regular waves only); the stroke is divided by it.
+    # 1.0 = linear theory. To correct: new gain = old gain * measured / target.
+    wavemaker_transfer_gain: 1.0
 
 /wavemakers/lilletanken/controller:
   ros__parameters:
@@ -49,6 +54,7 @@
     actuator_drive_type: "linear"
     min_position_m: 0.0
     max_position_m: 0.5
+    wavemaker_transfer_gain: 1.0  # see ladertanken
 
 /wavemakers/mc_lab/controller:
   ros__parameters:
@@ -64,3 +70,4 @@
     actuator_drive_type: "linear"
     min_position_m: 0.0
     max_position_m: 0.5
+    wavemaker_transfer_gain: 1.0  # see ladertanken

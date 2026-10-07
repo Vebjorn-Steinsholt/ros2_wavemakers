@@ -1,4 +1,5 @@
-"""Bridge mode: controller + bridge, started and supervised by the Nav2 lifecycle manager.
+"""
+Bridge mode: controller + bridge, started and supervised by the Nav2 lifecycle manager.
 
 For normal users, who control the wavemaker through the bridge's amplitude, period and stop
 topics. The lifecycle manager configures and activates both nodes automatically. If the bridge
@@ -17,28 +18,28 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     base_launch = (
-        get_package_share_directory("wavemaker_bringup") + "/launch/wavemakers.launch.py"
+        get_package_share_directory('wavemaker_bringup') + '/launch/wavemakers.launch.py'
     )
     return LaunchDescription([
         DeclareLaunchArgument(
-            "wavemaker",
-            default_value="ladertanken",
-            choices=["ladertanken", "lilletanken", "mc_lab"],
-            description="Wavemaker to launch",
+            'wavemaker',
+            default_value='ladertanken',
+            choices=['ladertanken', 'lilletanken', 'mc_lab'],
+            description='Wavemaker to launch',
         ),
         DeclareLaunchArgument(
-            "bond_timeout",
-            default_value="1.0",
-            description="Seconds without a bond heartbeat before everything is brought down; "
-                        "this is how long the paddle can keep moving after the bridge dies",
+            'bond_timeout',
+            default_value='1.0',
+            description='Seconds without a bond heartbeat before everything is brought down; '
+                        'this is how long the paddle can keep moving after the bridge dies',
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(base_launch),
             launch_arguments={
-                "wavemaker": LaunchConfiguration("wavemaker"),
-                "with_bridge": "true",
-                "enable_lifecycle_manager": "true",
-                "bond_timeout": LaunchConfiguration("bond_timeout"),
+                'wavemaker': LaunchConfiguration('wavemaker'),
+                'with_bridge': 'true',
+                'enable_lifecycle_manager': 'true',
+                'bond_timeout': LaunchConfiguration('bond_timeout'),
             }.items(),
         ),
     ])

@@ -5,7 +5,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-namespace wavemaker_controller {
+namespace wavemaker_controller
+{
 
 struct ActuatorSetpoint
 {
