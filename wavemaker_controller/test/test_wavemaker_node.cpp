@@ -487,7 +487,7 @@ TEST_F(WavemakerNodeTest, CancelledActionHaltsAndAcceptsNextGoal)
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   MoveWavemaker::Goal goal;
-  goal.amplitude = 0.001;
+  goal.height = 0.002;
   goal.period = 10.0;
   auto goal_future = client->async_send_goal(goal);
   ASSERT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
@@ -557,7 +557,7 @@ TEST_F(WavemakerNodeTest, SinusoidalGoalBlendsFromMeasuredPosition)
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   MoveWavemaker::Goal goal;
-  goal.amplitude = 0.001;
+  goal.height = 0.002;
   goal.period = 10.0;
   auto goal_future = client->async_send_goal(goal);
   ASSERT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
@@ -610,7 +610,7 @@ TEST_F(WavemakerNodeTest, UprightMinimumWaveformNeverCommandsBehindUpright)
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   MoveWavemaker::Goal goal;
-  goal.amplitude = 0.00001;
+  goal.height = 0.00002;
   goal.period = 0.5;
   auto goal_future = client->async_send_goal(goal);
   ASSERT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
@@ -662,7 +662,7 @@ TEST_F(WavemakerNodeTest, SymmetricGoalOscillatesAroundUpright)
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   MoveWavemaker::Goal goal;
-  goal.amplitude = 0.00001;
+  goal.height = 0.00002;
   goal.period = 0.5;
   auto goal_future = client->async_send_goal(goal);
   ASSERT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
@@ -738,7 +738,7 @@ TEST_F(WavemakerNodeTest, ReturnToUprightRejectedWhileGoalRunning)
   ASSERT_TRUE(rig.action_client->wait_for_action_server(std::chrono::seconds(1)));
 
   MoveWavemaker::Goal goal;
-  goal.amplitude = 0.001;
+  goal.height = 0.002;
   goal.period = 10.0;
   auto goal_future = rig.action_client->async_send_goal(goal);
   ASSERT_TRUE(spin_until(rig.executor, goal_future, std::chrono::seconds(1)));
@@ -1058,14 +1058,14 @@ TEST_F(WavemakerNodeTest, ConfigureFailsWhenReturnSpeedExceedsDriveMaximum)
 
 TEST_F(WavemakerNodeTest, RegularWaveAboveDriveSpeedIsRejected)
 {
-  // Piston in 1 m water: a 0.05 m wave at 1 s needs about 0.16 m/s.
+  // Piston in 1 m water: a 0.1 m high wave at 1 s needs about 0.16 m/s.
   MoveWavemaker::Goal fast;
-  fast.amplitude = 0.05;
+  fast.height = 0.1;
   fast.period = 1.0;
   EXPECT_FALSE(goal_accepted_with_speed_limit("/fast_wave_test", false, 0.06, fast));
 
   MoveWavemaker::Goal slow;
-  slow.amplitude = 0.001;
+  slow.height = 0.002;
   slow.period = 10.0;
   EXPECT_TRUE(goal_accepted_with_speed_limit("/slow_wave_test", false, 0.06, slow));
 }
@@ -1103,7 +1103,7 @@ TEST_F(WavemakerNodeTest, TransferGainScalesRequiredStroke)
   // The fast wave of RegularWaveAboveDriveSpeedIsRejected needs about 0.16 m/s; a gain of 4
   // divides the stroke, and with it the speed, by 4.
   MoveWavemaker::Goal fast;
-  fast.amplitude = 0.05;
+  fast.height = 0.1;
   fast.period = 1.0;
   EXPECT_FALSE(
     goal_accepted_with_speed_limit(
@@ -1115,9 +1115,9 @@ TEST_F(WavemakerNodeTest, TransferGainScalesRequiredStroke)
 
 TEST_F(WavemakerNodeTest, WaterDepthChangeTakesEffectAtNextConfigure)
 {
-  // A 0.01 m, 10 s wave needs about 0.04 m/s in 1 m of water and about 0.08 m/s in 0.2 m.
+  // A 0.02 m high, 10 s wave needs about 0.03 m/s in 1 m of water and about 0.07 m/s in 0.2 m.
   MoveWavemaker::Goal goal;
-  goal.amplitude = 0.01;
+  goal.height = 0.02;
   goal.period = 10.0;
   auto node = speed_limited_node("/water_depth_test", false, 0.06);
   EXPECT_TRUE(goal_accepted(node, "/water_depth_test", false, goal));
@@ -1172,4 +1172,91 @@ TEST_F(WavemakerNodeTest, PublishesSetpointInActuatorUnits)
     EXPECT_NEAR(actuator_setpoints[i], setpoints_m[i] * 1000.0, 1e-9) << "sample " << i;
   }
   EXPECT_NEAR(actuator_setpoints.back(), 250.0, 1.0);  // upright, 0.25 m
+}
+
+// TMR4141 Lab 2 and 3 regular waves (Pål Lader, 2026-10-08): T 0.7-1.5 s, steepness 1/15-1/60,
+// H < 18 cm, at 1 m depth. Ladertanken as in wavemakers.yaml: flap, top at 1.3 m, angular drive
+// 0.00053 m/deg, +/-200 deg, 170 rpm.
+TEST_F(WavemakerNodeTest, LadertankenAcceptsEveryLabWave)
+{
+  constexpr double kLeadMPerDeg = 0.00053;
+  constexpr double kMaxRpm = 170.0;
+  auto factory = [&](rclcpp_lifecycle::LifecycleNode &) {
+      auto actuator = std::make_unique<FakeActuator>();
+      actuator->actual_position = 0.0;
+      actuator->max_velocity = kMaxRpm * 6.0 * kLeadMPerDeg;  // as IndraDriveActuator
+      return actuator;
+    };
+  const std::string ns = "/lab_waves_test";
+  auto options = rclcpp::NodeOptions()
+    .arguments({"--ros-args", "-r", "__ns:=" + ns})
+    .parameter_overrides({
+    rclcpp::Parameter("wavemaker_type", "flap"),
+    rclcpp::Parameter("wavemaker_upright_position_m", 0.0),
+    rclcpp::Parameter("wavemaker_upright_is_minimum", false),
+    rclcpp::Parameter("wavemaker_mode_pregenerated", false),
+    rclcpp::Parameter("water_depth", 1.0),
+    rclcpp::Parameter("flap_attachment_height", 1.3),
+    rclcpp::Parameter("actuator_drive_type", "angular"),
+    rclcpp::Parameter("actuator_upright_angle_deg", 0.0),
+    rclcpp::Parameter("actuator_lead_m_per_degree", kLeadMPerDeg),
+    rclcpp::Parameter("min_position_deg", -200.0),
+    rclcpp::Parameter("max_position_deg", 200.0),
+    });
+  auto node = std::make_shared<WavemakerNode>(options, factory);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
+
+  auto client_node = std::make_shared<rclcpp::Node>("lab_waves_client", node_options(ns, false));
+  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node->get_node_base_interface());
+  executor.add_node(client_node);
+  ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+
+  // Sends one goal (wave height H in cm), cancels it if accepted and reports acceptance.
+  auto accepted = [&](double height_cm, double period) {
+      MoveWavemaker::Goal goal;
+      goal.height = height_cm / 100.0;
+      goal.period = period;
+      auto goal_future = client->async_send_goal(goal);
+      EXPECT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
+      auto goal_handle = goal_future.get();
+      if (!goal_handle) {
+        return false;
+      }
+      client->async_cancel_goal(goal_handle);
+      auto result_future = client->async_get_result(goal_handle);
+      EXPECT_TRUE(spin_until(executor, result_future, std::chrono::seconds(2)));
+      return true;
+    };
+
+  // Wave heights in cm from the lab's table; rows are steepness 1/15, 1/30, 1/45, 1/60.
+  const std::vector<double> periods = {0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5};
+  const std::vector<std::vector<double>> heights = {
+    {5.1, 6.7, 8.4, 10.4, 12.5, 14.8, 17.1, 19.4, 21.6},
+    {2.6, 3.3, 4.2, 5.2, 6.3, 7.4, 8.5, 9.7, 10.8},
+    {1.7, 2.2, 2.8, 3.5, 4.2, 4.9, 5.7, 6.5, 7.2},
+    {1.3, 1.7, 2.1, 2.6, 3.1, 3.7, 4.3, 4.8, 5.4},
+  };
+  int sent = 0;
+  for (const auto & row : heights) {
+    for (std::size_t i = 0; i < periods.size(); ++i) {
+      if (row[i] >= 18.0) {
+        continue;  // outside the lab's limit H < 18 cm
+      }
+      EXPECT_TRUE(accepted(row[i], periods[i])) << "H " << row[i] << " cm, T " << periods[i];
+      ++sent;
+    }
+  }
+  EXPECT_EQ(sent, 34);
+
+  // The limits still bind just outside the table: 1/15 at 1.4 s needs more than 200 deg, and
+  // the 1/15, 1.3 s wave at 0.6 s is faster than 170 rpm.
+  EXPECT_FALSE(accepted(19.4, 1.4));
+  EXPECT_FALSE(accepted(17.1, 0.6));
 }

@@ -12,9 +12,12 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 
 ### Before any motion
 
-- [ ] **1. Software travel limits on ladertanken.** (rig)
-  There are no mechanical end stops, so the software and drive limits are the only travel limits. The flap top has never moved more than ±5 cm, so the controller limits are now ±94° (`min_position_deg` / `max_position_deg`, ±4.98 cm with 0.00053 m/deg).
-  - Confirm the 50 rpm speed limit (`max_velocity_rpm`).
+- [ ] **1. Narrow the ladertanken limits once the transfer gain is known.** (rig)
+  The limits are ±200° (`min_position_deg` / `max_position_deg`, ±10.6 cm at the flap top) and 170 rpm (`max_velocity_rpm`), set 2026-10-08 for the lab waves and verified with them (see *Verified so far*). There are no mechanical end stops, so these are the only travel limits.
+  - Once the transfer gain is measured (item 33), recompute the required angles and speeds (theory / gain) and narrow the limits to the largest lab wave plus 10–20 %; keep `max_velocity_rpm` at 1.2 × the largest wave's peak speed.
+  - If the old system's settings or logs exist, compare its largest commanded stroke and speed with these numbers.
+  - Optional: confirm the drive's degrees are motor degrees by counting the motor pulley's teeth and measuring the belt pitch (teeth × pitch ≈ 190 mm), and check the drive's velocity limit (S-0-0091) is at least 170 rpm.
+  - (Mechanical, for whoever owns the mechanics.) The belt can jump a tooth under hard turns, and the motor encoder does not see it: the flap would then be offset from the zero and the travel limits without any warning. Check belt tension and condition regularly; after long lab sessions run `return_to_upright` and check the flap is visually upright.
 
 - [ ] **2. Linear drive limits.** (rig)
   Confirm the configured minimum and maximum (0.0–0.5 m in `wavemakers.yaml`) for lilletanken and mc_lab.
@@ -34,24 +37,28 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
   - On the MGate's output module, set a fault value timeout of about 500 ms (it must ride out the ~210 ms gateway stalls; see *Verified so far*) with fault value 0 (MGate manual p. 28). Test by killing the controller while the drive is enabled; the drive must switch off.
   - Change the `write_only_dirty` default in `IndraDriveActuator` to `false` (it is `true`; only ladertanken sets `false`). The fault timeout relies on writes every cycle.
 
+- [ ] **34. Spring balance matches the water depth.** (rig; mechanical, for whoever owns the mechanics)
+  The blue ropes run over a pulley to large springs whose tension counteracts the water pressure on the flap, so the motor is stable at upright. The water's moment on the flap grows roughly with depth cubed (1.0 m ≈ 2.5 × 0.73 m), so the tension must be reset whenever the water level changes, together with `water_depth` in `wavemakers.yaml`.
+  - Check: with the drive holding upright, motor torque or current in IndraWorks is close to zero. A steady holding torque means the balance is off; it heats the motor and takes from the torque the waves need.
+  - The ropes are frayed (fuzzy surface along their length) and carry the preload all the time. If one breaks, the full water moment lands on the motor (overcurrent or following-error fault) or swings the flap toward the dry side. Inspect them now and replace if worn; check them again before the larger lab waves.
+  - Release the tension before draining the tank, or the springs pull the flap the other way.
+
 - [ ] **7. Lifecycle without motion.** (rig)
   Configure, activate, deactivate, cleanup and configure again with no goal; activation must cause no motion.
 
 ### First motion
 
-- [ ] **8. First motor test with the flap disconnected.** (rig)
-  The flap is already disconnected and secured. Run a very small, slow wave (`amplitude: 0.00005`, `period: 10.0`; about ±1.9° on ladertanken at 0.73 m water depth, more in shallower water) and confirm position and velocity feedback.
-
 - [ ] **9. Confirm the drive keeps following after a stop.** (rig)
   `IndraDriveActuator::halt()` holds the last commanded target instead of using Drive Halt, which made the drive ignore later setpoints. Every stop, cancel and return relies on this.
   - Done 2026-10-07: after a Ctrl-C cancel, a new wave starts and the paddle moves, and `return_to_upright` brings it back to 0° (drive reading −0.0020° to +0.0017° at rest).
-  - Still to check: stop at speed (Ctrl-C as the paddle passes the middle) and check it stops without moving back.
+  - Done 2026-10-08, flap connected: the `cancel_all_goals` service stops a running wave, and new waves start afterwards.
+  - Still to check: stop at speed (cancel as the paddle passes the middle) and check it stops without moving back.
 
 - [ ] **10. Stopping and failures while moving.** (rig)
-  Test while a wave runs: cancel / bridge stop, lifecycle deactivation (goal aborted, drive disabled), emergency stop, network and gateway disconnection. The actuator must disable safely after deactivation or communication loss.
+  Test while a wave runs: bridge stop, emergency stop, network and gateway disconnection. The actuator must disable safely after deactivation or communication loss. Cancel by Ctrl-C (2026-10-07), by the `cancel_all_goals` service and lifecycle deactivation through the lifecycle manager (2026-10-08) are done.
 
-- [ ] **11. Reconnect the flap.** (rig)
-  Only after items 8–10 pass. Then recheck the attachment, zero, direction, travel limits and emergency stop before moving the flap.
+- [ ] **11. Rechecks with the flap reconnected.** (rig)
+  The flap was reconnected and run in water on 2026-10-08 (lab waves, see *Verified so far*), before items 9 and 10 were finished. Still to recheck with the flap connected: which way the flap moves for a positive command (item 3), and the emergency stop while a wave runs (item 10).
 
 ### Software
 
@@ -73,10 +80,10 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 
 - [ ] **16. Test and document the bridge.** (`wavemaker_controller/test/`, `README.md`)
   - A gtest with a fake `move_wavemaker` server: start and refused start, stop (topic and service), stop during start, lost heartbeat, controller rejection and abort, deactivation (`inactive`), and item 12. `test/fake_controller.py` shows the fake's behaviour.
-  - Document the LabVIEW interface in the README: topics, types, QoS, the start sequence (amplitude, period, then `start`), heartbeat, `wavemaker_state` values, DDS names (`rt/...`, `std_msgs::msg::dds_::Bool_` etc.).
+  - Document the LabVIEW interface in the README: topics, types, QoS, the start sequence (height, period, then `start`), heartbeat, `wavemaker_state` values, DDS names (`rt/...`, `std_msgs::msg::dds_::Bool_` etc.).
 
 - [ ] **17. Decide the fault policy in bridge mode.** (`wavemaker_bringup/launch/`)
-  After a controller fault the controller goes to unconfigured and breaks its bond, so the lifecycle manager also brings the bridge down; LabVIEW sees `inactive` and someone must relaunch. Decide whether that is acceptable, and check on the rig that the 1 s bond timeout doesn't trigger falsely.
+  After a controller fault the controller goes to unconfigured and breaks its bond, so the lifecycle manager also brings the bridge down; LabVIEW sees `inactive` and someone must relaunch. Decide whether that is acceptable, and check on the rig that the 1 s bond timeout doesn't trigger falsely (no false trigger in the controller-only manager test, 2026-10-08; recheck with the bridge).
 
 - [ ] **18. Decide whether a cancel should return to upright.**
   Cancels and the bridge's stop now stop and hold. The earlier plan to return to upright after every cancel conflicts with that. Confirm "hold" and drop the plan, or make it an option with tests.
@@ -126,7 +133,7 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
   Always declare both.
 
 - [ ] **31. Bridge interface details.** (`wavemaker_bridge.cpp`)
-  `amplitude`, `period` and `stop` use depth 10 instead of `command_qos`; the `stop` topic and `stop` service share a name (consider renaming the service, e.g. `stop_wave`).
+  `height`, `period` and `stop` use depth 10 instead of `command_qos`; the `stop` topic and `stop` service share a name (consider renaming the service, e.g. `stop_wave`).
 
 - [ ] **32. Clean-up.**
   Remove the unused `driver_address_` / `wavemaker_id_` members and the commented-out members at the end of `WavemakerNode`; set the license in `wavemaker_controller/package.xml`. (Formatting and CMake lint fixed 2026-10-07.)
@@ -140,18 +147,22 @@ Kept as a record of physical checks already done.
 - Full travel is physically clear (wavemaker, actuator, tank walls, personnel area).
 - The actuator is mounted rigidly, without backlash or free play.
 - Wavemaker type, flap attachment height and water depth match `wavemakers.yaml`.
-- Drive limits −550° / 500° are configured in IndraWorks and are kept there by decision (2026-10-07); the controller's ±94° is the travel limit.
-- No mechanical end stops. The flap top has never moved more than ±5 cm (confirmed with colleagues, 2026-10-07).
+- Drive limits −550° / 500° are configured in IndraWorks and are kept there by decision (2026-10-07); the controller's ±200° is the travel limit.
+- No mechanical end stops. The lab waves above have been run on this hardware at 1 m depth (Pål Lader, 2026-10-08), which by linear theory needs about ±9.3 cm at the flap top; the earlier ±5 cm figure (2026-10-07) was too low.
 - `wavemaker_upright_position_m` matches the physical upright: 0.0 m for ladertanken.
 - Activation caused no physical motion.
 - Small position oscillation at standstill (the servo holding position) is accepted; it shows as larger velocity oscillation, but the controller only uses position. Measured below ±0.5° (≈ ±0.27 mm on ladertanken), well inside the 2 mm return-to-upright tolerance (≈ 3.8°).
-- The flap is mechanically disconnected and secured for the first motor tests.
+- The flap was disconnected for the first motor tests (2026-10-07) and reconnected for the lab waves (2026-10-08).
 - Calibration: 5–10 positions used, measured at the flap top, which is at `flap_attachment_height`; scale `b = 0.053 / 100 = 0.00053 m/deg`; offset `a = 0.0 m`; actuator zero = upright (`actuator_upright_angle_deg: 0.0`).
 - The PC reaches the gateway at 192.168.1.70 over the wired network.
+- Motor nameplate (ladertanken): Rexroth MSK071E-0450-NN-M1-UG0-NNNN, 3-phase permanent magnet; n max 6000 min⁻¹ (4500 rated), MdN 23.0 Nm / IdN 20.0 A natural convection (34.5 Nm / 30.0 A surface cooled), Km 1.29 Nm/A, KE 82.7 V/1000 min⁻¹, 23.5 kg.
 - Poll interval (2026-10-07): `poll_interval_ms` is 20 ms (50 before). Normal gateway cycles take 4–8 ms with no read/write errors or reconnects. The 10 s sweep had single cycles of about 210 ms at 40, 10, 5 and 2 ms; at 2 ms nearly every cycle stalled, so the stalls grow with polling rate (the gateway, or packets lost under load). A 60 s run at 20 ms had none (3000 cycles, max 8.1 ms). Stalls during waves are watched in item 13.
-- First motion, flap disconnected (2026-10-07): wave `amplitude: 0.0005`, `period: 10.0` (about ±1 cm at the flap top, ±19.5°); `wavemaker_position` follows `wavemaker_setpoint` with the same sign and size.
-- Larger wave, flap disconnected (2026-10-07): `amplitude: 0.002`, `period: 10.0` runs as calculated (first movement positive, peaks about ±79°, ±4.1 cm at the flap top); Ctrl-C stops and holds.
+- First motion, flap disconnected (2026-10-07): wave `amplitude: 0.0005` (the action's old field, H/2; now `height: 0.001`), `period: 10.0` (about ±1 cm at the flap top, ±19.5°); `wavemaker_position` follows `wavemaker_setpoint` with the same sign and size.
+- Larger wave, flap disconnected (2026-10-07): `amplitude: 0.002` (now `height: 0.004`), `period: 10.0` runs as calculated (first movement positive, peaks about ±79°, ±4.1 cm at the flap top); Ctrl-C stops and holds.
 - Terminal-mode launch, interface inspection, configure without activate, and goal rejection while inactive.
+- Lab waves, flap connected, 1.01 m water depth, limits ±200° and 170 rpm (2026-10-08). All eight steps ran, each followed by `return_to_upright` with the flap upright afterwards. In order of rising acceleration, as `height` [m] / `period` [s] (run with the action's old `amplitude` field, H/2; lab steepness; expected drive angle and peak speed by linear theory): 0.026 / 1.0 (1/60; ±21°, 22 rpm), 0.049 / 1.2 (1/45; ±45°, 40 rpm), 0.074 / 1.2 (1/30; ±68°, 60 rpm), 0.108 / 1.5 (1/30; ±132°, 92 rpm), 0.051 / 0.7 (1/15; ±35°, 53 rpm), 0.104 / 1.0 (1/15; ±83°, 87 rpm), 0.148 / 1.2 (1/15; ±137°, 119 rpm), 0.171 / 1.3 (1/15, the largest lab wave; ±173°, 139 rpm). Wave heights were not measured (item 33).
+- `cancel_all_goals` stops a running wave, flap connected (2026-10-08).
+- Lifecycle manager, controller only (`enable_lifecycle_manager:=true bond_timeout:=1.0`), flap connected (2026-10-08): the manager configures and activates the controller by itself; a wave runs; PAUSE (`manage_nodes` command 1) during a wave aborts the goal, deactivates the controller and disables the drive; RESUME (2) reactivates it, `return_to_upright` and a new wave work; SHUTDOWN (4) finalizes the controller with the drive disabled. The 1 s bond timeout did not trigger falsely. Not tested: a crashed controller (needs the MGate fault timeout first, item 5).
 
 ## Actuator conversion calibration
 
@@ -190,7 +201,7 @@ ros2 run rqt_plot rqt_plot $NS/wavemaker_setpoint/data $NS/wavemaker_position/da
 
 # small slow wave, then stop
 ros2 action send_goal --feedback $NS/move_wavemaker wavemaker_interfaces/action/MoveWavemaker \
-  "{amplitude: 0.00005, period: 10.0}"            # Ctrl-C cancels
+  "{height: 0.0001, period: 10.0}"                # Ctrl-C cancels
 ros2 service call $NS/return_to_upright wavemaker_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
 
 # finish
@@ -204,7 +215,7 @@ ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken with_b
 # configure + activate the controller, then the bridge ($NS/wavemaker_bridge)
 ros2 topic pub -r 5 $NS/heartbeat std_msgs/msg/Bool "{data: true}"
 ros2 topic echo $NS/wavemaker_message
-ros2 topic pub --once -w 1 $NS/amplitude std_msgs/msg/Float64 "{data: 0.00005}"
+ros2 topic pub --once -w 1 $NS/height std_msgs/msg/Float64 "{data: 0.0001}"
 ros2 topic pub --once -w 1 $NS/period std_msgs/msg/Float64 "{data: 10.0}"
 ros2 topic pub --once -w 1 $NS/start std_msgs/msg/Bool "{data: true}"
 ros2 topic pub --once -w 1 $NS/stop std_msgs/msg/Bool "{data: true}"

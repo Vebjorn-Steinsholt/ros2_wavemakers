@@ -38,7 +38,7 @@ Modbus TCP / PROFIBUS gateway.
 
 > **`wavemaker_bridge`** connects LabVIEW (RTI DDS, topics only) to the controller. It works with
 > the fake controller but has not been tested on the rig, and its LabVIEW interface is not yet
-> documented here (TODO 16). Its topics are `amplitude`, `period`, `start`, `stop` and `heartbeat`
+> documented here (TODO 16). Its topics are `height`, `period`, `start`, `stop` and `heartbeat`
 > in, and `wavemaker_state` / `wavemaker_message` out.
 
 ## Build
@@ -69,7 +69,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | `flap_attachment_height` | Flap only: height of the actuator attachment above the hinge, m. Must be greater than `water_depth`. |
 | `wavemaker_upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
 | `wavemaker_upright_is_minimum` | `true`: the wave runs from upright to one side only. `false`: symmetric around upright. |
-| `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `amplitude` and `period`. |
+| `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `height` and `period`. |
 | `wavemaker_transfer_gain` | Measured / target wave height for regular waves (default 1.0 = linear theory). The stroke is divided by it; to correct from wave-probe data, new gain = old gain × measured / target. Not applied to pregenerated waves. |
 
 ### Actuator and limits
@@ -116,7 +116,7 @@ There are two ways to run a wavemaker. Both read `config/wavemakers.yaml` and ta
 | Launch file | `wavemakers.launch.py` | `wavemaker_bridge.launch.py` |
 | Nodes | Controller only | Controller and `wavemaker_bridge` |
 | Lifecycle | Stepped by hand (lifecycle manager optional, off by default) | Configured and activated automatically by the Nav2 lifecycle manager |
-| Control | `ros2 action` / `ros2 service` (see [Interfaces](#interfaces)) | The bridge's topics: `amplitude`, `period`, then `start`; `stop`; a `heartbeat` from LabVIEW |
+| Control | `ros2 action` / `ros2 service` (see [Interfaces](#interfaces)) | The bridge's topics: `height`, `period`, then `start`; `stop`; a `heartbeat` from LabVIEW |
 | If a node dies | Nothing stops the controller | The lifecycle manager brings both nodes down after `bond_timeout` (default 1 s), which disables the drive |
 
 > Bridge mode has not been tested on the rig yet (TODO 10, 16). For first tests, use terminal mode.
@@ -167,13 +167,13 @@ All names are under `/wavemakers/<wavemaker>/`.
 
 ### Action `move_wavemaker` (`wavemaker_interfaces/action/MoveWavemaker`)
 
-Regular wave (`wavemaker_mode_pregenerated: false`). `amplitude` is the wave amplitude in m
-(half the wave height) and `period` is in s; the controller converts it to a paddle stroke with the
+Regular wave (`wavemaker_mode_pregenerated: false`). `height` is the wave height H (crest to
+trough) in m and `period` is in s; the controller converts it to a paddle stroke with the
 wave transfer function. The wave runs until it is cancelled.
 
 ```bash
 ros2 action send_goal --feedback /wavemakers/ladertanken/move_wavemaker \
-  wavemaker_interfaces/action/MoveWavemaker "{amplitude: 0.00005, period: 10.0}"
+  wavemaker_interfaces/action/MoveWavemaker "{height: 0.0001, period: 10.0}"
 ```
 
 For ladertanken (flap, 1.0 m depth, 1.30 m attachment, 0.00053 m/deg) this is about ±1.2° at the

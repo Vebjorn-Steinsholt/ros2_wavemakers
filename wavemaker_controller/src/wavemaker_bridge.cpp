@@ -80,9 +80,9 @@ public:
       });
     watch_timer_ = create_wall_timer(std::chrono::milliseconds(100), [this]() {watch();});
 
-    amplitude_subscription_ = create_subscription<std_msgs::msg::Float64>(
-      "amplitude", 10,
-      std::bind(&WavemakerBridge::amplitude_callback, this, std::placeholders::_1));
+    height_subscription_ = create_subscription<std_msgs::msg::Float64>(
+      "height", 10,
+      std::bind(&WavemakerBridge::height_callback, this, std::placeholders::_1));
     period_subscription_ = create_subscription<std_msgs::msg::Float64>(
       "period", 10,
       std::bind(&WavemakerBridge::period_callback, this, std::placeholders::_1));
@@ -172,10 +172,10 @@ public:
       report(std::string("start refused: wave is ") + state_name(state_) + "; stop it first");
       return;
     }
-    if (!(amplitude_ > 0.0) || !(period_ > 0.0) || !std::isfinite(amplitude_) ||
+    if (!(height_ > 0.0) || !(period_ > 0.0) || !std::isfinite(height_) ||
       !std::isfinite(period_))
     {
-      report("start refused: amplitude and period must be positive and finite");
+      report("start refused: height and period must be positive and finite");
       return;
     }
     if(!heartbeat_alive()) {
@@ -189,7 +189,7 @@ public:
 
 
     MoveWavemaker::Goal goal;
-    goal.amplitude = amplitude_;
+    goal.height = height_;
     goal.period = period_;
     rclcpp_action::Client<MoveWavemaker>::SendGoalOptions options;
     options.goal_response_callback =
@@ -213,7 +213,7 @@ public:
     stop_subscription_.reset();
     start_subscription_.reset();
     period_subscription_.reset();
-    amplitude_subscription_.reset();
+    height_subscription_.reset();
     if (bond_) {
       bond_->breakBond();
       bond_.reset();
@@ -221,9 +221,9 @@ public:
     publish_state(State::Inactive, reason);
   }
 
-  void amplitude_callback(const std_msgs::msg::Float64::SharedPtr msg)
+  void height_callback(const std_msgs::msg::Float64::SharedPtr msg)
   {
-    amplitude_ = msg->data;
+    height_ = msg->data;
 
   }
 
@@ -359,7 +359,7 @@ public:
     }
   }
   rclcpp_action::Client<MoveWavemaker>::SharedPtr action_client_;
-  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr amplitude_subscription_;
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr height_subscription_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr period_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_subscription_;
@@ -380,7 +380,7 @@ public:
   State state_ = State::Inactive;
   std::string last_message_;
   std::unique_ptr<bond::Bond> bond_;
-  double amplitude_ = 0.0;
+  double height_ = 0.0;
   double period_ = 0.0;
   rclcpp::PreShutdownCallbackHandle pre_shutdown_callback_handle_;
 

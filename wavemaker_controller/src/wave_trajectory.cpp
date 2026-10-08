@@ -39,13 +39,13 @@ bool sample_pregenerated(
 }  // namespace
 
 void WaveTrajectory::configure(
-  const WavemakerGeometry & geometry, double wave_amplitude, double period,
+  const WavemakerGeometry & geometry, double wave_height, double period,
   double start_position)
 {
   omega_ = 2.0 * M_PI / period;
   const double mu = solve_dispersion(omega_, geometry.water_depth);
   const double stroke =
-    compute_stroke(mu, wave_amplitude * 2, geometry.type) / geometry.transfer_gain;
+    compute_stroke(mu, wave_height, geometry.type) / geometry.transfer_gain;
   amplitude_ = stroke / 2.0;
   if (geometry.type == "flap") {
     amplitude_ *= geometry.flap_attachment_height / geometry.water_depth;
@@ -68,12 +68,20 @@ double WaveTrajectory::required_maximum() const
 
 double WaveTrajectory::peak_velocity() const
 {
-  // In the blend, velocity = ds * (wave - start) + s * wave_velocity with s <= 1, so it is
-  // bounded by the blend's peak ds times the largest wave-to-start distance plus the wave's.
-  const double wave_peak = amplitude_ * omega_;
-  const double distance = std::max(
-    std::abs(required_maximum() - start_position_), std::abs(required_minimum() - start_position_));
-  return wave_peak + kQuinticPeakVelocityFactor * distance / startup_duration_;
+  // After the blend the speed peaks at amplitude * omega. In the blend, the blend's and the
+  // wave's speeds peak at different times, so adding their peaks overestimates by up to a
+  // third; sample the blend instead. Between samples the speed changes by at most a
+  // relative ~(2 pi / kBlendSamples)^2 / 2 near a peak, which kSamplingMargin covers.
+  constexpr int kBlendSamples = 10000;
+  constexpr double kSamplingMargin = 1e-4;
+  double peak = amplitude_ * omega_;
+  for (int i = 0; i <= kBlendSamples; ++i) {
+    double position = 0.0;
+    double velocity = 0.0;
+    sample(startup_duration_ * i / kBlendSamples, position, velocity);
+    peak = std::max(peak, std::abs(velocity));
+  }
+  return peak * (1.0 + kSamplingMargin);
 }
 
 void WaveTrajectory::sample(double elapsed, double & position, double & velocity) const

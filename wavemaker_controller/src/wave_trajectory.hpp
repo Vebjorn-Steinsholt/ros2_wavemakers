@@ -21,14 +21,15 @@ struct WavemakerGeometry
 class WaveTrajectory
 {
 public:
-  // wave_amplitude is the target wave amplitude (half the wave height).
+  // wave_height is the target wave height H (crest to trough).
   void configure(
-    const WavemakerGeometry & geometry, double wave_amplitude, double period,
+    const WavemakerGeometry & geometry, double wave_height, double period,
     double start_position);
 
   double required_minimum() const;
   double required_maximum() const;
-  // Upper bound on |velocity| over the whole trajectory, start blend included.
+  // Largest |velocity| over the whole trajectory, start blend included, with a 0.01 % margin
+  // so it never falls below a sample.
   double peak_velocity() const;
 
   void sample(double elapsed, double & position, double & velocity) const;

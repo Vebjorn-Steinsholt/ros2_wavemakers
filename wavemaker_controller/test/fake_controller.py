@@ -54,12 +54,12 @@ class FakeController(Node):
             if self._busy:
                 self.get_logger().warn('Rejecting goal: another goal is running')
                 return GoalResponse.REJECT
-            if goal.amplitude <= 0.0 or goal.period <= 0.0:
-                self.get_logger().warn('Rejecting goal: amplitude and period must be > 0')
+            if goal.height <= 0.0 or goal.period <= 0.0:
+                self.get_logger().warn('Rejecting goal: height and period must be > 0')
                 return GoalResponse.REJECT
             self._busy = True
         self.get_logger().info(
-            f'Accepted goal: amplitude {goal.amplitude} m, period {goal.period} s')
+            f'Accepted goal: height {goal.height} m, period {goal.period} s')
         return GoalResponse.ACCEPT
 
     def _on_cancel(self, goal_handle):
@@ -86,7 +86,7 @@ class FakeController(Node):
                     result.message = 'Simulated drive fault (fake)'
                     self.get_logger().warn('Goal aborted (--abort-after)')
                     return result
-                position = goal.amplitude * math.sin(2.0 * math.pi * elapsed / goal.period)
+                position = goal.height / 2.0 * math.sin(2.0 * math.pi * elapsed / goal.period)
                 feedback.desired_position = position
                 feedback.actual_position = position
                 feedback.elapsed_time = elapsed

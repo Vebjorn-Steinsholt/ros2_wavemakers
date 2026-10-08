@@ -24,10 +24,10 @@ PregeneratedWaveTrajectory blended_trajectory()
 }
 
 // Paddle amplitude at the attachment point for a symmetric regular wave.
-double paddle_amplitude(const WavemakerGeometry & geometry, double wave_amplitude, double period)
+double paddle_amplitude(const WavemakerGeometry & geometry, double wave_height, double period)
 {
   WaveTrajectory trajectory;
-  trajectory.configure(geometry, wave_amplitude, period, geometry.upright_position);
+  trajectory.configure(geometry, wave_height, period, geometry.upright_position);
   return trajectory.required_maximum() - geometry.upright_position;
 }
 
@@ -137,7 +137,7 @@ TEST(WaveTrajectoryTest, PeakVelocityBoundsEverySample)
   for (const bool upright_is_minimum : {false, true}) {
     for (const double start : {0.25, 0.20, 0.32}) {
       WaveTrajectory trajectory;
-      trajectory.configure({"piston", 1.0, 0.0, 0.25, upright_is_minimum}, 0.02, 2.0, start);
+      trajectory.configure({"piston", 1.0, 0.0, 0.25, upright_is_minimum}, 0.04, 2.0, start);
       const double bound = trajectory.peak_velocity();
 
       double largest = 0.0;
@@ -156,7 +156,7 @@ TEST(WaveTrajectoryTest, PeakVelocityBoundsEverySample)
 TEST(WaveTrajectoryTest, StartBlendBeginsAtRestOnStartPosition)
 {
   WaveTrajectory trajectory;
-  trajectory.configure({"piston", 1.0, 0.0, 0.25, false}, 0.02, 2.0, 0.30);
+  trajectory.configure({"piston", 1.0, 0.0, 0.25, false}, 0.04, 2.0, 0.30);
   double position = 0.0;
   double velocity = 1.0;
   trajectory.sample(0.0, position, velocity);
@@ -167,8 +167,8 @@ TEST(WaveTrajectoryTest, StartBlendBeginsAtRestOnStartPosition)
 TEST(WaveTrajectoryTest, TransferGainDividesStroke)
 {
   for (const char * type : {"piston", "flap"}) {
-    const double nominal = paddle_amplitude({type, 0.73, 1.3, 0.0, false, 1.0}, 0.01, 2.0);
-    const double corrected = paddle_amplitude({type, 0.73, 1.3, 0.0, false, 2.5}, 0.01, 2.0);
+    const double nominal = paddle_amplitude({type, 0.73, 1.3, 0.0, false, 1.0}, 0.02, 2.0);
+    const double corrected = paddle_amplitude({type, 0.73, 1.3, 0.0, false, 2.5}, 0.02, 2.0);
     EXPECT_GT(nominal, 0.0);
     EXPECT_NEAR(corrected, nominal / 2.5, 1e-12) << type;
   }
@@ -177,9 +177,9 @@ TEST(WaveTrajectoryTest, TransferGainDividesStroke)
 TEST(WaveTrajectoryTest, TransferGainScalesOneSidedRange)
 {
   WaveTrajectory nominal;
-  nominal.configure({"piston", 1.0, 0.0, 0.25, true, 1.0}, 0.01, 2.0, 0.25);
+  nominal.configure({"piston", 1.0, 0.0, 0.25, true, 1.0}, 0.02, 2.0, 0.25);
   WaveTrajectory corrected;
-  corrected.configure({"piston", 1.0, 0.0, 0.25, true, 2.0}, 0.01, 2.0, 0.25);
+  corrected.configure({"piston", 1.0, 0.0, 0.25, true, 2.0}, 0.02, 2.0, 0.25);
   EXPECT_NEAR(corrected.required_minimum(), 0.25, 1e-12);
   EXPECT_NEAR(
     corrected.required_maximum() - 0.25, (nominal.required_maximum() - 0.25) / 2.0, 1e-12);
@@ -194,7 +194,7 @@ TEST(WaveTrajectoryTest, FlapAmplitudeFollowsLinearTheoryAtCurrentDepth)
     const double expected =
       wavemaker_controller::compute_stroke(mu, 0.02, "flap") / 2.0 * 1.3 / depth;
     EXPECT_NEAR(
-      paddle_amplitude({"flap", depth, 1.3, 0.0, false, 1.0}, 0.01, 2.0), expected, 1e-12)
+      paddle_amplitude({"flap", depth, 1.3, 0.0, false, 1.0}, 0.02, 2.0), expected, 1e-12)
       << "depth " << depth;
   }
 }
@@ -207,9 +207,36 @@ TEST(WaveTrajectoryTest, ShallowerWaterNeedsLargerStroke)
     double previous = std::numeric_limits<double>::infinity();
     for (const double depth : {0.5, 0.72, 0.73, 1.0}) {
       const double stroke_at_waterline =
-        paddle_amplitude({type, depth, depth, 0.0, false, 1.0}, 0.01, 10.0);
+        paddle_amplitude({type, depth, depth, 0.0, false, 1.0}, 0.02, 10.0);
       EXPECT_LT(stroke_at_waterline, previous) << type << " depth " << depth;
       previous = stroke_at_waterline;
+    }
+  }
+}
+
+TEST(WaveTrajectoryTest, PeakVelocityIsTheTruePeak)
+{
+  // Largest lab wave: 1/15 at 1.3 s in 1 m of water (H = 17.1 cm), flap top at 1.3 m.
+  // Starting anywhere in the stroke, the blend never moves faster than the wave itself.
+  for (const bool upright_is_minimum : {false, true}) {
+    WaveTrajectory reference;
+    reference.configure({"flap", 1.0, 1.3, 0.0, upright_is_minimum, 1.0}, 0.171, 1.3, 0.0);
+    const double low = reference.required_minimum();
+    const double high = reference.required_maximum();
+    for (const double start : {low, 0.5 * (low + high), high}) {
+      WaveTrajectory trajectory;
+      trajectory.configure(
+        {"flap", 1.0, 1.3, 0.0, upright_is_minimum, 1.0}, 0.171, 1.3, start);
+
+      double largest = 0.0;
+      for (double t = 0.0; t < 4.0; t += 1e-4) {
+        double position = 0.0;
+        double velocity = 0.0;
+        trajectory.sample(t, position, velocity);
+        largest = std::max(largest, std::abs(velocity));
+      }
+      EXPECT_GE(trajectory.peak_velocity(), largest) << "start " << start;
+      EXPECT_LE(trajectory.peak_velocity(), largest * 1.001) << "start " << start;
     }
   }
 }

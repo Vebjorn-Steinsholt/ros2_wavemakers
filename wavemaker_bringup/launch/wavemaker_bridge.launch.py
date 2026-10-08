@@ -1,7 +1,7 @@
 """
 Bridge mode: controller + bridge, started and supervised by the Nav2 lifecycle manager.
 
-For normal users, who control the wavemaker through the bridge's amplitude, period and stop
+For normal users, who control the wavemaker through the bridge's height, period and stop
 topics. The lifecycle manager configures and activates both nodes automatically. If the bridge
 (or the controller) stops sending bond heartbeats for bond_timeout seconds, the manager brings
 both down, and deactivating the controller disables the drive, so the paddle stops.

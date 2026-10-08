@@ -606,17 +606,17 @@ private:
       return accept_peak_velocity(pregenerated_.peak_velocity());
     }
 
-    if (!std::isfinite(goal.amplitude) || !std::isfinite(goal.period) ||
-      goal.amplitude <= 0.0 || goal.period <= 0.0)
+    if (!std::isfinite(goal.height) || !std::isfinite(goal.period) ||
+      goal.height <= 0.0 || goal.period <= 0.0)
     {
-      RCLCPP_WARN(get_logger(), "Received goal with non-positive amplitude or period, rejecting");
+      RCLCPP_WARN(get_logger(), "Received goal with non-positive height or period, rejecting");
       return false;
     }
 
     trajectory_.configure(
       {wavemaker_type_, water_depth_, flap_attachment_height_, wavemaker_position_offset_,
         upright_is_minimum_, wavemaker_transfer_gain_},
-      goal.amplitude, goal.period, start_position);
+      goal.height, goal.period, start_position);
 
     const double required_minimum = trajectory_.required_minimum();
     const double required_maximum = trajectory_.required_maximum();
