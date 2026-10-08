@@ -20,7 +20,10 @@ Blend quintic_blend(double elapsed, double duration);
 // Beji 2013 dispersion relation; returns the dimensionless wavenumber k*h.
 double solve_dispersion(double omega, double depth, double g = 9.81);
 
-// Stroke needed for wave height target_height; type is "piston" or "flap".
-double compute_stroke(double mu, double target_height, const std::string & type);
+// Stroke at the still-water level needed for wave height target_height; type is "piston" or
+// "flap". hinge_fraction is a flap's hinge height above the floor divided by the water depth
+// (0 = hinged at the floor, must be < 1).
+double compute_stroke(
+  double mu, double target_height, const std::string & type, double hinge_fraction = 0.0);
 
 }  // namespace wavemaker_controller

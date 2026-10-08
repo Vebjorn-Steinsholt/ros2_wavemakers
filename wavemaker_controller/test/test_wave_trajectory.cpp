@@ -240,3 +240,46 @@ TEST(WaveTrajectoryTest, PeakVelocityIsTheTruePeak)
     }
   }
 }
+
+TEST(WaveTrajectoryTest, FlapHingedAtFloorUsesBottomHingedFormula)
+{
+  // hinge_height 0 must give exactly the bottom-hinged flap formula used before it existed.
+  for (const double mu : {0.3, 1.0, 2.5}) {
+    const double bottom_hinged = 4.0 * std::sinh(mu) *
+      (mu * std::sinh(mu) - std::cosh(mu) + 1.0) / (mu * (std::sinh(2.0 * mu) + 2.0 * mu));
+    EXPECT_NEAR(
+      wavemaker_controller::compute_stroke(mu, 0.1, "flap", 0.0), 0.1 / bottom_hinged, 1e-12)
+      << "mu " << mu;
+  }
+}
+
+TEST(WaveTrajectoryTest, RaisedHingeMatchesDeanAndDalrymple)
+{
+  // mc_lab: 1.5 m water, hinge 0.5 m and attachment 1.95 m above the floor; H 0.05 m, T 1.5 s.
+  // Reference computed independently (Python) from H/S = 4 sinh(kh) / (sinh 2kh + 2kh) *
+  // [sinh(kh) + (cosh(kl) - cosh(kh)) / (k (h - l))], scaled by (1.95 - 0.5) / (1.5 - 0.5).
+  WavemakerGeometry geometry{"flap", 1.5, 1.95, 0.0, false, 1.0, 0.5};
+  EXPECT_NEAR(paddle_amplitude(geometry, 0.05, 1.5), 0.03501458303518656, 1e-9);
+
+  // The same flap hinged at the floor needs less stroke at the attachment point.
+  geometry.hinge_height = 0.0;
+  EXPECT_NEAR(paddle_amplitude(geometry, 0.05, 1.5), 0.025396605521757824, 1e-9);
+}
+
+TEST(WaveTrajectoryTest, HigherHingeNeedsLargerStroke)
+{
+  double previous = 0.0;
+  for (const double hinge : {0.0, 0.2, 0.5, 0.8, 1.2}) {
+    const double amplitude =
+      paddle_amplitude({"flap", 1.5, 1.95, 0.0, false, 1.0, hinge}, 0.05, 1.5);
+    EXPECT_GT(amplitude, previous) << "hinge " << hinge;
+    previous = amplitude;
+  }
+}
+
+TEST(WaveTrajectoryTest, PistonIgnoresHingeHeight)
+{
+  EXPECT_NEAR(
+    paddle_amplitude({"piston", 1.0, 0.0, 0.0, false, 1.0, 0.5}, 0.05, 1.5),
+    paddle_amplitude({"piston", 1.0, 0.0, 0.0, false, 1.0, 0.0}, 0.05, 1.5), 1e-15);
+}

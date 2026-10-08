@@ -63,6 +63,7 @@ public:
     declare_parameter<double>("wavemaker_transfer_gain", 1.0);
     declare_parameter<bool>("wavemaker_mode_pregenerated", false);
     declare_parameter<double>("flap_attachment_height", 0.0);
+    declare_parameter<double>("hinge_height", 0.0);
     declare_parameter<double>("actuator_upright_angle_deg", 0.0);
     declare_parameter<std::string>("actuator_drive_type", "linear");
     if (get_parameter("actuator_drive_type").as_string() == "linear") {
@@ -109,6 +110,7 @@ public:
     water_depth_ = get_parameter("water_depth").as_double();
     wavemaker_transfer_gain_ = get_parameter("wavemaker_transfer_gain").as_double();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
+    hinge_height_ = get_parameter("hinge_height").as_double();
     actuator_upright_angle_deg_ = get_parameter("actuator_upright_angle_deg").as_double();
     actuator_drive_type_ = get_parameter("actuator_drive_type").as_string();
 
@@ -177,6 +179,12 @@ public:
       RCLCPP_ERROR(get_logger(),
         "flap_attachment_height must be set (> 0) and greater than water_depth "
         "for flap-type wavemakers");
+      return CallbackReturn::FAILURE;
+    }
+    if (wavemaker_type_ == "flap" &&
+      !(hinge_height_ >= 0.0 && hinge_height_ < water_depth_))
+    {
+      RCLCPP_ERROR(get_logger(), "hinge_height must be >= 0 and below water_depth");
       return CallbackReturn::FAILURE;
     }
     if (wavemaker_type_ != "flap" && wavemaker_type_ != "piston") {
@@ -615,7 +623,7 @@ private:
 
     trajectory_.configure(
       {wavemaker_type_, water_depth_, flap_attachment_height_, wavemaker_position_offset_,
-        upright_is_minimum_, wavemaker_transfer_gain_},
+        upright_is_minimum_, wavemaker_transfer_gain_, hinge_height_},
       goal.height, goal.period, start_position);
 
     const double required_minimum = trajectory_.required_minimum();
@@ -1084,6 +1092,7 @@ private:
   double wavemaker_position_offset_{0.0};
   bool wavemaker_mode_pregenerated_{false};
   double flap_attachment_height_{0.0};
+  double hinge_height_{0.0};
   double water_depth_{0.0};
   double actuator_upright_angle_deg_{0.0};
   std::string actuator_drive_type_;

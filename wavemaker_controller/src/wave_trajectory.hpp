@@ -10,11 +10,12 @@ struct WavemakerGeometry
 {
   std::string type;  // "piston" or "flap"
   double water_depth{0.0};
-  double flap_attachment_height{0.0};
+  double flap_attachment_height{0.0};  // above the tank floor
   double upright_position{0.0};
   bool upright_is_minimum{false};
   // Measured / theoretical wave height; the stroke is divided by it. 1.0 = linear theory.
   double transfer_gain{1.0};
+  double hinge_height{0.0};  // flap only: hinge above the tank floor, < water_depth
 };
 
 // Regular wave with a quintic blend from the start position over one period.

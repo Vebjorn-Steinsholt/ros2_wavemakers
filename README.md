@@ -66,7 +66,8 @@ before connecting to hardware. Changes take effect at the next `configure`.
 |---|---|
 | `wavemaker_type` | `piston` or `flap`. Selects the wave transfer function. |
 | `water_depth` | Water depth in m. |
-| `flap_attachment_height` | Flap only: height of the actuator attachment above the hinge, m. Must be greater than `water_depth`. |
+| `flap_attachment_height` | Flap only: height of the actuator attachment above the tank floor, m. Must be greater than `water_depth`. |
+| `hinge_height` | Flap only: height of the flap's hinge above the tank floor, m (default 0.0). Must be below `water_depth`. Used in the wave transfer function (Dean & Dalrymple) and to scale the stroke from the waterline to the attachment point. |
 | `wavemaker_upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
 | `wavemaker_upright_is_minimum` | `true`: the wave runs from upright to one side only. `false`: symmetric around upright. |
 | `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `height` and `period`. |

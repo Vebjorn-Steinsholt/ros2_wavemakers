@@ -35,17 +35,19 @@ double solve_dispersion(double omega, double depth, double g)
   return mu_a * (1.0 + fc);
 }
 
-double compute_stroke(double mu, double target_height, const std::string & type)
+double compute_stroke(
+  double mu, double target_height, const std::string & type, double hinge_fraction)
 {
   double transfer_ratio;  // H/S
 
   if (type == "piston") {
     transfer_ratio = (4.0 * std::sinh(mu) * std::sinh(mu)) /
       (std::sinh(2.0 * mu) + 2.0 * mu);
-  } else {  // "flap"
-    const double num = mu * std::sinh(mu) - std::cosh(mu) + 1.0;
-    transfer_ratio = (4.0 * std::sinh(mu) * num) /
-      (mu * (std::sinh(2.0 * mu) + 2.0 * mu));
+  } else {  // "flap", hinged hinge_fraction * depth above the floor (Dean & Dalrymple)
+    const double hinge_mu = mu * hinge_fraction;
+    const double bracket = std::sinh(mu) +
+      (std::cosh(hinge_mu) - std::cosh(mu)) / (mu - hinge_mu);
+    transfer_ratio = 4.0 * std::sinh(mu) * bracket / (std::sinh(2.0 * mu) + 2.0 * mu);
   }
 
   return target_height / transfer_ratio;

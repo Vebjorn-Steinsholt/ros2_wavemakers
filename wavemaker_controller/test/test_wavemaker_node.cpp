@@ -1260,3 +1260,26 @@ TEST_F(WavemakerNodeTest, LadertankenAcceptsEveryLabWave)
   EXPECT_FALSE(accepted(19.4, 1.4));
   EXPECT_FALSE(accepted(17.1, 0.6));
 }
+
+TEST_F(WavemakerNodeTest, ConfigureRejectsHingeOutsideWater)
+{
+  // Flap in 1 m of water: the hinge must be at or above the floor and below the surface.
+  for (const double hinge : {-0.1, 1.0, 1.2}) {
+    auto options = one_sided_node_options("/hinge_test");
+    options.append_parameter_override("hinge_height", hinge);
+    auto node = std::make_shared<WavemakerNode>(
+      options, [](rclcpp_lifecycle::LifecycleNode &) {return std::make_unique<FakeActuator>();});
+    EXPECT_EQ(
+      node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+      lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED) << "hinge " << hinge;
+  }
+  for (const double hinge : {0.0, 0.5}) {
+    auto options = one_sided_node_options("/hinge_test");
+    options.append_parameter_override("hinge_height", hinge);
+    auto node = std::make_shared<WavemakerNode>(
+      options, [](rclcpp_lifecycle::LifecycleNode &) {return std::make_unique<FakeActuator>();});
+    EXPECT_EQ(
+      node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+      lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE) << "hinge " << hinge;
+  }
+}
