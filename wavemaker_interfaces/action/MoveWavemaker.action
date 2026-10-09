@@ -1,6 +1,6 @@
 # Goal
 # Used when wavemaker_mode_pregenerated is false.
-# Wave height H (crest to trough) in meters and wave period in seconds.
+# Wave height H in meters and wave period in seconds.
 float64 height
 float64 period
 # Absolute wavemaker positions in meters, sampled at this fixed interval.
