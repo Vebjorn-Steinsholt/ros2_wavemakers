@@ -20,7 +20,7 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
   - (Mechanical, for whoever owns the mechanics.) The belt can jump a tooth under hard turns, and the motor encoder does not see it: the flap would then be offset from the zero and the travel limits without any warning. Check belt tension and condition regularly; after long lab sessions run `return_to_upright` and check the flap is visually upright.
 
 - [ ] **2. Linear drive limits.** (rig)
-  Confirm the configured minimum and maximum (0.0–0.5 m in `wavemakers.yaml`) for lilletanken and mc_lab.
+  Confirm the configured minimum and maximum (0.0–0.5 m in `wavemakers.yaml`) for lilletanken and mclab.
 
 - [ ] **3. Direction, feedback and zero are correct.** (rig)
   - Positive command gives the expected physical direction. The drive moves positive in degrees first, as commanded (2026-10-07); which way the paddle moves has not been seen yet. Check it with someone at the paddle or a phone camera, at the latest when the flap is reconnected (item 11).
@@ -88,7 +88,7 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 - [ ] **18. Decide whether a cancel should return to upright.**
   Cancels and the bridge's stop now stop and hold. The earlier plan to return to upright after every cancel conflicts with that. Confirm "hold" and drop the plan, or make it an option with tests.
 
-- [ ] **19. Linear drives (lilletanken, mc_lab).** (rig; `wavemaker_controller/src/indradrive_actuator.cpp`)
+- [ ] **19. Linear drives (lilletanken, mclab).** (rig; `wavemaker_controller/src/indradrive_actuator.cpp`)
   The drive's position tag (scaled as degrees) is used as metres unchanged, and velocity is converted with `/ 6` as if it were deg/s → rpm; the limits exist twice (`wavemaker_minimum/maximum` and `min_position_m/max_position_m`). Confirm the drive scaling, add a proper linear conversion, derive the drive limits from the node limits.
 
 - [ ] **20. Data race on `IndraDrive::last_error_`.** (`drivers/mgate5101_driver/src/indradrive.cpp`)

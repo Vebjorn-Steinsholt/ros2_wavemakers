@@ -54,10 +54,10 @@
     max_position_m: 0.5
     wavemaker_transfer_gain: 1.0  # see ladertanken
 
-/wavemakers/mc_lab/controller:
+/wavemakers/mclab/controller:
   ros__parameters:
     wavemaker_type: "flap"
-    wavemaker_id: "mc_lab"
+    wavemaker_id: "mclab"
     wavemaker_minimum: 0.0
     wavemaker_maximum: 0.5
     wavemaker_upright_position_m: 0.0

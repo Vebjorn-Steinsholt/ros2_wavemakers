@@ -18,6 +18,7 @@ Modbus TCP / PROFIBUS gateway.
 
 - [Packages](#packages)
 - [Build](#build)
+- [Lab computers](#lab-computers)
 - [Configuration](#configuration)
 - [Running a wavemaker](#running-a-wavemaker)
 - [Interfaces](#interfaces)
@@ -53,11 +54,23 @@ colcon build --packages-up-to wavemaker_bringup
 source install/setup.bash
 ```
 
+## Lab computers
+
+Each lab has its own Raspberry Pi, named after the wavemaker in `wavemakers.yaml`: hostname
+`<wavemaker>-rpi`, user `<wavemaker>`.
+
+| Lab | Hostname | User |
+|---|---|---|
+| ladertanken | `ladertanken-rpi` | `ladertanken` |
+
+Log in with `ssh ladertanken@ladertanken-rpi.local`. Do not use the old Raspberry Pi default user
+`pi`.
+
 ## Configuration
 
 All wavemakers are configured in
 [`wavemaker_bringup/config/wavemakers.yaml`](wavemaker_bringup/config/wavemakers.yaml), one block
-per wavemaker (`ladertanken`, `lilletanken`, `mc_lab`). Check every value against the real rig
+per wavemaker (`ladertanken`, `lilletanken`, `mclab`). Check every value against the real rig
 before connecting to hardware. Changes take effect at the next `configure`.
 
 ### Wavemaker and geometry
@@ -110,7 +123,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 ## Running a wavemaker
 
 There are two ways to run a wavemaker. Both read `config/wavemakers.yaml` and take
-`wavemaker:=ladertanken|lilletanken|mc_lab` (default `ladertanken`).
+`wavemaker:=ladertanken|lilletanken|mclab` (default `ladertanken`).
 
 | | Terminal mode (experienced users) | Bridge mode (normal users) |
 |---|---|---|

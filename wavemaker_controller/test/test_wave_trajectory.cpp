@@ -255,7 +255,7 @@ TEST(WaveTrajectoryTest, FlapHingedAtFloorUsesBottomHingedFormula)
 
 TEST(WaveTrajectoryTest, RaisedHingeMatchesDeanAndDalrymple)
 {
-  // mc_lab: 1.5 m water, hinge 0.5 m and attachment 1.95 m above the floor; H 0.05 m, T 1.5 s.
+  // mclab: 1.5 m water, hinge 0.5 m and attachment 1.95 m above the floor; H 0.05 m, T 1.5 s.
   // Reference computed independently (Python) from H/S = 4 sinh(kh) / (sinh 2kh + 2kh) *
   // [sinh(kh) + (cosh(kl) - cosh(kh)) / (k (h - l))], scaled by (1.95 - 0.5) / (1.5 - 0.5).
   WavemakerGeometry geometry{"flap", 1.5, 1.95, 0.0, false, 1.0, 0.5};

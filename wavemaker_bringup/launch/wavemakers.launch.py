@@ -13,7 +13,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch_ros.actions import LifecycleNode, Node
 
-WAVEMAKERS = ['ladertanken', 'lilletanken', 'mc_lab']
+WAVEMAKERS = ['ladertanken', 'lilletanken', 'mclab']
 
 
 def _is_true(context, name):

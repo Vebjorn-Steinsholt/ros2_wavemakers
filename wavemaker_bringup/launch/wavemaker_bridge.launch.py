@@ -24,7 +24,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'wavemaker',
             default_value='ladertanken',
-            choices=['ladertanken', 'lilletanken', 'mc_lab'],
+            choices=['ladertanken', 'lilletanken', 'mclab'],
             description='Wavemaker to launch',
         ),
         DeclareLaunchArgument(
