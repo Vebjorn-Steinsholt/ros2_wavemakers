@@ -47,6 +47,11 @@ ament_target_dependencies(wavemaker_bridge
 install(TARGETS wavemaker_node wavemaker_bridge
   DESTINATION lib/${PROJECT_NAME}
 )
+# Test tool: stands in for the controller without hardware (see the script's docstring).
+install(PROGRAMS test/fake_controller.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME fake_controller
+)
 target_link_libraries(wavemaker_node mgate5101_driver::mgate5101)
 
 if(BUILD_TESTING)

@@ -21,6 +21,7 @@ Modbus TCP / PROFIBUS gateway.
 - [Lab computers](#lab-computers)
 - [Configuration](#configuration)
 - [Running a wavemaker](#running-a-wavemaker)
+  - [Web page](#web-page)
 - [Interfaces](#interfaces)
 - [How a motion runs](#how-a-motion-runs)
 - [Faults and stopping](#faults-and-stopping)
@@ -36,6 +37,7 @@ Modbus TCP / PROFIBUS gateway.
 | `wavemaker_interfaces` | `MoveWavemaker` action, `ReturnToUpright` and `CancelAllGoals` services. |
 | `wavemaker_controller` | `wavemaker_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `wavemaker_bridge` (see the note below). |
 | `wavemaker_bringup` | Launch file and per-wavemaker configuration (`config/wavemakers.yaml`). |
+| `wavemaker_web` | Web page for running a wavemaker through the bridge, in place of LabVIEW (see [Web page](#web-page)). |
 
 > **`wavemaker_bridge`** connects LabVIEW (RTI DDS, topics only) to the controller. It works with
 > the fake controller but has not been tested on the rig, and its LabVIEW interface is not yet
@@ -174,6 +176,41 @@ Launch arguments of `wavemakers.launch.py`: `wavemaker`, `with_bridge` (default 
 `enable_lifecycle_manager` (default `false`) and `bond_timeout` (default `4.0`, passed to the
 lifecycle manager and to both nodes). `wavemaker_bridge.launch.py` sets the first three for you and
 defaults `bond_timeout` to `1.0`.
+
+### Web page
+
+`wavemaker_web` replaces LabVIEW with a page in any browser on the lab network. Start bridge mode,
+then the page server for the same wavemaker:
+
+```bash
+ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken
+ros2 launch wavemaker_web web.launch.py wavemaker:=ladertanken port:=8080
+```
+
+Open the page by the Pi's hostname, `http://<wavemaker>-rpi.local:8080/` (for ladertanken
+`http://ladertanken-rpi.local:8080/`); the server prints this address when it starts. The page has
+height and period inputs, Start and Stop, the bridge's state and
+messages, a live plot of setpoint and measured position, and Return to upright.
+
+- The server publishes the bridge's `height`, `period`, `start` and `stop` topics and its
+  `heartbeat`, which it sends only while an open page keeps acknowledging the server's updates.
+  Closing the page, a frozen browser or a lost network stops the wave within about 1.5 s.
+- Any open page keeps the wave running, so with two pages open, closing one does not stop it.
+- After every start the server checks the height and period the bridge reports in its
+  "Starting wave" message, and stops the wave if they differ from what was sent: the three
+  topics are separate, and DDS does not guarantee their order.
+- The server listens on all interfaces (`host` parameter, default `0.0.0.0`) without a login:
+  anyone who can reach the port can run the wavemaker. Keep it on the lab network.
+- Only Python's standard library and rclpy are needed, so it also runs on a Raspberry Pi.
+
+To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the
+lifecycle manager and the page on their own ROS domain (77), reachable only from this computer,
+so the demo cannot reach LabVIEW or the real controller. Open the address the server prints,
+`http://<hostname>.local:8080/`:
+
+```bash
+ros2 launch wavemaker_web demo.launch.py
+```
 
 ## Interfaces
 

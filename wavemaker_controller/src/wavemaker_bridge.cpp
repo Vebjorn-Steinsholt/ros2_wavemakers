@@ -2,6 +2,7 @@
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "bondcpp/bond.hpp"
+#include <cstdio>
 #include <functional>
 #include <memory>
 #include <string>
@@ -159,7 +160,7 @@ public:
   void watch()
   {
     if ((state_ == State::Starting || state_ == State::Running) && !heartbeat_alive()) {
-      stop("Stopped: Heartbeat from Labview not alive");
+      stop("Stopped: client heartbeat (LabVIEW or web page) lost");
     }
     if (++watch_ticks_ % 10 == 0) {
       publish_state(state_, last_message_);
@@ -179,7 +180,7 @@ public:
       return;
     }
     if(!heartbeat_alive()) {
-      report("start refused: Labview heartbeat not alive");
+      report("start refused: no client heartbeat (LabVIEW or web page)");
       return;
     }
     if (!action_client_ || !action_client_->action_server_is_ready()) {
@@ -197,7 +198,12 @@ public:
     options.result_callback =
       [this](const MoveWavemakerGoalHandle::WrappedResult & result) {on_goal_result(result);};
     goal_requested_ = true;
-    publish_state(State::Starting, "Starting wavemaker");
+    // The values are in the message so clients can check which ones were used: height,
+    // period and start are separate topics, and DDS does not order them.
+    char text[96];
+    std::snprintf(
+      text, sizeof(text), "Starting wave: height %.4f m, period %.3f s", height_, period_);
+    publish_state(State::Starting, text);
     action_client_->async_send_goal(goal, options);
   }
 
