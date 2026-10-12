@@ -21,6 +21,7 @@ Modbus TCP / PROFIBUS gateway.
 - [Lab computers](#lab-computers)
 - [Configuration](#configuration)
 - [Running a wavemaker](#running-a-wavemaker)
+  - [Water depth](#water-depth)
   - [Web page](#web-page)
 - [Interfaces](#interfaces)
 - [How a motion runs](#how-a-motion-runs)
@@ -37,12 +38,11 @@ Modbus TCP / PROFIBUS gateway.
 | `wavemaker_interfaces` | `MoveWavemaker` action, `ReturnToUpright` and `CancelAllGoals` services. |
 | `wavemaker_controller` | `wavemaker_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `wavemaker_bridge` (see the note below). |
 | `wavemaker_bringup` | Launch file and per-wavemaker configuration (`config/wavemakers.yaml`). |
-| `wavemaker_web` | Web page for running a wavemaker through the bridge, in place of LabVIEW (see [Web page](#web-page)). |
+| `wavemaker_web` | Web page for running a wavemaker through the bridge (see [Web page](#web-page)). |
 
-> **`wavemaker_bridge`** connects LabVIEW (RTI DDS, topics only) to the controller. It works with
-> the fake controller but has not been tested on the rig, and its LabVIEW interface is not yet
-> documented here (TODO 16). Its topics are `height`, `period`, `start`, `stop` and `heartbeat`
-> in, and `wavemaker_state` / `wavemaker_message` out.
+> **`wavemaker_bridge`** connects topic-based clients, such as the web page, to the controller.
+> Its topics are `height`, `period`, `start`, `stop` and `heartbeat` in, and `wavemaker_state` /
+> `wavemaker_message` out.
 
 ## Build
 
@@ -59,14 +59,19 @@ source install/setup.bash
 ## Lab computers
 
 Each lab has its own Raspberry Pi, named after the wavemaker in `wavemakers.yaml`: hostname
-`<wavemaker>-rpi`, user `<wavemaker>`.
+`<wavemaker>-rpi`, user `<wavemaker>`. Each lab also has its own ROS domain, so the labs do not
+see each other's nodes.
 
-| Lab | Hostname | User |
-|---|---|---|
-| ladertanken | `ladertanken-rpi` | `ladertanken` |
+| Lab | Hostname | User | ROS domain |
+|---|---|---|---|
+| ladertanken | `ladertanken-rpi` | `ladertanken` | 1 |
 
 Log in with `ssh ladertanken@ladertanken-rpi.local`. Do not use the old Raspberry Pi default user
 `pi`.
+
+Set the lab's domain on the Pi and on every computer that should talk to it, for example in
+`~/.bashrc`: `export ROS_DOMAIN_ID=1`. Do not use the default domain 0: any other ROS user on the
+network would see the wavemaker and could command it.
 
 ## Configuration
 
@@ -80,7 +85,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | Parameter | Meaning |
 |---|---|
 | `wavemaker_type` | `piston` or `flap`. Selects the wave transfer function. |
-| `water_depth` | Water depth in m. |
+| `water_depth` | Water depth in m. Can be overridden for one run with the `water_depth` launch argument (see [Water depth](#water-depth)). |
 | `flap_attachment_height` | Flap only: height of the actuator attachment above the tank floor, m. Must be greater than `water_depth`. |
 | `hinge_height` | Flap only: height of the flap's hinge above the tank floor, m (default 0.0). Must be below `water_depth`. Used in the wave transfer function (Dean & Dalrymple) and to scale the stroke from the waterline to the attachment point. |
 | `wavemaker_upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
@@ -132,10 +137,11 @@ There are two ways to run a wavemaker. Both read `config/wavemakers.yaml` and ta
 | Launch file | `wavemakers.launch.py` | `wavemaker_bridge.launch.py` |
 | Nodes | Controller only | Controller and `wavemaker_bridge` |
 | Lifecycle | Stepped by hand (lifecycle manager optional, off by default) | Configured and activated automatically by the Nav2 lifecycle manager |
-| Control | `ros2 action` / `ros2 service` (see [Interfaces](#interfaces)) | The bridge's topics: `height`, `period`, then `start`; `stop`; a `heartbeat` from LabVIEW |
+| Control | `ros2 action` / `ros2 service` (see [Interfaces](#interfaces)) | The bridge's topics: `height`, `period`, then `start`; `stop`; a `heartbeat` from the client (the web page) |
 | If a node dies | Nothing stops the controller | The lifecycle manager brings both nodes down after `bond_timeout` (default 1 s), which disables the drive |
 
-> Bridge mode has not been tested on the rig yet (TODO 10, 16). For first tests, use terminal mode.
+> Bridge mode with the web page runs on the lab Pi (2026-10-12). For first tests on a new rig,
+> use terminal mode.
 
 ### Terminal mode
 
@@ -174,12 +180,38 @@ busy PC.
 
 Launch arguments of `wavemakers.launch.py`: `wavemaker`, `with_bridge` (default `false`),
 `enable_lifecycle_manager` (default `false`) and `bond_timeout` (default `4.0`, passed to the
-lifecycle manager and to both nodes). `wavemaker_bridge.launch.py` sets the first three for you and
-defaults `bond_timeout` to `1.0`.
+lifecycle manager and to both nodes), and `water_depth` (see below).
+`wavemaker_bridge.launch.py` sets the first three for you and defaults `bond_timeout` to `1.0`.
+
+### Water depth
+
+The water depth changes with the tank fill, and the controller uses it to compute every wave.
+Measure it before a session and pass it at launch; it overrides `water_depth` in
+`wavemakers.yaml` for that run only. All three launch files take it:
+
+```bash
+# lab Pi: tank filled to 0.95 m
+ros2 launch wavemaker_bringup lab.launch.py wavemaker:=ladertanken water_depth:=0.95
+
+# the same for bridge mode or terminal mode
+ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken water_depth:=0.95
+ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken water_depth:=0.95
+```
+
+Check what the controller uses:
+
+```bash
+ros2 param get /wavemakers/ladertanken/controller water_depth
+```
+
+Without the argument the value in `wavemakers.yaml` is used. Change the yaml (on the PC, then
+commit and pull on the Pi) only when the usual depth changes; editing it on the Pi makes the next
+`git pull` refuse. For a flap the depth must stay below `flap_attachment_height` and above
+`hinge_height`, or configure fails. Readjust the spring balance for the new depth (TODO 34).
 
 ### Web page
 
-`wavemaker_web` replaces LabVIEW with a page in any browser on the lab network. Start bridge mode,
+`wavemaker_web` is a page for running a wavemaker from any browser on the lab network. Start bridge mode,
 then the page server for the same wavemaker:
 
 ```bash
@@ -214,7 +246,7 @@ messages, a live plot of setpoint and measured position, and Return to upright.
 
 To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the
 lifecycle manager and the page on their own ROS domain (77), reachable only from this computer,
-so the demo cannot reach LabVIEW or the real controller. Open the address the server prints,
+so the demo cannot reach other computers or the real controller. Open the address the server prints,
 `http://<hostname>.local:8080/`:
 
 ```bash

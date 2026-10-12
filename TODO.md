@@ -80,10 +80,10 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
 
 - [ ] **16. Test and document the bridge.** (`wavemaker_controller/test/`, `README.md`)
   - A gtest with a fake `move_wavemaker` server: start and refused start, stop (topic and service), stop during start, lost heartbeat, controller rejection and abort, deactivation (`inactive`), and item 12. `test/fake_controller.py` shows the fake's behaviour.
-  - Document the LabVIEW interface in the README: topics, types, QoS, the start sequence (height, period, then `start`), heartbeat, `wavemaker_state` values, DDS names (`rt/...`, `std_msgs::msg::dds_::Bool_` etc.).
+  - Document the bridge interface in the README: topics, types, QoS, the start sequence (height, period, then `start`), heartbeat, `wavemaker_state` values.
 
 - [ ] **17. Decide the fault policy in bridge mode.** (`wavemaker_bringup/launch/`)
-  After a controller fault the controller goes to unconfigured and breaks its bond, so the lifecycle manager also brings the bridge down; LabVIEW sees `inactive` and someone must relaunch. Decide whether that is acceptable, and check on the rig that the 1 s bond timeout doesn't trigger falsely (no false trigger in the controller-only manager test, 2026-10-08; recheck with the bridge).
+  After a controller fault the controller goes to unconfigured and breaks its bond, so the lifecycle manager also brings the bridge down; the web page shows `inactive` and someone must relaunch. Decide whether that is acceptable, and check on the rig that the 1 s bond timeout doesn't trigger falsely (no false trigger in the controller-only manager test, 2026-10-08; recheck with the bridge).
 
 - [ ] **18. Decide whether a cancel should return to upright.**
   Cancels and the bridge's stop now stop and hold. The earlier plan to return to upright after every cancel conflicts with that. Confirm "hold" and drop the plan, or make it an option with tests.
@@ -118,7 +118,7 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
   Far from the first wave position with a short period, the start is too fast and the goal is rejected. Use enough whole periods to stay under `return_to_upright_max_velocity_mps`.
 
 - [ ] **26. Goal type is chosen by a parameter, and the bridge only starts regular waves.**
-  Choose per goal (non-empty `positions` → pregenerated) or name the configured mode in the rejection. Decide whether LabVIEW needs pregenerated waves.
+  Choose per goal (non-empty `positions` → pregenerated) or name the configured mode in the rejection. Decide whether the web page needs pregenerated waves.
 
 - [ ] **27. A regular wave from the terminal runs until it is cancelled.**
   In bridge mode the heartbeat covers a lost client; from the terminal nothing does. Consider an optional `duration` in `MoveWavemaker.action`.
@@ -162,6 +162,8 @@ Kept as a record of physical checks already done.
 - Terminal-mode launch, interface inspection, configure without activate, and goal rejection while inactive.
 - Lab waves, flap connected, 1.01 m water depth, limits ±200° and 170 rpm (2026-10-08). All eight steps ran, each followed by `return_to_upright` with the flap upright afterwards. In order of rising acceleration, as `height` [m] / `period` [s] (run with the action's old `amplitude` field, H/2; lab steepness; expected drive angle and peak speed by linear theory): 0.026 / 1.0 (1/60; ±21°, 22 rpm), 0.049 / 1.2 (1/45; ±45°, 40 rpm), 0.074 / 1.2 (1/30; ±68°, 60 rpm), 0.108 / 1.5 (1/30; ±132°, 92 rpm), 0.051 / 0.7 (1/15; ±35°, 53 rpm), 0.104 / 1.0 (1/15; ±83°, 87 rpm), 0.148 / 1.2 (1/15; ±137°, 119 rpm), 0.171 / 1.3 (1/15, the largest lab wave; ±173°, 139 rpm). Wave heights were not measured (item 33).
 - `cancel_all_goals` stops a running wave, flap connected (2026-10-08).
+- The lab Pi runs everything (2026-10-12): `ladertanken-rpi` (Ubuntu Server 24.04, ROS 2 Jazzy, default Fast DDS, ROS domain 1) on the wired lab network at 192.168.1.98 runs `lab.launch.py` (controller, bridge, lifecycle manager, web page), started over SSH; the web page works from the lab network. The PC is no longer needed for the gateway.
+- Gateway from the Pi over the cable (2026-10-12): cycles 2.7 ms (p99 about 3 ms), no read/write errors or reconnects; a second sweep had no stalls at 20–50 ms. The ~50–210 ms stalls at faster polling come with TCP retransmissions (`TcpRetransSegs` +54 during one sweep): the gateway loses packets when polled fast. `poll_interval_ms: 20` stays.
 - Lifecycle manager, controller only (`enable_lifecycle_manager:=true bond_timeout:=1.0`), flap connected (2026-10-08): the manager configures and activates the controller by itself; a wave runs; PAUSE (`manage_nodes` command 1) during a wave aborts the goal, deactivates the controller and disables the drive; RESUME (2) reactivates it, `return_to_upright` and a new wave work; SHUTDOWN (4) finalizes the controller with the drive disabled. The 1 s bond timeout did not trigger falsely. Not tested: a crashed controller (needs the MGate fault timeout first, item 5).
 
 ## Actuator conversion calibration
@@ -208,7 +210,7 @@ ros2 service call $NS/return_to_upright wavemaker_interfaces/srv/ReturnToUpright
 ros2 lifecycle set $NS/controller deactivate        # disables the drive
 ```
 
-Bridge (LabVIEW role played from the terminal), with the controller active:
+Bridge (the web page's role played from the terminal), with the controller active:
 
 ```bash
 ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken with_bridge:=true

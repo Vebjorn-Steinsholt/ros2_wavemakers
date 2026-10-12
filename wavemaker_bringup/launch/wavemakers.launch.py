@@ -26,6 +26,7 @@ def _launch_setup(context):
     with_bridge = _is_true(context, 'with_bridge')
     enable_lifecycle_manager = _is_true(context, 'enable_lifecycle_manager')
     bond_timeout = float(context.launch_configurations['bond_timeout'])
+    water_depth = context.launch_configurations['water_depth']
     namespace = f'wavemakers/{wavemaker}'
 
     actions = [
@@ -34,7 +35,9 @@ def _launch_setup(context):
             executable='wavemaker_node',
             namespace=namespace,
             name='controller',
-            parameters=[config_file, {'bond_timeout': bond_timeout}],
+            # A water_depth given at launch overrides the one in wavemakers.yaml.
+            parameters=[config_file, {'bond_timeout': bond_timeout}] +
+            ([{'water_depth': float(water_depth)}] if water_depth else []),
             output='screen',
         )
     ]
@@ -100,6 +103,11 @@ def generate_launch_description():
             default_value='4.0',
             description='Seconds without a bond heartbeat before the lifecycle manager brings '
                         'the nodes down',
+        ),
+        DeclareLaunchArgument(
+            'water_depth',
+            default_value='',
+            description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
         ),
         OpaqueFunction(function=_launch_setup),
     ])

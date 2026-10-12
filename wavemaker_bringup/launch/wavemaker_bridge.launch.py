@@ -33,6 +33,11 @@ def generate_launch_description():
             description='Seconds without a bond heartbeat before everything is brought down; '
                         'this is how long the paddle can keep moving after the bridge dies',
         ),
+        DeclareLaunchArgument(
+            'water_depth',
+            default_value='',
+            description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(base_launch),
             launch_arguments={
@@ -40,6 +45,7 @@ def generate_launch_description():
                 'with_bridge': 'true',
                 'enable_lifecycle_manager': 'true',
                 'bond_timeout': LaunchConfiguration('bond_timeout'),
+                'water_depth': LaunchConfiguration('water_depth'),
             }.items(),
         ),
     ])

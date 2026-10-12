@@ -29,9 +29,17 @@ def generate_launch_description():
             description='Wavemaker to run',
         ),
         DeclareLaunchArgument('port', default_value='8080', description='Web page port'),
+        DeclareLaunchArgument(
+            'water_depth',
+            default_value='',
+            description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(bridge_launch),
-            launch_arguments={'wavemaker': LaunchConfiguration('wavemaker')}.items(),
+            launch_arguments={
+                'wavemaker': LaunchConfiguration('wavemaker'),
+                'water_depth': LaunchConfiguration('water_depth'),
+            }.items(),
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(web_launch),
