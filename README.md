@@ -187,6 +187,15 @@ ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken
 ros2 launch wavemaker_web web.launch.py wavemaker:=ladertanken port:=8080
 ```
 
+Or both in one command, as on a lab Pi (lab staff log in over SSH and start it):
+
+```bash
+ros2 launch wavemaker_bringup lab.launch.py wavemaker:=ladertanken port:=8080
+```
+
+The drive is enabled as soon as this runs. If the SSH session drops, the launch is killed with
+it; start it inside `tmux` so a lost connection does not take it down (`tmux attach` to return).
+
 Open the page by the Pi's hostname, `http://<wavemaker>-rpi.local:8080/` (for ladertanken
 `http://ladertanken-rpi.local:8080/`); the server prints this address when it starts. The page has
 height and period inputs, Start and Stop, the bridge's state and
