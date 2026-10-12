@@ -30,7 +30,7 @@
     wavemaker_upright_position_m: 0.0  # Upright oscillation center [m]
     wavemaker_upright_is_minimum: false
     wavemaker_mode_pregenerated: false
-    water_depth: 1.01            
+    water_depth: 1.0         
     flap_attachment_height: 1.30
     hinge_height: 0.0
     actuator_drive_type: "angular"

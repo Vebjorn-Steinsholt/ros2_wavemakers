@@ -106,6 +106,15 @@ Numbering restarted on 2026-10-06 when the physical checklist and the code TODO 
   - Recheck after changing the water depth or the calibration from item 14.
   - Not applied to pregenerated waves; decide whether it should be.
 
+- [ ] **35. Run `lab.launch.py` on the lab Pi as a systemd service.** (`rpi/`; rig for the stop test)
+  Today lab staff start it over SSH inside `tmux`. A service survives a dropped SSH session, logs to `journalctl`, and is started and stopped the same way on every Pi.
+  - **Not started at boot.** The drive is enabled as soon as `lab.launch.py` runs, so a power cut or reboot must not enable it by itself. Install the unit but do not `systemctl enable` it; staff run `sudo systemctl start wavemaker` / `stop wavemaker`. Revisit auto-start only after item 5 (gateway fault timeout) is done; the web server alone could then run at boot if wanted.
+  - **One unit file for all Pis, settings per Pi.** `rpi/wavemaker.service` runs `rpi/run.sh`, which sources `/opt/ros/jazzy` and `~/ros_ws/install/setup.bash` and `exec`s `ros2 launch wavemaker_bringup lab.launch.py`. Per-Pi values (`WAVEMAKER`, `PORT`, `WATER_DEPTH`, `ROS_DOMAIN_ID`) go in `/etc/default/wavemaker` (`EnvironmentFile=`). systemd does not read `~/.bashrc`, so `ROS_DOMAIN_ID` must be set there or the service runs on domain 0, visible to everyone (see *Lab computers* in the README).
+  - **Unit settings:** `User=<wavemaker>`; `After=`/`Wants=network-online.target` (DDS and the gateway need the network up); `Restart=no`, because a restart re-enables the drive and the fault policy (item 17) is undecided, and `ros2 launch` does not exit when a child dies anyway; `KillSignal=SIGINT` with `KillMode=mixed`, so the launch receives Ctrl-C and stops the nodes in order and the controller disables the drive; `TimeoutStopSec=30`, longer than `IndraDrive::disable()` can take (item 29). Note that `ros2 launch` escalates to SIGTERM after 5 s by itself; check that the drive is disabled even then.
+  - **Permissions:** lab staff need `systemctl start/stop/status wavemaker` without full sudo; add a sudoers rule (or polkit rule) for those three commands only.
+  - **Docs:** `rpi/README.md` with install steps (copy or link the unit, create `/etc/default/wavemaker`, `daemon-reload`), start/stop/status, and `journalctl -u wavemaker -f`. Fix the `pi/README.md` reference in `lab.launch.py`, and replace the `tmux` advice in the README's *Web page* section.
+  - **Rig test:** start the service, run a wave from the page, `systemctl stop wavemaker` mid-wave; the wave stops, the drive is disabled, and the journal shows a clean shutdown. Reboot the Pi and check that nothing started.
+
 ## Low
 
 - [ ] **23. A return to upright cannot be stopped by a cancel or the bridge's stop.** (`wavemaker_node.cpp`)
