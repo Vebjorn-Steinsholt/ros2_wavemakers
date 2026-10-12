@@ -3,6 +3,7 @@
 const PLOT_SECONDS = 20;
 const STALE_MS = 1000;  // no update for this long counts as disconnected
 const GAP_SECONDS = 0.25;  // longer pauses between samples break the line
+const LOG_LINES = 500;  // older log lines are dropped from the page
 
 const $ = (id) => document.getElementById(id);
 const series = { setpoint: [], position: [] };
@@ -41,8 +42,40 @@ function onUpdate(update) {
   for (const points of Object.values(series)) {
     while (points.length && points[0][0] < serverTime - PLOT_SECONDS) points.shift();
   }
+  appendLogs(update.logs);
   render();
   drawPlot();
+}
+
+function formatStamp(stamp) {
+  const date = new Date(stamp * 1000);
+  const ms = String(date.getMilliseconds()).padStart(3, '0');
+  return `${date.toLocaleTimeString('en-GB')}.${ms}`;
+}
+
+function appendLogs(entries) {
+  if (!entries.length) return;
+  const box = $('log');
+  // Keep following new lines unless the user has scrolled up to read older ones.
+  const follow = box.scrollTop + box.clientHeight >= box.scrollHeight - 20;
+  for (const entry of entries) {
+    const line = document.createElement('div');
+    line.className = `log-line ${entry.level}`;
+    for (const [cls, text] of [
+      ['log-time', formatStamp(entry.stamp)],
+      ['log-level', entry.level.toUpperCase()],
+      ['log-node', entry.node],
+      ['log-text', entry.text],
+    ]) {
+      const span = document.createElement('span');
+      span.className = cls;
+      span.textContent = text;
+      line.append(span);
+    }
+    box.append(line);
+  }
+  while (box.childElementCount > LOG_LINES) box.firstElementChild.remove();
+  if (follow) box.scrollTop = box.scrollHeight;
 }
 
 async function post(path, body) {
@@ -56,6 +89,8 @@ async function post(path, body) {
 
 function connect() {
   const events = new EventSource('api/events');
+  // The server sends its whole log history on every new connection, so start over.
+  events.onopen = () => $('log').replaceChildren();
   events.onmessage = (event) => {
     // Every acknowledged event keeps the bridge heartbeat going.
     fetch('api/ack', { method: 'POST' }).catch(() => {});
@@ -158,6 +193,13 @@ $('return').addEventListener('click', async () => {
   }
   render();
 });
+
+$('logLevel').addEventListener('change', () => {
+  $('log').dataset.min = $('logLevel').value;
+  $('log').scrollTop = $('log').scrollHeight;
+});
+
+$('logClear').addEventListener('click', () => $('log').replaceChildren());
 
 render();
 setInterval(render, 500);

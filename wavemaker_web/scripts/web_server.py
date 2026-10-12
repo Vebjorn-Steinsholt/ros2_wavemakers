@@ -10,6 +10,9 @@ freezes or the network drops, the heartbeat stops and the bridge stops the wave.
     ros2 run wavemaker_web web_server --ros-args -r __ns:=/wavemakers/ladertanken -p port:=8080
 
 Every open page counts: the wave keeps running while any one of them is alive.
+
+The page also shows the log of every node in the wavemaker's namespace (controller, bridge,
+lifecycle manager, this server), read from /rosout.
 """
 
 from collections import deque
@@ -24,6 +27,7 @@ import threading
 import time
 
 from ament_index_python.packages import get_package_share_directory
+from rcl_interfaces.msg import Log
 import rclpy
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
@@ -37,10 +41,14 @@ PLOT_WINDOW_S = 30.0     # setpoint and position history kept for the plot
 START_DELAY_S = 0.3      # between sending height/period and start
 START_CHECK_S = 2.0      # how long to wait for the bridge's "Starting wave" message
 RETURN_TIMEOUT_S = 60.0
+LOG_HISTORY = 300        # log lines kept for pages that connect later
 STARTING_RE = re.compile(r'height ([-+0-9.eE]+) m, period ([-+0-9.eE]+) s')
 RETURN_STATUS = {
     0: 'SUCCESS', 1: 'CONTROLLER_INACTIVE', 2: 'BUSY', 3: 'ACTUATOR_NOT_READY',
     4: 'TIMEOUT', 5: 'ACTUATOR_FAULT', 6: 'POSITION_INVALID',
+}
+LOG_LEVELS = {
+    Log.DEBUG: 'debug', Log.INFO: 'info', Log.WARN: 'warn', Log.ERROR: 'error', Log.FATAL: 'fatal',
 }
 STATIC_FILES = {
     '/': ('index.html', 'text/html; charset=utf-8'),
@@ -65,6 +73,11 @@ class WebNode(Node):
         self._notice = ''
         self._samples = deque()   # (index, time, kind, value)
         self._sample_count = 0
+        self._logs = deque(maxlen=LOG_HISTORY)  # (index, entry)
+        self._log_count = 0
+        # Logger names use dots: /wavemakers/ladertanken/controller logs as
+        # wavemakers.ladertanken.controller.
+        self._log_prefix = self.get_namespace().strip('/').replace('/', '.')
         self._last_ack = -math.inf
         self._t0 = time.monotonic()
 
@@ -84,6 +97,12 @@ class WebNode(Node):
             Float64, 'wavemaker_setpoint', lambda msg: self._on_sample('setpoint', msg), 10)
         self.create_subscription(
             Float64, 'wavemaker_position', lambda msg: self._on_sample('position', msg), 10)
+        # Matches the /rosout publishers (reliable, transient local), so a page opened just after
+        # the controller starts still gets its configure and activate lines.
+        rosout_qos = QoSProfile(
+            depth=100, reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.create_subscription(Log, '/rosout', self._on_log, rosout_qos)
         self._return_client = self.create_client(ReturnToUpright, 'return_to_upright')
         self.create_timer(0.1, self._send_heartbeat)
 
@@ -110,6 +129,20 @@ class WebNode(Node):
             while self._samples and self._samples[0][1] < now - PLOT_WINDOW_S:
                 self._samples.popleft()
 
+    def _on_log(self, msg):
+        prefix = self._log_prefix
+        if prefix and msg.name != prefix and not msg.name.startswith(prefix + '.'):
+            return
+        entry = {
+            'stamp': msg.stamp.sec + msg.stamp.nanosec * 1e-9,
+            'level': LOG_LEVELS.get(msg.level, str(msg.level)),
+            'node': msg.name[len(prefix):].lstrip('.') or msg.name,
+            'text': msg.msg,
+        }
+        with self._lock:
+            self._log_count += 1
+            self._logs.append((self._log_count, entry))
+
     def _send_heartbeat(self):
         if self.page_alive():
             self._heartbeat_pub.publish(Bool(data=True))
@@ -127,11 +160,12 @@ class WebNode(Node):
         with self._lock:
             return time.monotonic() - self._last_ack < ACK_TIMEOUT_S
 
-    def snapshot(self, after_sample):
-        """Return the page update and the index of the last sample it contains."""
+    def snapshot(self, after_sample, after_log):
+        """Return the page update and the indices of the last sample and log line it contains."""
         with self._lock:
             samples = [[t, kind, value] for index, t, kind, value in self._samples
                        if index > after_sample]
+            logs = [entry for index, entry in self._logs if index > after_log]
             update = {
                 'namespace': self.get_namespace(),
                 'state': self._state,
@@ -139,8 +173,9 @@ class WebNode(Node):
                 'notice': self._notice,
                 'time': self._now(),
                 'samples': samples,
+                'logs': logs,
             }
-            return update, self._sample_count
+            return update, self._sample_count, self._log_count
 
     def start(self, height, period):
         with self._lock:
@@ -241,9 +276,10 @@ def make_handler(node, html_dir):
             self.send_header('Cache-Control', 'no-cache')
             self.end_headers()
             last_sample = 0
+            last_log = 0
             try:
                 while True:
-                    update, last_sample = node.snapshot(last_sample)
+                    update, last_sample, last_log = node.snapshot(last_sample, last_log)
                     self.wfile.write(f'data: {json.dumps(update)}\n\n'.encode())
                     self.wfile.flush()
                     time.sleep(EVENT_PERIOD_S)

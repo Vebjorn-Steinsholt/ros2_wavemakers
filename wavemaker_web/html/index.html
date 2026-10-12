@@ -57,6 +57,23 @@
       </section>
     </div>
 
+    <section class="card log-card">
+      <div class="card-head">
+        <h2>Log</h2>
+        <div class="log-tools">
+          <label class="muted">Show
+            <select id="logLevel">
+              <option value="debug">everything</option>
+              <option value="info" selected>info and up</option>
+              <option value="warn">warnings and errors</option>
+            </select>
+          </label>
+          <button type="button" id="logClear">Clear</button>
+        </div>
+      </div>
+      <div id="log" class="log" data-min="info"></div>
+    </section>
+
     <footer class="muted">
       The wave runs while this page is open and connected. Closing every open page, or losing the
       network, stops the wave within about 1.5 seconds.

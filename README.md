@@ -231,7 +231,12 @@ it; start it inside `tmux` so a lost connection does not take it down (`tmux att
 Open the page by the Pi's hostname, `http://<wavemaker>-rpi.local:8080/` (for ladertanken
 `http://ladertanken-rpi.local:8080/`); the server prints this address when it starts. The page has
 height and period inputs, Start and Stop, the bridge's state and
-messages, a live plot of setpoint and measured position, and Return to upright.
+messages, a live plot of setpoint and measured position, Return to upright, and a log.
+
+- The log shows what every node in the wavemaker's namespace (controller, bridge, lifecycle
+  manager, page server) logs, read from `/rosout`, with a level filter. It does not show output
+  that is not a ROS log call, such as `ros2 launch`'s "process has died" or a crash trace; see the
+  terminal or `journalctl` for those.
 
 - The server publishes the bridge's `height`, `period`, `start` and `stop` topics and its
   `heartbeat`, which it sends only while an open page keeps acknowledging the server's updates.

@@ -128,4 +128,40 @@ button.danger { background: var(--danger); border-color: var(--danger); color: #
 
 canvas { width: 100%; display: block; }
 
+.log-card { margin-top: 12px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.card-head h2 { margin: 0; }
+.log-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.log-tools label { display: flex; gap: 6px; align-items: center; }
+
+select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.log {
+  height: 280px;
+  overflow: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font: 0.8rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.log-line { display: flex; gap: 10px; }
+.log-time, .log-level, .log-node { flex: none; color: var(--muted); }
+.log-level { width: 3.5rem; }
+.log-text { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.log-line.debug { color: var(--muted); }
+.log-line.warn, .log-line.warn .log-level { color: var(--warn); }
+.log-line.error, .log-line.fatal, .log-line.error .log-level, .log-line.fatal .log-level { color: var(--danger); }
+.log[data-min="info"] .debug,
+.log[data-min="warn"] .debug,
+.log[data-min="warn"] .info { display: none; }
+@media (max-width: 600px) { .log-node { display: none; } }
+
 footer { margin-top: 12px; }
