@@ -52,6 +52,10 @@ install(PROGRAMS test/fake_controller.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME fake_controller
 )
+install(PROGRAMS src/soft_stop.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME soft_stop
+)
 target_link_libraries(wavemaker_node mgate5101_driver::mgate5101)
 
 if(BUILD_TESTING)

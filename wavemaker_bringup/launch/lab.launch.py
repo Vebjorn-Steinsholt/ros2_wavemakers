@@ -1,5 +1,5 @@
 """
-Everything a lab Pi runs: controller, bridge, lifecycle manager and web page.
+Everything a lab Pi runs: controller, bridge, lifecycle manager, soft stop button node and web page.
 
 Started by lab staff, normally through the wavemaker service (see rpi/README.md):
 
@@ -15,6 +15,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
@@ -34,6 +35,11 @@ def generate_launch_description():
             default_value='',
             description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
         ),
+        DeclareLaunchArgument(
+            'soft_stop_pin',
+            default_value='17',
+            description='GPIO pin for soft stop button',
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(bridge_launch),
             launch_arguments={
@@ -47,5 +53,15 @@ def generate_launch_description():
                 'wavemaker': LaunchConfiguration('wavemaker'),
                 'port': LaunchConfiguration('port'),
             }.items(),
+        ),
+        Node(
+            package='wavemaker_controller',
+            executable='soft_stop',
+            name='soft_stop',
+            namespace=['wavemakers/', LaunchConfiguration('wavemaker')],
+            parameters=[{
+                'pin': LaunchConfiguration('soft_stop_pin'),
+            }],
+            output='screen',
         ),
     ])

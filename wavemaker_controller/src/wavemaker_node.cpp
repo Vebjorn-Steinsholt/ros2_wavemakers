@@ -23,6 +23,7 @@
 #include "wavemaker_interfaces/srv/cancel_all_goals.hpp"
 #include "wavemaker_interfaces/srv/return_to_upright.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "indradrive_actuator.hpp"
 #include "wave_math.hpp"
 #include "wave_trajectory.hpp"
@@ -54,6 +55,7 @@ public:
   {
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
     declare_parameter<double>("bond_timeout", 4.0);
+    declare_parameter<double>("soft_stop_timeout_s", 0.2);
     declare_parameter<std::string>("wavemaker_type", "piston");
     declare_parameter<std::string>("driver_address", "");
     declare_parameter<std::string>("wavemaker_id", "");
@@ -219,6 +221,8 @@ public:
         return CallbackReturn::FAILURE;
       }
     }
+    soft_stop_configured_ns_ = steady_now_ns();
+    soft_stop_missing_logged_ = false;
     try {
       actuator_ = actuator_factory_(*this);
       actuator_->set_fault_callback(
@@ -341,6 +345,9 @@ public:
           if (!accepting_goals_) {
             reject_status = ReturnToUpright::Response::CONTROLLER_INACTIVE;
             reject_message = "Controller not active or not accepting goals";
+          } else if (soft_stop_active()) {
+            reject_status = ReturnToUpright::Response::CONTROLLER_INACTIVE;
+            reject_message = "Controller soft stopped";
           } else if (!std::isfinite(tolerance) || tolerance < 0.0) {
             reject_status = ReturnToUpright::Response::POSITION_INVALID;
             reject_message = "invalid tolerance";
@@ -447,9 +454,41 @@ public:
     // angular drive), published with the others.
     actuator_setpoint_publisher_ =
       create_publisher<std_msgs::msg::Float64>("wavemaker_actuator_setpoint", 10);
+    soft_stop_timeout_ns_ = static_cast<int64_t>(
+      get_parameter("soft_stop_timeout_s").as_double() * 1e9
+    );
+    soft_stopped_.store(true);
+    soft_stop_last_msg_ns_.store(0);
+    soft_stop_callback_group_ = create_callback_group(
+    rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    rclcpp::SubscriptionOptions options;
+    options.callback_group = soft_stop_callback_group_;
+
+    soft_stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
+        "soft_stop", rclcpp::QoS(1).reliable().transient_local(),
+      [this](const std_msgs::msg::Bool & msg) {
+        if (soft_stop_last_msg_ns_.exchange(steady_now_ns()) == 0) {
+          RCLCPP_INFO(get_logger(), "Soft stop connected");
+        }
+        const bool was_stopped = soft_stopped_.exchange(msg.data);
+        if (msg.data && !was_stopped) {
+          RCLCPP_WARN(
+                get_logger(), "Soft stop engaged: Stopping the wavemaker");
+        } else if (!msg.data && was_stopped) {
+          RCLCPP_WARN(
+                get_logger(), "Soft stop released: New waves can be generated");
+        }
+        });
+    soft_stop_silent_logged_ = false;
+    RCLCPP_INFO(
+      get_logger(), "Waiting for soft_stop; goals are rejected until soft stop is released");
     fault_timer_ = create_wall_timer(
       std::chrono::milliseconds(100),
-      [this]() {process_driver_fault();});
+      [this]() {
+        process_driver_fault();
+        check_soft_stop_liveness();
+      });
 
     RCLCPP_INFO(
       get_logger(), "Configuring from state '%s' as a %s wavemaker, control loop at %.1f Hz",
@@ -532,6 +571,42 @@ public:
 private:
   enum class ReturnStatus { Success, Timeout, Fault, PositionInvalid, Stopped };
 
+  void check_soft_stop_liveness()
+  {
+    const int64_t last_msg_ns = soft_stop_last_msg_ns_.load();
+    if (last_msg_ns == 0) {
+      if (!soft_stop_missing_logged_ &&
+        steady_now_ns() - soft_stop_configured_ns_ > 5'000'000'000)
+      {
+        RCLCPP_ERROR(
+          get_logger(),
+          "Soft stop has not published within 5 s of configure; is the node running?");
+        soft_stop_missing_logged_ = true;
+
+      }
+      return;
+    }
+    const bool silent = steady_now_ns() - last_msg_ns > soft_stop_timeout_ns_;
+    if (silent && !soft_stop_silent_logged_) {
+      RCLCPP_ERROR(
+        get_logger(), "No Soft stop message received for over %.0f ms; treating as stopped",
+        soft_stop_timeout_ns_ / 1e6);
+    }
+    soft_stop_silent_logged_ = silent;
+  }
+
+  static int64_t steady_now_ns()
+  {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
+
+  bool soft_stop_active() const
+  {
+    return soft_stopped_.load() ||
+           steady_now_ns() - soft_stop_last_msg_ns_.load() > soft_stop_timeout_ns_;
+  }
+
   // Stops goals, the return worker, the drive and the bond. Used by every transition
   // that leaves the active state.
   void stop_activity()
@@ -562,10 +637,12 @@ private:
     cancel_service_callback_group_.reset();
     cancel_client_callback_group_.reset();
     return_to_upright_service_callback_group_.reset();
+    soft_stop_callback_group_.reset();
     setpoint_publisher_.reset();
     velocity_publisher_.reset();
     position_publisher_.reset();
     actuator_setpoint_publisher_.reset();
+    soft_stop_subscription_.reset();
     fault_timer_.reset();
     actuator_.reset();
   }
@@ -773,6 +850,10 @@ private:
       RCLCPP_WARN(get_logger(), "Rejecting goal because the actuator is faulted or not live");
       return rclcpp_action::GoalResponse::REJECT;
     }
+    if (soft_stop_active()) {
+      RCLCPP_WARN(get_logger(), "Rejecting goal because the wavemaker is soft stopped");
+      return rclcpp_action::GoalResponse::REJECT;
+    }
 
     if (goal_pending_ || returning_to_upright_ || (goal_handle_ && goal_handle_->is_active())) {
       RCLCPP_WARN(
@@ -895,6 +976,11 @@ private:
     rclcpp::WallRate loop_rate(control_rate_hz_);  // steady clock, like elapsed
 
     while (rclcpp::ok() && !stop_execution_.load()) {
+      if (soft_stop_active()) {
+        RCLCPP_WARN(get_logger(), "Soft stop engaged during return to upright");
+        actuator_->halt();
+        return ReturnStatus::Stopped;
+      }
       if (actuator_->faulted()) {
         RCLCPP_ERROR(get_logger(), "Actuator fault detected");
         actuator_->halt();
@@ -950,6 +1036,19 @@ private:
         result->success = false;
         result->message = "Goal canceled; actuator halted and remains enabled";
         goal_handle->canceled(result);
+        return;
+      }
+      if (soft_stop_active()) {
+        actuator_->halt();
+
+        {
+          std::lock_guard<std::mutex> lock(goal_mutex_);
+          if (goal_handle_ == goal_handle) {
+            goal_handle_.reset();
+            goal_pending_ = false;
+          }
+        }
+        abort_goal(goal_handle, "Soft stop engaged; actuator halted and remains enabled");
         return;
       }
 
@@ -1101,9 +1200,9 @@ private:
   bool goal_pending_{false};
   bool returning_to_upright_{false};  // guarded by goal_mutex_
   double return_max_velocity_mps_{0.1};
-  double control_rate_hz_{100.0};
+  double control_rate_hz_{100.0};  // from actuator_->update_period_ms(), set in on_configure
   double positioning_velocity_margin_{1.2};
-  double goal_velocity_cap_mps_{0.0};  // set in prepare_goal, used by execute_goal  // from actuator_->update_period_ms(), set in on_configure
+  double goal_velocity_cap_mps_{0.0};  // set in prepare_goal, used by execute_goal
   double return_min_duration_s_{1.0};
   double return_default_tolerance_m_{0.002};
   double return_timeout_margin_s_{2.0};
@@ -1112,17 +1211,25 @@ private:
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
   rclcpp::CallbackGroup::SharedPtr cancel_service_callback_group_;
   rclcpp::CallbackGroup::SharedPtr cancel_client_callback_group_;
+  rclcpp::CallbackGroup::SharedPtr soft_stop_callback_group_;
   rclcpp::CallbackGroup::SharedPtr return_to_upright_service_callback_group_;
   rclcpp_action::Client<MoveWavemaker>::SharedPtr cancel_client_;
   rclcpp::Service<CancelAllGoals>::SharedPtr cancel_service_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr soft_stop_subscription_;
   rclcpp::Service<ReturnToUpright>::SharedPtr return_to_upright_service_;
   rclcpp::TimerBase::SharedPtr fault_timer_;
   std::atomic<bool> stop_execution_{false};
+  std::atomic<bool> soft_stopped_{true};
+  std::atomic<int64_t> soft_stop_last_msg_ns_{0};
+  int64_t soft_stop_timeout_ns_{0};
+  int64_t soft_stop_configured_ns_{0};
+  bool soft_stop_missing_logged_{false};
   std::atomic<bool> fault_pending_{false};
   std::atomic<bool> fault_transition_pending_{false};
   std::mutex fault_mutex_;
   std::string pending_fault_reason_;
   bool accepting_goals_{false};
+  bool soft_stop_silent_logged_{false};
   std::mutex execution_mutex_;  // guards execution_thread_
   std::thread execution_thread_;
   ActuatorFactory actuator_factory_;
