@@ -1,7 +1,7 @@
 """
 Everything a lab Pi runs: controller, bridge, lifecycle manager and web page.
 
-Started by lab staff, normally through the wavemaker service (see pi/README.md):
+Started by lab staff, normally through the wavemaker service (see rpi/README.md):
 
     ros2 launch wavemaker_bringup lab.launch.py wavemaker:=ladertanken port:=8080
 
