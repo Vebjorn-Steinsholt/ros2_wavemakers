@@ -15,3 +15,6 @@ KillSignal=SIGINT
 KillMode=mixed
 TimeoutStopSec=45
 Restart=no
+
+# No [Install] section on purpose: the unit cannot be enabled, so it never starts at boot.
+# The drive is enabled as soon as lab.launch.py runs.

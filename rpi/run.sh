@@ -3,7 +3,6 @@ set -eo pipefail
 
 # Refuse domain 0: anyone on the network could command the wavemaker
 [[ -n "$ROS_DOMAIN_ID" && "$ROS_DOMAIN_ID" != 0 ]] || { echo "set ROS_DOMAIN_ID" >&2; exit 1; }
-#                                                     ^ needs the space
 
 source /opt/ros/jazzy/setup.bash
 source "$HOME/ros_ws/install/setup.bash"
