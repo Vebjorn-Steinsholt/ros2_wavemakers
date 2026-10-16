@@ -26,6 +26,27 @@ function render() {
   $('start').disabled = !(online && state === 'idle');
   $('stop').disabled = !online;
   $('return').disabled = !(online && state === 'idle');
+  $('keepRunning').disabled = !online;
+}
+
+function formatDuration(seconds) {
+  const total = Math.max(Math.round(seconds / 60), 0);
+  const hours = Math.floor(total / 60), minutes = total % 60;
+  if (hours && minutes) return `${hours} h ${minutes} min`;
+  return hours ? `${hours} h` : `${minutes} min`;
+}
+
+function showIdleWarning(update) {
+  const stopIn = update.idle_stop_in;
+  $('idleWarning').hidden = stopIn === null;
+  if (stopIn === null) return;
+  const at = new Date(Date.now() + stopIn * 1000)
+    .toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const minutes = Math.floor(stopIn / 60);
+  const seconds = String(Math.floor(stopIn % 60)).padStart(2, '0');
+  $('idleText').textContent =
+    `No wave for ${formatDuration(update.idle_timeout - stopIn)}: the wavemaker stops at ` +
+    `${at} (in ${minutes}:${seconds}).`;
 }
 
 function onUpdate(update) {
@@ -36,6 +57,8 @@ function onUpdate(update) {
   $('message').textContent = update.message || '—';
   $('notice').hidden = !update.notice;
   $('notice').textContent = update.notice;
+  if (update.idle_timeout > 0) $('idleTimeout').textContent = formatDuration(update.idle_timeout);
+  showIdleWarning(update);
   for (const [t, kind, value] of update.samples) {
     series[kind].push([t, value]);
   }
@@ -192,6 +215,15 @@ $('return').addEventListener('click', async () => {
     $('returnResult').textContent = 'No answer from the server.';
   }
   render();
+});
+
+$('keepRunning').addEventListener('click', async () => {
+  try {
+    const result = await post('api/keep_running');
+    $('commandResult').textContent = result.message;
+  } catch (error) {
+    $('commandResult').textContent = 'No answer from the server.';
+  }
 });
 
 $('logLevel').addEventListener('change', () => {

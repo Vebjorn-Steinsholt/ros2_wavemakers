@@ -16,9 +16,10 @@ brackets there.
 
 ## Launch
 
-- [ ] Start `lab.launch.py` with the measured depth, for example
-      `ros2 launch wavemaker_bringup lab.launch.py water_depth:=1.0` (see *Water depth* in the
-      README). Start it inside `tmux` so a lost SSH connection does not take it down.
+- [ ] If the water depth changed, set `WATER_DEPTH` with `sudoedit /etc/default/wavemaker` (see
+      *Water depth* in the README).
+- [ ] Start the service: `sudo systemctl start wavemaker@ladertanken` ([rpi/README.md](rpi/README.md)).
+      Follow the log with `journalctl -u wavemaker@ladertanken -f`.
 - [ ] Activation causes no motion.
 - [ ] With the drive holding upright, motor torque or current in IndraWorks is close to zero
       (spring balance, item 34).
@@ -28,5 +29,6 @@ brackets there.
 ## End of session
 
 - [ ] Run `return_to_upright` and check the flap is visually upright.
-- [ ] Stop the launch (Ctrl-C), so the controller disables the drive.
+- [ ] Stop the service (`sudo systemctl stop wavemaker@ladertanken`), so the controller disables
+      the drive. If forgotten, it stops by itself after 2 h without a wave.
 - [ ] Draining the tank? Release the spring tension first (item 34).

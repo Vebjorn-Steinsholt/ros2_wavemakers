@@ -198,7 +198,9 @@ ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
 
 The water depth changes with the tank fill, and the controller uses it to compute every wave.
 Measure it before a session and pass it at launch; it overrides `water_depth` in
-`wavemakers.yaml` for that run only. All three launch files take it:
+`wavemakers.yaml` for that run only. On a lab Pi running the service, set `WATER_DEPTH` in
+`/etc/default/wavemaker` instead (`sudoedit`), then stop and start the service
+([rpi/README.md](rpi/README.md)). All three launch files take it:
 
 ```bash
 # lab Pi: tank filled to 0.95 m
@@ -230,14 +232,14 @@ ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken
 ros2 launch wavemaker_web web.launch.py wavemaker:=ladertanken port:=8080
 ```
 
-Or both in one command, as on a lab Pi (lab staff log in over SSH and start it):
+Or both in one command, together with the soft stop node:
 
 ```bash
 ros2 launch wavemaker_bringup lab.launch.py wavemaker:=ladertanken port:=8080
 ```
 
-The drive is enabled as soon as this runs. If the SSH session drops, the launch is killed with
-it; start it inside `tmux` so a lost connection does not take it down (`tmux attach` to return).
+The drive is enabled as soon as this runs. On a lab Pi it runs as the `wavemaker@<wavemaker>`
+systemd service, so a dropped SSH session does not stop it; see [rpi/README.md](rpi/README.md).
 
 Open the page by the Pi's hostname, `http://<wavemaker>-rpi.local:8080/` (for ladertanken
 `http://ladertanken-rpi.local:8080/`); the server prints this address when it starts. The page has
@@ -259,6 +261,13 @@ messages, a live plot of setpoint and measured position, Return to upright, and 
 - The server listens on all interfaces (`host` parameter, default `0.0.0.0`) without a login:
   anyone who can reach the port can run the wavemaker. Keep it on the lab network.
 - Only Python's standard library and rclpy are needed, so it also runs on a Raspberry Pi.
+- **Idle auto-stop.** After 2 h without a running wave, the server shuts the bridge and controller
+  down through the lifecycle manager (which disables the drive) and exits, and the launch shuts
+  down with it. On a lab Pi the service then ends; start it again to continue. Only a running wave
+  counts as activity, not an open page or other clicks. For the last 10 minutes the page shows a
+  warning with the stop time and a **Keep running** button, which restarts the 2 h. Set the time
+  with the `idle_timeout_s` launch argument of `web.launch.py` (0 turns it off).
+- If the server exits or crashes for any other reason, the launch shuts down as well.
 
 To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the
 lifecycle manager and the page on their own ROS domain (77), reachable only from this computer,
@@ -267,6 +276,7 @@ so the demo cannot reach other computers or the real controller. Open the addres
 
 ```bash
 ros2 launch wavemaker_web demo.launch.py
+ros2 launch wavemaker_web demo.launch.py idle_timeout_s:=120   # try the idle auto-stop
 ```
 
 ## Interfaces

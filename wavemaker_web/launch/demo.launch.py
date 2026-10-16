@@ -6,10 +6,12 @@ never reach LabVIEW, another computer or the real controller. The web server pri
 address, http://<hostname>.local:8080/ (for example http://ladertanken-rpi.local:8080/).
 
     ros2 launch wavemaker_web demo.launch.py
+
+To try the idle auto-stop: idle_timeout_s:=120 (warning shown for the last 10 minutes, so at once).
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable, Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -21,6 +23,9 @@ def generate_launch_description():
     port = LaunchConfiguration('port')
     return LaunchDescription([
         DeclareLaunchArgument('port', default_value='8080', description='HTTP port'),
+        DeclareLaunchArgument(
+            'idle_timeout_s', default_value='7200',
+            description='Stop after this long without a wave; 0 turns it off'),
         DeclareLaunchArgument(
             'domain_id', default_value='77',
             description='ROS domain for the demo; keep it different from the lab domain'),
@@ -44,5 +49,10 @@ def generate_launch_description():
         Node(
             package='wavemaker_web', executable='web_server',
             namespace=NAMESPACE, name='wavemaker_web', output='screen',
-            parameters=[{'port': ParameterValue(port, value_type=int)}]),
+            parameters=[{
+                'port': ParameterValue(port, value_type=int),
+                'idle_timeout_s': ParameterValue(
+                    LaunchConfiguration('idle_timeout_s'), value_type=float),
+            }],
+            on_exit=Shutdown(reason='web server exited')),
     ])

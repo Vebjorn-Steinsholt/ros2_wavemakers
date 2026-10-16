@@ -22,6 +22,10 @@
     <section class="card message-card">
       <div id="message" class="message">Waiting for the bridge…</div>
       <div id="notice" class="notice" hidden></div>
+      <div id="idleWarning" class="idle-warning" hidden>
+        <span id="idleText"></span>
+        <button type="button" id="keepRunning">Keep running</button>
+      </div>
     </section>
 
     <div class="grid">
@@ -76,7 +80,8 @@
 
     <footer class="muted">
       The wave runs while this page is open and connected. Closing every open page, or losing the
-      network, stops the wave within about 1.5 seconds.
+      network, stops the wave within about 1.5 seconds. After <span id="idleTimeout">2 h</span>
+      without a wave the wavemaker stops by itself, with a warning here 10 minutes before.
     </footer>
   </main>
   <script src="app.js"></script>

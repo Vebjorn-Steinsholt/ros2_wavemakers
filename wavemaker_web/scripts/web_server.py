@@ -13,6 +13,11 @@ Every open page counts: the wave keeps running while any one of them is alive.
 
 The page also shows the log of every node in the wavemaker's namespace (controller, bridge,
 lifecycle manager, this server), read from /rosout.
+
+After idle_timeout_s (default 2 h) without a running wave, the server shuts the managed nodes
+down through the lifecycle manager and exits; the launch files end the whole launch when it does.
+For the last idle_warning_s the page shows a warning with a Keep running button, which restarts
+the count. Set idle_timeout_s to 0 to turn this off.
 """
 
 from collections import deque
@@ -27,6 +32,7 @@ import threading
 import time
 
 from ament_index_python.packages import get_package_share_directory
+from nav2_msgs.srv import ManageLifecycleNodes
 from rcl_interfaces.msg import Log
 import rclpy
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
@@ -41,6 +47,9 @@ PLOT_WINDOW_S = 30.0     # setpoint and position history kept for the plot
 START_DELAY_S = 0.3      # between sending height/period and start
 START_CHECK_S = 2.0      # how long to wait for the bridge's "Starting wave" message
 RETURN_TIMEOUT_S = 60.0
+SHUTDOWN_TIMEOUT_S = 15.0  # for the lifecycle manager's SHUTDOWN after the idle timeout
+EXIT_DELAY_S = 2.0       # lets open pages show the auto-stop notice before the server exits
+ACTIVE_STATES = ('starting', 'running', 'stopping')  # bridge states that count as a running wave
 LOG_HISTORY = 300        # log lines kept for pages that connect later
 STARTING_RE = re.compile(r'height ([-+0-9.eE]+) m, period ([-+0-9.eE]+) s')
 RETURN_STATUS = {
@@ -64,6 +73,10 @@ class WebNode(Node):
         super().__init__('wavemaker_web')
         self.declare_parameter('host', '0.0.0.0')
         self.declare_parameter('port', 8080)
+        self.declare_parameter('idle_timeout_s', 7200.0)
+        self.declare_parameter('idle_warning_s', 600.0)
+        self._idle_timeout = float(self.get_parameter('idle_timeout_s').value)
+        self._idle_warning = float(self.get_parameter('idle_warning_s').value)
 
         self._lock = threading.Lock()
         self._state = 'unknown'
@@ -80,6 +93,9 @@ class WebNode(Node):
         self._log_prefix = self.get_namespace().strip('/').replace('/', '.')
         self._last_ack = -math.inf
         self._t0 = time.monotonic()
+        self._last_activity = time.monotonic()  # end of the last wave, or Keep running
+        self._idle_warned = False
+        self._auto_stopping = False
 
         command_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         status_qos = QoSProfile(
@@ -104,7 +120,11 @@ class WebNode(Node):
             durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(Log, '/rosout', self._on_log, rosout_qos)
         self._return_client = self.create_client(ReturnToUpright, 'return_to_upright')
+        self._manager_client = self.create_client(
+            ManageLifecycleNodes, 'lifecycle_manager_wavemaker/manage_nodes')
         self.create_timer(0.1, self._send_heartbeat)
+        if self._idle_timeout > 0.0:
+            self.create_timer(1.0, self._check_idle)
 
     # ROS callbacks
 
@@ -147,6 +167,61 @@ class WebNode(Node):
         if self.page_alive():
             self._heartbeat_pub.publish(Bool(data=True))
 
+    def _check_idle(self):
+        now = time.monotonic()
+        with self._lock:
+            if self._auto_stopping:
+                return
+            if self._state in ACTIVE_STATES:
+                self._last_activity = now
+                self._idle_warned = False
+                return
+            idle = now - self._last_activity
+            remaining = self._idle_timeout - idle
+            warn = remaining <= self._idle_warning and not self._idle_warned
+            if warn:
+                self._idle_warned = True
+            stop = remaining <= 0.0
+            if stop:
+                self._auto_stopping = True
+        if stop:
+            threading.Thread(target=self._auto_stop, daemon=True).start()
+        elif warn:
+            self.get_logger().warn(
+                f'No wave for {format_duration(idle)}: the wavemaker stops in '
+                f'{format_duration(remaining)}. Press Keep running on the page to stay on.')
+
+    def _auto_stop(self):
+        self.get_logger().warn(
+            f'No wave for {format_duration(self._idle_timeout)}: stopping the wavemaker')
+        with self._lock:
+            self._notice = (
+                f'Stopped after {format_duration(self._idle_timeout)} without a wave. Start the '
+                'wavemaker again to continue.')
+        self._shutdown_managed_nodes()
+        time.sleep(EXIT_DELAY_S)
+        # Ends spin() in main(); the launch file then shuts the whole launch down.
+        rclpy.try_shutdown()
+
+    def _shutdown_managed_nodes(self):
+        # The ordered path: the lifecycle manager deactivates, cleans up and shuts down the
+        # bridge and the controller. If it fails, the launch shutdown that follows this server's
+        # exit still stops the controller.
+        if not self._manager_client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error(
+                'Lifecycle manager not available; exiting, the launch stops the nodes')
+            return
+        request = ManageLifecycleNodes.Request(command=ManageLifecycleNodes.Request.SHUTDOWN)
+        done = threading.Event()
+        future = self._manager_client.call_async(request)
+        future.add_done_callback(lambda _: done.set())
+        if not done.wait(SHUTDOWN_TIMEOUT_S):
+            self.get_logger().error('No reply from the lifecycle manager; exiting anyway')
+        elif not future.result().success:
+            self.get_logger().error('The lifecycle manager reported a failed shutdown')
+        else:
+            self.get_logger().info('Managed nodes shut down')
+
     # Used by the HTTP handler
 
     def _now(self):
@@ -163,6 +238,12 @@ class WebNode(Node):
     def snapshot(self, after_sample, after_log):
         """Return the page update and the indices of the last sample and log line it contains."""
         with self._lock:
+            idle_stop_in = None
+            if (self._idle_timeout > 0.0 and not self._auto_stopping and
+                    self._state not in ACTIVE_STATES):
+                remaining = self._idle_timeout - (time.monotonic() - self._last_activity)
+                if remaining <= self._idle_warning:
+                    idle_stop_in = max(remaining, 0.0)
             samples = [[t, kind, value] for index, t, kind, value in self._samples
                        if index > after_sample]
             logs = [entry for index, entry in self._logs if index > after_log]
@@ -172,6 +253,8 @@ class WebNode(Node):
                 'message': self._message,
                 'notice': self._notice,
                 'time': self._now(),
+                'idle_timeout': self._idle_timeout,
+                'idle_stop_in': idle_stop_in,
                 'samples': samples,
                 'logs': logs,
             }
@@ -179,6 +262,8 @@ class WebNode(Node):
 
     def start(self, height, period):
         with self._lock:
+            if self._auto_stopping:
+                return False, 'The wavemaker is stopping after the idle timeout.'
             state = self._state
             first_message = self._message_count
             self._notice = ''
@@ -215,7 +300,21 @@ class WebNode(Node):
         self._stop_pub.publish(Bool(data=True))
         return True, 'Stop sent.'
 
+    def keep_running(self):
+        with self._lock:
+            if self._auto_stopping:
+                return False, 'The wavemaker is already stopping after the idle timeout.'
+            self._last_activity = time.monotonic()
+            self._idle_warned = False
+        timeout = format_duration(self._idle_timeout)
+        self.get_logger().info(f'Keep running pressed: the wavemaker stops after {timeout} '
+                               'without a wave from now')
+        return True, f'Keeping the wavemaker on for another {timeout} without a wave.'
+
     def return_to_upright(self):
+        with self._lock:
+            if self._auto_stopping:
+                return False, 'The wavemaker is stopping after the idle timeout.'
         if not self._return_client.wait_for_service(timeout_sec=1.0):
             return False, 'The return_to_upright service is not available.'
         request = ReturnToUpright.Request(requester='web', tolerance=0.0)
@@ -265,6 +364,8 @@ def make_handler(node, html_dir):
                 self._json(*node.start(height, period))
             elif self.path == '/api/stop':
                 self._json(*node.stop())
+            elif self.path == '/api/keep_running':
+                self._json(*node.keep_running())
             elif self.path == '/api/return':
                 self._json(*node.return_to_upright())
             else:
@@ -298,6 +399,14 @@ def make_handler(node, html_dir):
             self.wfile.write(body)
 
     return Handler
+
+
+def format_duration(seconds):
+    """Return seconds as '2 h', '1 h 50 min' or '10 min', rounded to whole minutes."""
+    hours, minutes = divmod(max(round(seconds / 60.0), 0), 60)
+    if hours and minutes:
+        return f'{hours} h {minutes} min'
+    return f'{hours} h' if hours else f'{minutes} min'
 
 
 def page_url(host, port):
