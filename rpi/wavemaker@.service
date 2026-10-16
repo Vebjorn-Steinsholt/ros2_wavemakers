@@ -1,0 +1,17 @@
+[Unit]
+Description=Wavemaker %i (lab.launch.py)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User=%i
+Environment=WAVEMAKER=%i PYTHONUNBUFFERED=1 RCUTILS_COLORIZED_OUTPUT=0
+EnvironmentFile=/etc/default/wavemaker
+ExecStart=/home/%i/ros_ws/src/ros2_wavemakers/rpi/run.sh
+ExecStop=/home/%i/ros_ws/src/ros2_wavemakers/rpi/stop.sh
+
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=45
+Restart=no
