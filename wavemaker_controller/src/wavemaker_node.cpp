@@ -664,7 +664,7 @@ private:
         goal.sample_interval <= 0.0)
       {
         RCLCPP_WARN(
-          get_logger(), "Pregenerated goal requires positions and a positive sample_interval");
+          get_logger(), "Pregenerated mode:  goal requires positions and a positive sample_interval");
         return false;
       }
       for (const double position : goal.positions) {
@@ -690,7 +690,13 @@ private:
       }
       return accept_peak_velocity(pregenerated_.peak_velocity());
     }
-
+    if (!wavemaker_mode_pregenerated_ && !goal.positions.empty()){
+      RCLCPP_WARN(
+        get_logger(),
+        "Received a pregenerated goal (positions), but wavemaker_mode_pregenerated is false; "
+        "relaunch with wavemaker_mode_pregenerated:=true, rejecting");
+      return false;
+    }
     if (!std::isfinite(goal.height) || !std::isfinite(goal.period) ||
       goal.height <= 0.0 || goal.period <= 0.0)
     {

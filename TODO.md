@@ -13,8 +13,8 @@ the items kept there.
 
 ## High
 
-- [x] **5. Write the outputs every cycle by default.** (`wavemaker_controller/src/indradrive_actuator.cpp`)
-  Done 2026-10-14: the `write_only_dirty` default in `IndraDriveActuator` is now `false` (it was `true`; only ladertanken set `false`), so every wavemaker writes its outputs every cycle without a YAML line. The MGate fault value timeout (item 5 in [COMMISSIONING.md](COMMISSIONING.md)) relies on writes every cycle.
+- [ ] **5. Write the outputs every cycle by default.** (`wavemaker_controller/src/indradrive_actuator.cpp`)
+  Change the `write_only_dirty` default in `IndraDriveActuator` to `false` (it is `true`; only ladertanken sets `false`). The MGate fault value timeout (item 5 in [COMMISSIONING.md](COMMISSIONING.md)) relies on writes every cycle.
 
 - [ ] **12. The bridge can get stuck in `stopping`.** (`wavemaker_controller/src/wavemaker_bridge.cpp`)
   `stop()` publishes `stopping` and waits for the goal's result. If the controller's action is unavailable, `stop()` returns early and nothing leaves `stopping`; if the result never arrives, the same happens, because the 2 s timeout is only armed for stop-service calls. Every later `start` is then refused.
@@ -28,11 +28,11 @@ the items kept there.
 
 - [x] **17. Decide the fault policy in bridge mode.** (`wavemaker_bringup/launch/`)
   After a controller fault the controller goes to unconfigured and breaks its bond, so the lifecycle manager also brings the bridge down; the web page shows `inactive` and someone must relaunch. Decide whether that is acceptable, and check on the rig that the 1 s bond timeout doesn't trigger falsely (no false trigger in the controller-only manager test, 2026-10-08; recheck with the bridge).
-  Decided 2026-10-14: acceptable; after a controller fault, someone relaunches.
+  Acceptable. 
 
 - [x] **18. Decide whether a cancel should return to upright.**
-  Cancels and the bridge's stop now stop and hold. The earlier plan to return to upright after every cancel conflicts with that. Confirm "hold" and drop the plan, or make it an option with tests.
-  Decided 2026-10-14: a cancel stops and holds; it does not return to upright.
+  Cancels and the bridge's stop now stop and hold. The earlier plan to return to upright after every cancel conflicts with that. Confirm "hold" and drop the plan, or make it an option with tests. 
+  Comment: It was decided that cancel should not return to upright. 
 
 - [ ] **19. Linear drives (lilletanken, mclab).** (`wavemaker_controller/src/indradrive_actuator.cpp`)
   The drive's position tag (scaled as degrees) is used as metres unchanged, and velocity is converted with `/ 6` as if it were deg/s → rpm; the limits exist twice (`wavemaker_minimum/maximum` and `min_position_m/max_position_m`). Once the drive scaling is confirmed on the rig (item 19 in [COMMISSIONING.md](COMMISSIONING.md)), add a proper linear conversion and derive the drive limits from the node limits.
@@ -50,16 +50,16 @@ the items kept there.
   Today lab staff start it over SSH inside `tmux`. A service survives a dropped SSH session, logs to `journalctl`, and is started and stopped the same way on every Pi.
   - **Not started at boot.** The drive is enabled as soon as `lab.launch.py` runs, so a power cut or reboot must not enable it by itself. Install the unit but do not `systemctl enable` it; staff run `sudo systemctl start wavemaker` / `stop wavemaker`. Revisit auto-start only after item 5 (gateway fault timeout) is done; the web server alone could then run at boot if wanted.
   - **One unit file for all Pis, settings per Pi.** `rpi/wavemaker.service` runs `rpi/run.sh`, which sources `/opt/ros/jazzy` and `~/ros_ws/install/setup.bash` and `exec`s `ros2 launch wavemaker_bringup lab.launch.py`. Per-Pi values (`WAVEMAKER`, `PORT`, `WATER_DEPTH`, `ROS_DOMAIN_ID`) go in `/etc/default/wavemaker` (`EnvironmentFile=`). systemd does not read `~/.bashrc`, so `ROS_DOMAIN_ID` must be set there or the service runs on domain 0, visible to everyone (see *Lab computers* in the README).
-  - **Unit settings:** `User=<wavemaker>`; `After=`/`Wants=network-online.target` (DDS and the gateway need the network up); `Restart=no`, because a restart re-enables the drive (and item 17 decided that a fault is followed by a manual relaunch), and `ros2 launch` does not exit when a child dies anyway; `KillSignal=SIGINT` with `KillMode=mixed`, so the launch receives Ctrl-C and stops the nodes in order and the controller disables the drive; `TimeoutStopSec=30`, longer than `IndraDrive::disable()` can take (item 29). Note that `ros2 launch` escalates to SIGTERM after 5 s by itself; check that the drive is disabled even then.
+  - **Unit settings:** `User=<wavemaker>`; `After=`/`Wants=network-online.target` (DDS and the gateway need the network up); `Restart=no`, because a restart re-enables the drive and the fault policy (item 17) is undecided, and `ros2 launch` does not exit when a child dies anyway; `KillSignal=SIGINT` with `KillMode=mixed`, so the launch receives Ctrl-C and stops the nodes in order and the controller disables the drive; `TimeoutStopSec=30`, longer than `IndraDrive::disable()` can take (item 29). Note that `ros2 launch` escalates to SIGTERM after 5 s by itself; check that the drive is disabled even then.
   - **Permissions:** lab staff need `systemctl start/stop/status wavemaker` without full sudo; add a sudoers rule (or polkit rule) for those three commands only.
   - **Docs:** `rpi/README.md` with install steps (copy or link the unit, create `/etc/default/wavemaker`, `daemon-reload`), start/stop/status, and `journalctl -u wavemaker -f`. Fix the `pi/README.md` reference in `lab.launch.py`, and replace the `tmux` advice in the README's *Web page* section and in [STARTUP.md](STARTUP.md).
   - **Rig test:** start the service, run a wave from the page, `systemctl stop wavemaker` mid-wave; the wave stops, the drive is disabled, and the journal shows a clean shutdown. Reboot the Pi and check that nothing started.
 
 ## Low
 
-- [x] **23. A return to upright cannot be stopped by a cancel or the bridge's stop.** (`wavemaker_node.cpp`)
+- [X] **23. A return to upright cannot be stopped by a cancel or the bridge's stop.** (`wavemaker_node.cpp`)
   Only a lifecycle transition or a fault stops it. Decide; if needed, let a cancel set `stop_execution_` while `returning_to_upright_` is true.
-  Decided 2026-10-14: handled by the soft stop button (branch `feat/soft-stop-systemd`).
+  Handled by future soft stop button functionality.
 
 - [ ] **24. Return-to-upright replies with the wrong reason in two cases.** (`wavemaker_node.cpp`)
   An exception gives `ACTUATOR_FAULT` with an empty message (use the exception text); a fault that deactivates the node first gives `CONTROLLER_INACTIVE` (check `actuator_->faulted()` in the `Stopped` case).
@@ -70,12 +70,14 @@ the items kept there.
 - [ ] **26. Goal type is chosen by a parameter, and the bridge only starts regular waves.**
   Choose per goal (non-empty `positions` → pregenerated) or name the configured mode in the rejection. Decide whether the web page needs pregenerated waves.
 
+
 - [ ] **27. A regular wave from the terminal runs until it is cancelled.**
   In bridge mode the heartbeat covers a lost client; from the terminal nothing does. Consider an optional `duration` in `MoveWavemaker.action`.
 
 - [x] **28. Action feedback is sent every control cycle.** (`wavemaker_node.cpp`)
   Measurements are on `wavemaker_setpoint` / `wavemaker_position`; publish feedback at about 10 Hz or lower.
-  Decided 2026-10-14: fine as it is; no change.
+
+This is fine
 
 - [ ] **29. `IndraDrive::disable()` can block a lifecycle callback for up to 20 s.** (`drivers/mgate5101_driver/src/indradrive.cpp`)
   Accept, or use a shorter timeout for `disable()`.

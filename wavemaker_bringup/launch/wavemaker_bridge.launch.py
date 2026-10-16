@@ -38,6 +38,12 @@ def generate_launch_description():
             default_value='',
             description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
         ),
+        DeclareLaunchArgument(
+            'wavemaker_transfer_gain',
+            default_value='',
+            description='Measured / target wave height for regular waves; empty uses the value '
+                        'in wavemakers.yaml',
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(base_launch),
             launch_arguments={
@@ -46,6 +52,9 @@ def generate_launch_description():
                 'enable_lifecycle_manager': 'true',
                 'bond_timeout': LaunchConfiguration('bond_timeout'),
                 'water_depth': LaunchConfiguration('water_depth'),
+                'wavemaker_transfer_gain': LaunchConfiguration('wavemaker_transfer_gain'),
+                # The bridge only sends regular waves (height, period).
+                'wavemaker_mode_pregenerated': 'false',
             }.items(),
         ),
     ])

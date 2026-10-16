@@ -91,8 +91,8 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | `hinge_height` | Flap only: height of the flap's hinge above the tank floor, m (default 0.0). Must be below `water_depth`. Used in the wave transfer function (Dean & Dalrymple) and to scale the stroke from the waterline to the attachment point. |
 | `wavemaker_upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
 | `wavemaker_upright_is_minimum` | `true`: the wave runs from upright to one side only. `false`: symmetric around upright. |
-| `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `height` and `period`. |
-| `wavemaker_transfer_gain` | Measured / target wave height for regular waves (default 1.0 = linear theory). The stroke is divided by it; to correct from wave-probe data, new gain = old gain × measured / target. Not applied to pregenerated waves. |
+| `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `height` and `period`. Can be overridden with the launch argument of the same name (terminal mode only). |
+| `wavemaker_transfer_gain` | Measured / target wave height for regular waves (default 1.0 = linear theory). The stroke is divided by it; to correct from wave-probe data, new gain = old gain × measured / target. Not applied to pregenerated waves. Can be overridden for one run with the launch argument of the same name. |
 
 ### Actuator and limits
 
@@ -181,8 +181,18 @@ busy PC.
 
 Launch arguments of `wavemakers.launch.py`: `wavemaker`, `with_bridge` (default `false`),
 `enable_lifecycle_manager` (default `false`) and `bond_timeout` (default `4.0`, passed to the
-lifecycle manager and to both nodes), and `water_depth` (see below).
-`wavemaker_bridge.launch.py` sets the first three for you and defaults `bond_timeout` to `1.0`.
+lifecycle manager and to both nodes), `water_depth` (see below), `wavemaker_transfer_gain` and
+`wavemaker_mode_pregenerated`. The last three override the values in `wavemakers.yaml` for that
+run; empty (the default) keeps the yaml value.
+`wavemaker_bridge.launch.py` sets the first three for you, defaults `bond_timeout` to `1.0`, and
+always sets `wavemaker_mode_pregenerated` to `false`, because the bridge only sends regular waves.
+`lab.launch.py` passes on `water_depth` and `wavemaker_transfer_gain`.
+
+```bash
+# terminal mode, pregenerated goals (e.g. .dat files), with a measured gain
+ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
+  wavemaker_mode_pregenerated:=true wavemaker_transfer_gain:=0.92
+```
 
 ### Water depth
 

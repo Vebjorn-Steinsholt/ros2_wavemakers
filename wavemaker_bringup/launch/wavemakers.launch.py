@@ -3,6 +3,8 @@ Launch one wavemaker controller, optionally with the bridge and the Nav2 lifecyc
 
 Terminal use (experienced users): the controller only, lifecycle stepped by hand.
     ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken
+    ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
+      wavemaker_mode_pregenerated:=true      # for pregenerated goals (e.g. .dat files)
 
 Bridge use (normal users): use wavemaker_bridge.launch.py, which includes this file with
 with_bridge:=true and the lifecycle manager on.
@@ -27,6 +29,16 @@ def _launch_setup(context):
     enable_lifecycle_manager = _is_true(context, 'enable_lifecycle_manager')
     bond_timeout = float(context.launch_configurations['bond_timeout'])
     water_depth = context.launch_configurations['water_depth']
+    transfer_gain = context.launch_configurations['wavemaker_transfer_gain']
+    pregenerated = context.launch_configurations['wavemaker_mode_pregenerated']
+    # Values given at launch override the ones in wavemakers.yaml; empty keeps the yaml value.
+    overrides = {}
+    if water_depth:
+        overrides['water_depth'] = float(water_depth)
+    if transfer_gain:
+        overrides['wavemaker_transfer_gain'] = float(transfer_gain)
+    if pregenerated:
+        overrides['wavemaker_mode_pregenerated'] = pregenerated == 'true'
     namespace = f'wavemakers/{wavemaker}'
 
     actions = [
@@ -35,9 +47,7 @@ def _launch_setup(context):
             executable='wavemaker_node',
             namespace=namespace,
             name='controller',
-            # A water_depth given at launch overrides the one in wavemakers.yaml.
-            parameters=[config_file, {'bond_timeout': bond_timeout}] +
-            ([{'water_depth': float(water_depth)}] if water_depth else []),
+            parameters=[config_file, {'bond_timeout': bond_timeout}, overrides],
             output='screen',
         )
     ]
@@ -108,6 +118,20 @@ def generate_launch_description():
             'water_depth',
             default_value='',
             description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
+        ),
+        DeclareLaunchArgument(
+            'wavemaker_transfer_gain',
+            default_value='',
+            description='Measured / target wave height for regular waves; empty uses the value '
+                        'in wavemakers.yaml',
+        ),
+        DeclareLaunchArgument(
+            'wavemaker_mode_pregenerated',
+            default_value='',
+            choices=['', 'true', 'false'],
+            description='true: goals carry positions and sample_interval (terminal use only; '
+                        'the bridge sends regular waves); empty uses the value in '
+                        'wavemakers.yaml',
         ),
         OpaqueFunction(function=_launch_setup),
     ])

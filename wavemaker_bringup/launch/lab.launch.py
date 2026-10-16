@@ -36,6 +36,12 @@ def generate_launch_description():
             description='Water depth in m for this run; empty uses the value in wavemakers.yaml',
         ),
         DeclareLaunchArgument(
+            'wavemaker_transfer_gain',
+            default_value='',
+            description='Measured / target wave height for regular waves; empty uses the value '
+                        'in wavemakers.yaml',
+        ),
+        DeclareLaunchArgument(
             'soft_stop_pin',
             default_value='17',
             description='GPIO pin for soft stop button',
@@ -45,6 +51,7 @@ def generate_launch_description():
             launch_arguments={
                 'wavemaker': LaunchConfiguration('wavemaker'),
                 'water_depth': LaunchConfiguration('water_depth'),
+                'wavemaker_transfer_gain': LaunchConfiguration('wavemaker_transfer_gain'),
             }.items(),
         ),
         IncludeLaunchDescription(

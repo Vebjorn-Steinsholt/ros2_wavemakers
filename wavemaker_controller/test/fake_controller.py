@@ -6,6 +6,9 @@ Serves the move_wavemaker action like the real controller, without a drive:
   - accepts one goal at a time and rejects goals while one is running ("busy"),
   - runs a regular wave until it is cancelled, sending feedback at 10 Hz and the setpoint and
     a slightly lagging "measured" position on wavemaker_setpoint / wavemaker_position at 50 Hz,
+  - with --pregenerated, as wavemaker_mode_pregenerated: true, plays goals with positions and
+    sample_interval instead: blends from the held position to the first sample, interpolates
+    linearly and succeeds at the last sample,
   - holds its position after a cancel, and serves return_to_upright (back to 0 in 1.5 s),
   - optionally rejects every goal (--reject) or aborts a goal after N s (--abort-after).
 
@@ -14,6 +17,8 @@ Do not run it next to the real controller: both would serve the same action.
     source ~/ros_ws/install/setup.bash
     ros2 run wavemaker_controller fake_controller --ros-args -r __ns:=/wavemakers/ladertanken
     ros2 run wavemaker_controller fake_controller --abort-after 5 \
+      --ros-args -r __ns:=/wavemakers/ladertanken
+    ros2 run wavemaker_controller fake_controller --pregenerated \
       --ros-args -r __ns:=/wavemakers/ladertanken
 """
 
@@ -36,14 +41,26 @@ from wavemaker_interfaces.srv import ReturnToUpright
 LOOP_S = 0.02            # setpoint rate, as the real controller at poll_interval_ms 20
 LAG_S = 0.04             # the fake "measured" position trails the setpoint by this much
 RETURN_DURATION_S = 1.5
+# Blend into a pregenerated goal as the real controller does with its defaults
+# (return_to_upright_max_velocity_mps, return_min_duration_s, return_default_tolerance_m).
+BLEND_MAX_VELOCITY_MPS = 0.1
+BLEND_MIN_DURATION_S = 1.0
+BLEND_TOLERANCE_M = 0.002
+QUINTIC_PEAK_VELOCITY_FACTOR = 1.875
+
+
+def quintic(u):
+    u = min(1.0, max(0.0, u))
+    return 10 * u**3 - 15 * u**4 + 6 * u**5
 
 
 class FakeController(Node):
 
-    def __init__(self, reject, abort_after):
+    def __init__(self, reject, abort_after, pregenerated):
         super().__init__('controller')
         self._reject = reject
         self._abort_after = abort_after
+        self._pregenerated = pregenerated
         self._busy = False
         self._position = 0.0     # last setpoint, held after a stop
         self._lock = threading.Lock()
@@ -59,7 +76,8 @@ class FakeController(Node):
             cancel_callback=self._on_cancel,
             callback_group=ReentrantCallbackGroup())
         self.get_logger().info(
-            f'Fake controller ready (reject={reject}, abort_after={abort_after})')
+            f'Fake controller ready (reject={reject}, abort_after={abort_after}, '
+            f'pregenerated={pregenerated})')
 
     def _on_goal(self, goal):
         with self._lock:
@@ -69,13 +87,32 @@ class FakeController(Node):
             if self._busy:
                 self.get_logger().warn('Rejecting goal: another goal is running')
                 return GoalResponse.REJECT
-            if goal.height <= 0.0 or goal.period <= 0.0:
+            if self._pregenerated:
+                if (len(goal.positions) == 0 or not math.isfinite(goal.sample_interval) or
+                        goal.sample_interval <= 0.0):
+                    self.get_logger().warn(
+                        'Rejecting goal: pregenerated goal requires positions and a positive '
+                        'sample_interval')
+                    return GoalResponse.REJECT
+                if not all(math.isfinite(p) for p in goal.positions):
+                    self.get_logger().warn('Rejecting goal: positions must be finite')
+                    return GoalResponse.REJECT
+            elif goal.height <= 0.0 or goal.period <= 0.0:
                 self.get_logger().warn('Rejecting goal: height and period must be > 0')
                 return GoalResponse.REJECT
             self._busy = True
-        self.get_logger().info(
-            f'Accepted goal: height {goal.height} m, period {goal.period} s')
+        if self._pregenerated:
+            self.get_logger().info(
+                f'Accepted pregenerated goal: {len(goal.positions)} samples at '
+                f'{goal.sample_interval} s ({self._samples_duration(goal):.1f} s)')
+        else:
+            self.get_logger().info(
+                f'Accepted goal: height {goal.height} m, period {goal.period} s')
         return GoalResponse.ACCEPT
+
+    @staticmethod
+    def _samples_duration(goal):
+        return goal.sample_interval * (len(goal.positions) - 1)
 
     def _on_cancel(self, goal_handle):
         self.get_logger().info('Cancel requested')
@@ -114,13 +151,46 @@ class FakeController(Node):
         response.message = 'At upright (fake)'
         return response
 
+    @staticmethod
+    def _regular_motion(goal, origin):
+        """Position at a time: fades from the held position into the wave over one period."""
+        amplitude = goal.height / 2.0
+        omega = 2.0 * math.pi / goal.period
+
+        def position_at(t):
+            fade = min(1.0, t / goal.period)
+            return (1.0 - fade) * origin + fade * amplitude * math.sin(omega * t), False
+        return position_at
+
+    @staticmethod
+    def _pregenerated_motion(goal, origin):
+        """Position at a time: blend to the first sample, then interpolate; True at the end."""
+        positions = list(goal.positions)
+        dt = goal.sample_interval
+        distance = abs(positions[0] - origin)
+        blend = 0.0 if distance <= BLEND_TOLERANCE_M else max(
+            QUINTIC_PEAK_VELOCITY_FACTOR * distance / BLEND_MAX_VELOCITY_MPS,
+            BLEND_MIN_DURATION_S)
+        samples_duration = dt * (len(positions) - 1)
+
+        def position_at(t):
+            if t < blend:
+                return origin + quintic(t / blend) * (positions[0] - origin), False
+            t -= blend
+            if t >= samples_duration:
+                return positions[-1], True
+            index = min(int(t / dt), len(positions) - 2)
+            fraction = t / dt - index
+            return positions[index] + fraction * (positions[index + 1] - positions[index]), False
+        return position_at
+
     def _execute(self, goal_handle):
         goal = goal_handle.request
         result = MoveWavemaker.Result()
         feedback = MoveWavemaker.Feedback()
-        amplitude = goal.height / 2.0
-        omega = 2.0 * math.pi / goal.period
         origin = self._position
+        motion = (self._pregenerated_motion if self._pregenerated else self._regular_motion)(
+            goal, origin)
         start = time.monotonic()
         cycle = 0
         try:
@@ -138,13 +208,15 @@ class FakeController(Node):
                     result.message = 'Simulated drive fault (fake)'
                     self.get_logger().warn('Goal aborted (--abort-after)')
                     return result
-                # Fade from the held position into the wave over the first period.
-                fade = min(1.0, elapsed / goal.period)
-                position = (1.0 - fade) * origin + fade * amplitude * math.sin(omega * elapsed)
-                lagged = max(0.0, elapsed - LAG_S)
-                lagged_fade = min(1.0, lagged / goal.period)
-                measured = ((1.0 - lagged_fade) * origin +
-                            lagged_fade * amplitude * math.sin(omega * lagged))
+                position, done = motion(elapsed)
+                measured, _ = motion(max(0.0, elapsed - LAG_S))
+                if done:
+                    self._publish(position, position)
+                    goal_handle.succeed()
+                    result.success = True
+                    result.message = 'Pregenerated trajectory completed (fake)'
+                    self.get_logger().info('Pregenerated goal completed')
+                    return result
                 self._publish(position, measured)
                 cycle += 1
                 if cycle % 5 == 0:
@@ -167,10 +239,14 @@ def main():
     parser.add_argument(
         '--abort-after', type=float, default=None, metavar='SECONDS',
         help='abort each goal after this many seconds (simulates a fault)')
+    parser.add_argument(
+        '--pregenerated', action='store_true',
+        help='serve pregenerated goals (positions, sample_interval), as '
+             'wavemaker_mode_pregenerated: true')
     args = parser.parse_args(remove_ros_args(sys.argv)[1:])
 
     rclpy.init(args=sys.argv)
-    node = FakeController(args.reject, args.abort_after)
+    node = FakeController(args.reject, args.abort_after, args.pregenerated)
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     try:
