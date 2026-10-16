@@ -83,10 +83,22 @@ public:
     declare_parameter<double>("return_to_upright_timeout_margin_s", 2.0);
     // The drive gets the motion's peak speed times this as its positioning-speed limit.
     declare_parameter<double>("positioning_velocity_margin", 1.2);
+
+    // Ctrl-C shuts the context down before the destructor runs. Stop the drive and drop the
+    // bond while the context is still valid: a bond left alive tries to create a timer once the
+    // lifecycle manager breaks it, which throws and aborts the process before the destructor.
+    pre_shutdown_callback_handle_ =
+      get_node_base_interface()->get_context()->add_pre_shutdown_callback(
+      [this]() {
+        RCLCPP_INFO(get_logger(), "Context shutting down: stopping the drive");
+        stop_activity();
+      });
   }
 
   ~WavemakerNode() override
   {
+    get_node_base_interface()->get_context()->remove_pre_shutdown_callback(
+      pre_shutdown_callback_handle_);
     abort_active_goal();
     stop_execution();
     // Ctrl-C skips the lifecycle transitions, so this is the last chance to stop the drive.
@@ -1224,6 +1236,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr soft_stop_subscription_;
   rclcpp::Service<ReturnToUpright>::SharedPtr return_to_upright_service_;
   rclcpp::TimerBase::SharedPtr fault_timer_;
+  rclcpp::PreShutdownCallbackHandle pre_shutdown_callback_handle_;
   std::atomic<bool> stop_execution_{false};
   std::atomic<bool> soft_stopped_{true};
   std::atomic<int64_t> soft_stop_last_msg_ns_{0};

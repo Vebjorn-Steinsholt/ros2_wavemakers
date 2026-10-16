@@ -121,6 +121,11 @@ public:
       get_node_base_interface()->get_context()->add_pre_shutdown_callback(
       [this]() {
         stop("Bridge is shutting down");
+        // Drop the bond while the context is valid; see the controller's pre-shutdown callback.
+        if (bond_) {
+          bond_->breakBond();
+          bond_.reset();
+        }
       });
     publish_state(State::Idle, "ready");
     return CallbackReturn::SUCCESS;
