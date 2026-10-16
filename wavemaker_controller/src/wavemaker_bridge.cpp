@@ -9,6 +9,7 @@
 #include <chrono>
 #include <utility>
 #include <cmath>
+#include <cstdint>
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "wavemaker_interfaces/action/move_wavemaker.hpp"
@@ -193,10 +194,19 @@ public:
     goal.height = height_;
     goal.period = period_;
     rclcpp_action::Client<MoveWavemaker>::SendGoalOptions options;
+    const auto generation = ++goal_generation_;
     options.goal_response_callback =
-      [this](MoveWavemakerGoalHandle::SharedPtr handle) {on_goal_response(handle);};
+      [this, generation](MoveWavemakerGoalHandle::SharedPtr handle) {
+        if (generation != goal_generation_) {   // abandoned: make sure it does not run
+          if (handle) {action_client_->async_cancel_goal(handle);}
+          return;
+        }
+        on_goal_response(handle);
+      };
     options.result_callback =
-      [this](const MoveWavemakerGoalHandle::WrappedResult & result) {on_goal_result(result);};
+      [this, generation](const MoveWavemakerGoalHandle::WrappedResult & result) {
+        if(generation == goal_generation_){on_goal_result(result);}
+      };
     goal_requested_ = true;
     // The values are in the message so clients can check which ones were used: height,
     // period and start are separate topics, and DDS does not order them.
@@ -254,33 +264,33 @@ public:
     const bool ours = goal_requested_ || goal_handle_;
     if (ours) {
       publish_state(State::Stopping, reason);
+      if(done) {
+        stop_done_ = done; //Goal result or timeout
+      }
+       if (!stop_timeout_) {  
+        stop_timeout_ = create_wall_timer(stop_timeout_s_, [this]() {
+          abandon_goal("No result from the controller");
+        });
+      }
     }
-    if(!action_client_ || !action_client_->action_server_is_ready()) {
-      report("Stop: Move Wavemaker action is not available");
-      if (done) {
-        done(false, "Move Wavemaker action is not available");
+     if (!action_client_ || !action_client_->action_server_is_ready()) {
+      if (ours) {
+        abandon_goal("Move Wavemaker action is not available");   // fixes A
+      } else {
+        report("Stop: Move Wavemaker action is not available");
+        if (done) {done(false, "Move Wavemaker action is not available");}
       }
       return;
     }
     action_client_->async_cancel_all_goals(
-      [this, done, ours](rclcpp_action::Client<MoveWavemaker>::CancelResponse::SharedPtr response)
-      {
+      [this, done, ours](rclcpp_action::Client<MoveWavemaker>::CancelResponse::SharedPtr response) {
         RCLCPP_INFO(get_logger(), "Stop: %zu goal(s) canceling", response->goals_canceling.size());
-        if (!done) {
-          return;
+        if (ours) {
+          return;  // the result callback or the timer finishes the stop
         }
-        if (response->return_code != response->ERROR_NONE) {
-          done(false, "Controller rejected the cancel request");
-        } else if (!ours) {
-          done(true, response->goals_canceling.empty() ? "Nothing running" : "Cancel accepted");
-
-        } else {
-          stop_done_ = done;
-          stop_timeout_ = create_wall_timer(std::chrono::seconds(2), [this]() {
-            if (stop_done_) {
-              finish_stop(false, "No confirmation from controller");
-            }
-          });
+        if (done) {
+          done(response->return_code == response->ERROR_NONE,
+               response->goals_canceling.empty() ? "Nothing running" : "Cancel accepted");
         }
       });
   }
@@ -364,6 +374,18 @@ public:
       done(ok, message);
     }
   }
+  // Gives up on our goal when controller does not confirm a stop. A new start is then possible
+  
+  void abandon_goal(const std::string & reason){
+    ++goal_generation_; 
+    goal_handle_.reset();
+    goal_requested_ = false;
+    cancel_on_accept_ = false;
+    const std::string message = reason +"; stop not confirmed by controller, verify";
+    RCLCPP_WARN(get_logger(), "%s", message.c_str());
+    publish_state(idle_unless_inactive(),message);
+    finish_stop(false,message);
+  };
   rclcpp_action::Client<MoveWavemaker>::SharedPtr action_client_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr height_subscription_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr period_subscription_;
@@ -381,11 +403,13 @@ public:
   std::chrono::steady_clock::time_point last_heartbeat_{};
   std::chrono::duration<double> heartbeat_timeout_{1.0};
   unsigned int watch_ticks_{0};
+  std::uint64_t goal_generation_{0};
   StopDone stop_done_;
   rclcpp::TimerBase::SharedPtr stop_timeout_;
   State state_ = State::Inactive;
   std::string last_message_;
   std::unique_ptr<bond::Bond> bond_;
+  std::chrono::duration<double> stop_timeout_s_{2.0};
   double height_ = 0.0;
   double period_ = 0.0;
   rclcpp::PreShutdownCallbackHandle pre_shutdown_callback_handle_;

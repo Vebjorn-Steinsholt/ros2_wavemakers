@@ -43,7 +43,7 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
   declare_parameter_if_missing(node, "poll_interval_ms", 50);
   declare_parameter_if_missing(node, "timeout_ms", 1000);
   declare_parameter_if_missing(node, "reconnect_ms", 2000);
-  declare_parameter_if_missing(node, "write_only_dirty", true);
+  declare_parameter_if_missing(node, "write_only_dirty", false);
   declare_parameter_if_missing(node, "profibus_address", 2);
   declare_parameter_if_missing(node, "min_position_deg", -550.0);
   declare_parameter_if_missing(node, "max_position_deg", 500.0);

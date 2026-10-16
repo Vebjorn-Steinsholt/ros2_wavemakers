@@ -9,10 +9,11 @@ Modbus TCP / PROFIBUS gateway.
  (ros2 CLI, bridge)                (wavemaker_controller)           (gateway)                (servo drive)
 ```
 
-> **Safety first.** Do not start physical motion until the checks in [TODO.md](TODO.md) are complete:
-> emergency stop, mechanical travel, actuator conversion, software limits, feedback direction,
-> communication, and the physical zero position. [TODO.md](TODO.md) also tracks the open software
-> issues; several affect behaviour on the real drive.
+> **Safety first.** Do not start physical motion until the checks in
+> [COMMISSIONING.md](COMMISSIONING.md) are complete: emergency stop, mechanical travel, actuator
+> conversion, software limits, feedback direction, communication, and the physical zero position.
+> Before every lab session, go through [STARTUP.md](STARTUP.md). [TODO.md](TODO.md) tracks the open
+> software issues; several affect behaviour on the real drive.
 
 ## Contents
 
@@ -114,7 +115,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | `status_base_reg` / `status_word_count` | Gateway status word and PROFIBUS live list (768 / 9). |
 | `profibus_address` | The drive's PROFIBUS address, used to check that it is live. |
 | `poll_interval_ms` | Gateway exchange period. **The control loop runs at this rate.** See [Choosing the poll interval](#choosing-the-poll-interval). |
-| `write_only_dirty` | Keep `false`, so outputs are written every cycle (needed for the MGate output fault timeout). |
+| `write_only_dirty` | Default `false`: outputs are written every cycle (needed for the MGate output fault timeout). Keep it `false`. |
 | `timeout_ms`, `reconnect_ms`, `step_timeout_ms` | Modbus timeout, reconnect delay, and timeout per drive state-machine step. |
 
 ### Motion tuning (defaults apply if not set)
@@ -207,7 +208,7 @@ ros2 param get /wavemakers/ladertanken/controller water_depth
 Without the argument the value in `wavemakers.yaml` is used. Change the yaml (on the PC, then
 commit and pull on the Pi) only when the usual depth changes; editing it on the Pi makes the next
 `git pull` refuse. For a flap the depth must stay below `flap_attachment_height` and above
-`hinge_height`, or configure fails. Readjust the spring balance for the new depth (TODO 34).
+`hinge_height`, or configure fails. Readjust the spring balance for the new depth ([COMMISSIONING.md](COMMISSIONING.md) item 34).
 
 ### Web page
 
@@ -392,7 +393,7 @@ in older files (TODO 32).
 
 ## Recommended test order on the rig
 
-1. Complete the physical checks in [TODO.md](TODO.md).
+1. Complete the physical checks in [COMMISSIONING.md](COMMISSIONING.md).
 2. Run `poll_rate_probe` and set `poll_interval_ms`; configure the MGate output fault timeout.
 3. Launch one wavemaker with the lifecycle manager off, and check communication without motion
    (`mgate_example` in monitor mode, or configure only).
