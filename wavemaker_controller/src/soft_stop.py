@@ -15,9 +15,9 @@ class SoftStop(Node):
     def __init__(self):
         super().__init__("soft_stop")
         self.pin = self.declare_parameter("pin", 17).value  # Example GPIO pin number
-        self.internal_pull_up = self.declare_parameter("internal_pull_up", False).value
-        # False: external pull-up(recommended),
-        # True: internal pull-up
+        self.internal_pull_up = self.declare_parameter("internal_pull_up", True).value
+        # True: internal pull-up (default, button between pin and GND)
+        # False: external pull-up (more noise-resistant on long cables)
 
         self.stopped = True
         self.high_since = None
