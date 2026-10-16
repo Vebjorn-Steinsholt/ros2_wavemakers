@@ -132,6 +132,8 @@ journalctl -u wavemaker@ladertanken -b --no-pager -o cat | grep -E "ERROR|WARN|d
    clean exit of every process.
 3. Make `stop.sh` fail (for example `exit 1` at the top), start, and stop again: the drive must
    still be disabled, through SIGINT.
-4. Leave the service idle with a short timeout (temporarily `idle_timeout_s` in `web.launch.py`):
-   the warning appears, Keep running restarts the count, and at the timeout the service ends.
+4. Idle auto-stop. The service always uses the 2 h default, so for a short test stop the service
+   and launch by hand with `ros2 launch wavemaker_bringup lab.launch.py idle_timeout_s:=900`: the
+   warning appears after 5 min, Keep running restarts the count, and at the timeout everything
+   stops and the launch exits.
 5. Reboot the Pi. `systemctl status wavemaker@ladertanken` reports `inactive (dead)`.

@@ -266,7 +266,8 @@ messages, a live plot of setpoint and measured position, Return to upright, and 
   down with it. On a lab Pi the service then ends; start it again to continue. Only a running wave
   counts as activity, not an open page or other clicks. For the last 10 minutes the page shows a
   warning with the stop time and a **Keep running** button, which restarts the 2 h. Set the time
-  with the `idle_timeout_s` launch argument of `web.launch.py` (0 turns it off).
+  with the `idle_timeout_s` launch argument of `lab.launch.py` or `web.launch.py` (0 turns it
+  off).
 - If the server exits or crashes for any other reason, the launch shuts down as well.
 
 To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the

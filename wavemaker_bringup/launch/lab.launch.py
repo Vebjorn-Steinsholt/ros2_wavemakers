@@ -46,6 +46,11 @@ def generate_launch_description():
             default_value='17',
             description='GPIO pin for soft stop button',
         ),
+        DeclareLaunchArgument(
+            'idle_timeout_s',
+            default_value='7200',
+            description='Stop everything after this long without a wave; 0 turns it off',
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(bridge_launch),
             launch_arguments={
@@ -59,6 +64,7 @@ def generate_launch_description():
             launch_arguments={
                 'wavemaker': LaunchConfiguration('wavemaker'),
                 'port': LaunchConfiguration('port'),
+                'idle_timeout_s': LaunchConfiguration('idle_timeout_s'),
             }.items(),
         ),
         Node(

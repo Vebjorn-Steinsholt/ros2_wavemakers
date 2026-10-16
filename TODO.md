@@ -46,14 +46,8 @@ the items kept there.
 - [ ] **22. `cancel_all_goals` can report `SERVER_UNAVAILABLE` right after configure.** (`wavemaker_controller/src/wavemaker_node.cpp`)
   `action_server_is_ready()` is false until discovery completes; wait up to about 1 s before replying.
 
-- [ ] **35. Run `lab.launch.py` on the lab Pi as a systemd service.** (`rpi/`; rig for the stop test)
-  Today lab staff start it over SSH inside `tmux`. A service survives a dropped SSH session, logs to `journalctl`, and is started and stopped the same way on every Pi.
-  - **Not started at boot.** The drive is enabled as soon as `lab.launch.py` runs, so a power cut or reboot must not enable it by itself. Install the unit but do not `systemctl enable` it; staff run `sudo systemctl start wavemaker` / `stop wavemaker`. Revisit auto-start only after item 5 (gateway fault timeout) is done; the web server alone could then run at boot if wanted.
-  - **One unit file for all Pis, settings per Pi.** `rpi/wavemaker.service` runs `rpi/run.sh`, which sources `/opt/ros/jazzy` and `~/ros_ws/install/setup.bash` and `exec`s `ros2 launch wavemaker_bringup lab.launch.py`. Per-Pi values (`WAVEMAKER`, `PORT`, `WATER_DEPTH`, `ROS_DOMAIN_ID`) go in `/etc/default/wavemaker` (`EnvironmentFile=`). systemd does not read `~/.bashrc`, so `ROS_DOMAIN_ID` must be set there or the service runs on domain 0, visible to everyone (see *Lab computers* in the README).
-  - **Unit settings:** `User=<wavemaker>`; `After=`/`Wants=network-online.target` (DDS and the gateway need the network up); `Restart=no`, because a restart re-enables the drive and the fault policy (item 17) is undecided, and `ros2 launch` does not exit when a child dies anyway; `KillSignal=SIGINT` with `KillMode=mixed`, so the launch receives Ctrl-C and stops the nodes in order and the controller disables the drive; `TimeoutStopSec=30`, longer than `IndraDrive::disable()` can take (item 29). Note that `ros2 launch` escalates to SIGTERM after 5 s by itself; check that the drive is disabled even then.
-  - **Permissions:** lab staff need `systemctl start/stop/status wavemaker` without full sudo; add a sudoers rule (or polkit rule) for those three commands only.
-  - **Docs:** `rpi/README.md` with install steps (copy or link the unit, create `/etc/default/wavemaker`, `daemon-reload`), start/stop/status, and `journalctl -u wavemaker -f`. Fix the `pi/README.md` reference in `lab.launch.py`, and replace the `tmux` advice in the README's *Web page* section and in [STARTUP.md](STARTUP.md).
-  - **Rig test:** start the service, run a wave from the page, `systemctl stop wavemaker` mid-wave; the wave stops, the drive is disabled, and the journal shows a clean shutdown. Reboot the Pi and check that nothing started.
+- [x] **35. Run `lab.launch.py` on the lab Pi as a systemd service.** (`rpi/`)
+  Done 2026-10-16: template unit `wavemaker@.service` (`User=%i`, never started at boot), `run.sh`, `stop.sh` (ordered shutdown through the lifecycle manager before SIGINT), settings in `/etc/default/wavemaker`, sudoers rule; install and use in [rpi/README.md](rpi/README.md). The web server stops the service after 2 h without a wave. Rig-tested on ladertanken: start, `systemctl stop` mid-wave, soft stop mid-wave, stop with `stop.sh` failing (SIGINT alone stopped the drive), reboot. Not yet tested on the rig: the idle auto-stop (tested in `demo.launch.py`).
 
 ## Low
 
@@ -90,3 +84,6 @@ This is fine
 
 - [ ] **32. Clean-up.**
   Remove the unused `driver_address_` / `wavemaker_id_` members and the commented-out members at the end of `WavemakerNode`; set the license in `wavemaker_controller/package.xml`. (Formatting and CMake lint fixed 2026-10-07.)
+
+- [ ] **36. Soft stop timeout logged once at startup.** (`wavemaker_node.cpp`, `soft_stop.py`; rig)
+  On the Pi, about 1 s after `Managed nodes are active`, the controller logs `No Soft stop message received for over 200 ms; treating as stopped` once (2026-10-16), then works normally. Most likely load while all nodes start; harmless before the first wave, but it is logged as an error on every normal start. If it ever appears mid-session, `soft_stop_timeout_s` (0.2 s) is too tight for the Pi. Decide: raise the timeout, or skip the check until the soft stop has published steadily for a moment.
