@@ -15,6 +15,14 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def _shutdown_unless_stopping(event, context):
+    # The server also exits during an ordinary shutdown (Ctrl-C, systemctl stop). A second
+    # Shutdown then makes launch fail with "Cannot shutdown a ROS adapter that is not running".
+    if context.is_shutdown:
+        return None
+    return [Shutdown(reason='web server exited')]
+
+
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -38,6 +46,6 @@ def generate_launch_description():
                 'idle_timeout_s': ParameterValue(
                     LaunchConfiguration('idle_timeout_s'), value_type=float),
             }],
-            on_exit=Shutdown(reason='web server exited'),
+            on_exit=_shutdown_unless_stopping,
         ),
     ])
