@@ -6,6 +6,7 @@ After=network-online.target
 [Service]
 Type=exec
 User=%i
+WorkingDirectory=/home/%i
 Environment=WAVEMAKER=%i PYTHONUNBUFFERED=1 RCUTILS_COLORIZED_OUTPUT=0
 EnvironmentFile=/etc/default/wavemaker
 ExecStart=/home/%i/ros_ws/src/ros2_wavemakers/rpi/run.sh
