@@ -19,13 +19,24 @@ It is a template unit: the part after `@` is the wavemaker, which is also the Pi
 
 ## Install (once per Pi)
 
-Build the workspace first (see *Build* in the top-level README). Then, as the wavemaker user:
+Before you start, as the wavemaker user:
+
+- The workspace is built (see *Build* in the top-level README), and `rpi/run.sh` and `rpi/stop.sh`
+  are executable (`ls -l rpi/*.sh` shows `-rwxr-xr-x`).
+- The user is in the `gpio` group (`id` lists `gpio`); the soft stop node needs it.
+- No `lab.launch.py` is running by hand. A second copy would clash on port 8080 and GPIO17.
+
+Install the unit:
 
 ```bash
 sudo cp ~/ros_ws/src/ros2_wavemakers/rpi/wavemaker@.service /etc/systemd/system/
 sudo systemctl daemon-reload
-systemd-analyze verify wavemaker@ladertanken.service
+systemd-analyze verify wavemaker@ladertanken.service     # no output = OK
 ```
+
+The unit sets `WorkingDirectory=/home/%i` because a service otherwise starts in `/`, which the user
+cannot write to. lgpio, which the soft stop node uses for GPIO on the Pi 5, creates small files in
+the working directory; without a writable one, opening GPIO17 fails and the soft stop stays engaged.
 
 Create `/etc/default/wavemaker` with `sudoedit /etc/default/wavemaker`:
 
@@ -50,6 +61,20 @@ To start and stop without a password, add a sudoers rule with
 ```
 ladertanken ALL=(root) NOPASSWD: /usr/bin/systemctl start wavemaker@ladertanken, /usr/bin/systemctl stop wavemaker@ladertanken
 ```
+
+`sudo -l` should list it. Then start the service once and check the journal (see *Use*): it should
+show `Managed nodes are active`, `Soft stop connected` and, with the button at rest,
+`Soft stop released`.
+
+## Update
+
+After a `git pull`:
+
+- **Code changed** (anything outside `rpi/`): `cd ~/ros_ws && colcon build`.
+- **`wavemaker@.service` changed:** copy it again and run `sudo systemctl daemon-reload`.
+- **`run.sh` or `stop.sh` changed:** nothing to do; the unit runs them from the repository.
+
+Then stop and start the service; a running service keeps the old code.
 
 ## Use
 
@@ -82,6 +107,22 @@ minutes before, with a **Keep running** button. See *Web page* in the top-level 
 The service is never restarted automatically (`Restart=no`): a restart would re-enable the drive.
 If a node dies, `ros2 launch` keeps running with the rest. Check the journal, then stop and start
 the service.
+
+## Troubleshooting
+
+`journalctl -f` shows only the last lines, so earlier errors are easy to miss. Search the whole
+run instead (`-o cat` keeps the lines short):
+
+```bash
+journalctl -u wavemaker@ladertanken -b --no-pager -o cat | grep -E "ERROR|WARN|died|exception|Soft stop"
+```
+
+| Symptom | Cause |
+|---|---|
+| Fails at once with `set ROS_DOMAIN_ID` | `/etc/default/wavemaker` missing, or `ROS_DOMAIN_ID` empty or 0. |
+| `Soft stop released` never appears, and the button changes nothing | `soft_stop` could not open GPIO17 (`Cannot open GPIO17` in the journal): check `WorkingDirectory=` in the installed unit and the `gpio` group. If GPIO is fine, the button is pressed in. |
+| `ros2` commands on another computer do not see the wavemaker | That computer uses another ROS domain or another DDS (`RMW_IMPLEMENTATION`). The Pi uses the default, Fast DDS. |
+| `status` shows `failed` after a stop | Check the journal around the stop for `ERROR` lines. |
 
 ## Rig test
 
