@@ -1,5 +1,6 @@
 #include <chrono>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <limits>
@@ -14,6 +15,7 @@
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include "lifecycle_msgs/msg/state.hpp"
 #include "lifecycle_msgs/msg/transition.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "wavemaker_interfaces/action/move_wavemaker.hpp"
 
@@ -134,11 +136,43 @@ public:
   FaultCallback fault_callback_;
 };
 
+// The controller rejects goals until soft_stop reports released. A latched publisher per
+// namespace stands in for the soft stop node, and the long timeout lets one message suffice.
+struct SoftStopReleaser
+{
+  std::shared_ptr<rclcpp::Node> node;
+  std::map<std::string, rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr> publishers;
+};
+
+SoftStopReleaser & soft_stop_releaser()
+{
+  static SoftStopReleaser releaser;
+  return releaser;
+}
+
+rclcpp::NodeOptions with_soft_stop_released(const std::string & ns, rclcpp::NodeOptions options)
+{
+  auto & releaser = soft_stop_releaser();
+  if (!releaser.node) {
+    releaser.node = std::make_shared<rclcpp::Node>("soft_stop_releaser");
+  }
+  if (releaser.publishers.count(ns) == 0) {
+    auto publisher = releaser.node->create_publisher<std_msgs::msg::Bool>(
+      ns + "/soft_stop", rclcpp::QoS(1).reliable().transient_local());
+    std_msgs::msg::Bool released;
+    released.data = false;
+    publisher->publish(released);
+    releaser.publishers.emplace(ns, publisher);
+  }
+  options.append_parameter_override("soft_stop_timeout_s", 1e6);
+  return options;
+}
+
 rclcpp::NodeOptions node_options(const std::string & ns, bool pregenerated)
 {
-  return rclcpp::NodeOptions()
-         .arguments({"--ros-args", "-r", "__ns:=" + ns})
-         .parameter_overrides({
+  return with_soft_stop_released(ns, rclcpp::NodeOptions()
+           .arguments({"--ros-args", "-r", "__ns:=" + ns})
+           .parameter_overrides({
       rclcpp::Parameter("wavemaker_type", "piston"),
       rclcpp::Parameter("wavemaker_minimum", 0.0),
       rclcpp::Parameter("wavemaker_maximum", 0.5),
@@ -147,14 +181,14 @@ rclcpp::NodeOptions node_options(const std::string & ns, bool pregenerated)
       rclcpp::Parameter("water_depth", 1.0),
       rclcpp::Parameter("flap_attachment_height", 0.0),
       rclcpp::Parameter("actuator_upright_angle_deg", 0.0),
-    });
+    }));
 }
 
 rclcpp::NodeOptions angular_node_options(const std::string & ns)
 {
-  return rclcpp::NodeOptions()
-         .arguments({"--ros-args", "-r", "__ns:=" + ns})
-         .parameter_overrides({
+  return with_soft_stop_released(ns, rclcpp::NodeOptions()
+           .arguments({"--ros-args", "-r", "__ns:=" + ns})
+           .parameter_overrides({
       rclcpp::Parameter("wavemaker_type", "piston"),
       rclcpp::Parameter("wavemaker_minimum", 0.2),
       rclcpp::Parameter("wavemaker_maximum", 0.3),
@@ -167,14 +201,14 @@ rclcpp::NodeOptions angular_node_options(const std::string & ns)
       rclcpp::Parameter("actuator_lead_m_per_degree", 0.001),
       rclcpp::Parameter("min_position_deg", -100.0),
       rclcpp::Parameter("max_position_deg", 100.0),
-    });
+    }));
 }
 
 rclcpp::NodeOptions one_sided_node_options(const std::string & ns)
 {
-  return rclcpp::NodeOptions()
-         .arguments({"--ros-args", "-r", "__ns:=" + ns})
-         .parameter_overrides({
+  return with_soft_stop_released(ns, rclcpp::NodeOptions()
+           .arguments({"--ros-args", "-r", "__ns:=" + ns})
+           .parameter_overrides({
       rclcpp::Parameter("wavemaker_type", "flap"),
       rclcpp::Parameter("wavemaker_minimum", 0.25),
       rclcpp::Parameter("wavemaker_maximum", 0.5),
@@ -187,7 +221,7 @@ rclcpp::NodeOptions one_sided_node_options(const std::string & ns)
       rclcpp::Parameter("actuator_drive_type", "linear"),
       rclcpp::Parameter("min_position_m", 0.25),
       rclcpp::Parameter("max_position_m", 0.5),
-    });
+    }));
 }
 
 bool spin_until_state(
@@ -290,6 +324,7 @@ protected:
 
   static void TearDownTestSuite()
   {
+    soft_stop_releaser() = SoftStopReleaser();
     rclcpp::shutdown();
   }
 };
@@ -1188,9 +1223,9 @@ TEST_F(WavemakerNodeTest, LadertankenAcceptsEveryLabWave)
       return actuator;
     };
   const std::string ns = "/lab_waves_test";
-  auto options = rclcpp::NodeOptions()
-    .arguments({"--ros-args", "-r", "__ns:=" + ns})
-    .parameter_overrides({
+  auto options = with_soft_stop_released(ns, rclcpp::NodeOptions()
+      .arguments({"--ros-args", "-r", "__ns:=" + ns})
+      .parameter_overrides({
     rclcpp::Parameter("wavemaker_type", "flap"),
     rclcpp::Parameter("wavemaker_upright_position_m", 0.0),
     rclcpp::Parameter("wavemaker_upright_is_minimum", false),
@@ -1202,7 +1237,7 @@ TEST_F(WavemakerNodeTest, LadertankenAcceptsEveryLabWave)
     rclcpp::Parameter("actuator_lead_m_per_degree", kLeadMPerDeg),
     rclcpp::Parameter("min_position_deg", -200.0),
     rclcpp::Parameter("max_position_deg", 200.0),
-    });
+    }));
   auto node = std::make_shared<WavemakerNode>(options, factory);
   ASSERT_EQ(
     node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
