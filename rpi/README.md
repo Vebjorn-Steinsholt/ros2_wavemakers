@@ -30,10 +30,15 @@ systemd-analyze verify wavemaker@ladertanken.service
 Create `/etc/default/wavemaker` with `sudoedit /etc/default/wavemaker`:
 
 ```bash
-ROS_DOMAIN_ID=1        # the lab's domain; required, and not 0
+# The lab's ROS domain. Required, and not 0.
+ROS_DOMAIN_ID=1
 PORT=8080
-WATER_DEPTH=           # m; empty uses wavemakers.yaml
+# Water depth in m. Empty uses wavemakers.yaml.
+WATER_DEPTH=
 ```
+
+systemd only treats lines starting with `#` as comments; a comment after a value becomes part of
+the value.
 
 systemd does not read `~/.bashrc`, so `ROS_DOMAIN_ID` must be set here. `run.sh` refuses to start
 without it, because on domain 0 anyone on the network could command the wavemaker. The settings
