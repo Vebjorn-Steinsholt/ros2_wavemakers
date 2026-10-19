@@ -38,7 +38,7 @@
     actuator_lead_m_per_degree: 0.00053  # 5.3 cm flap change per 100 deg [m/deg]
     # Measured / target wave height (regular waves only); the stroke is divided by it.
     # 1.0 = linear theory. To correct: new gain = old gain * measured / target.
-    wavemaker_transfer_gain: 1.0
+    wavemaker_transfer_gain: 0.8
 
 /wavemakers/lilletanken/controller:
   ros__parameters:
