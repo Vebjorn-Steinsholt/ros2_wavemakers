@@ -269,6 +269,9 @@ messages, a live plot of setpoint and measured position, Return to upright, and 
   with the `idle_timeout_s` launch argument of `lab.launch.py` or `web.launch.py` (0 turns it
   off).
 - If the server exits or crashes for any other reason, the launch shuts down as well.
+- The `rig` launch argument of `web.launch.py` (`wavemaker`, the default, or `oscillator`) picks the
+  page's texts and the server's messages, for example "Paddle" and "Return to upright" or "Slide"
+  and "Go to centre". The controls are the same.
 
 To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the
 lifecycle manager and the page on their own ROS domain (77), reachable only from this computer,

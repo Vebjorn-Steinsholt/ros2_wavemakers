@@ -32,6 +32,9 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('port', default_value='8080', description='HTTP port'),
         DeclareLaunchArgument(
+            'rig', default_value='wavemaker', choices=['wavemaker', 'oscillator'],
+            description='Texts on the page: wavemaker or oscillator'),
+        DeclareLaunchArgument(
             'idle_timeout_s', default_value='7200',
             description='Stop after this long without a wave; 0 turns it off'),
         DeclareLaunchArgument(
@@ -61,6 +64,7 @@ def generate_launch_description():
                 'port': ParameterValue(port, value_type=int),
                 'idle_timeout_s': ParameterValue(
                     LaunchConfiguration('idle_timeout_s'), value_type=float),
+                'rig': LaunchConfiguration('rig'),
             }],
             on_exit=_shutdown_unless_stopping),
     ])

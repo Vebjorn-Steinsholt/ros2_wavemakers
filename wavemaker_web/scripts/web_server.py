@@ -18,6 +18,9 @@ After idle_timeout_s (default 2 h) without a running wave, the server shuts the 
 down through the lifecycle manager and exits; the launch files end the whole launch when it does.
 For the last idle_warning_s the page shows a warning with a Keep running button, which restarts
 the count. Set idle_timeout_s to 0 to turn this off.
+
+The rig parameter ('wavemaker' or 'oscillator') picks the page's texts and the server's messages;
+the controls are the same for both.
 """
 
 from collections import deque
@@ -50,6 +53,32 @@ RETURN_TIMEOUT_S = 60.0
 SHUTDOWN_TIMEOUT_S = 15.0  # for the lifecycle manager's SHUTDOWN after the idle timeout
 EXIT_DELAY_S = 2.0       # lets open pages show the auto-stop notice before the server exits
 ACTIVE_STATES = ('starting', 'running', 'stopping')  # bridge states that count as a running wave
+# Per rig: 'machine', 'motion' and 'a_motion' are used in the server's messages and on the page,
+# the rest only on the page.
+RIG_TEXTS = {
+    'wavemaker': {
+        'machine': 'wavemaker',
+        'motion': 'wave',
+        'a_motion': 'a wave',
+        'title': 'Wavemaker Control',
+        'wave_card': 'Regular wave',
+        'motion_card': 'Paddle',
+        'plot_note': 'metres at the flap top, last 20 s',
+        'return_button': 'Return to upright',
+        'returning': 'Returning to upright…',
+    },
+    'oscillator': {
+        'machine': 'oscillator',
+        'motion': 'oscillation',
+        'a_motion': 'an oscillation',
+        'title': 'Sloshing Oscillator',
+        'wave_card': 'Regular oscillation',
+        'motion_card': 'Slide',
+        'plot_note': 'slide position in metres, last 20 s',
+        'return_button': 'Go to centre',
+        'returning': 'Going to centre…',
+    },
+}
 LOG_HISTORY = 300        # log lines kept for pages that connect later
 STARTING_RE = re.compile(r'height ([-+0-9.eE]+) m, period ([-+0-9.eE]+) s')
 RETURN_STATUS = {
@@ -73,6 +102,11 @@ class WebNode(Node):
         super().__init__('wavemaker_web')
         self.declare_parameter('host', '0.0.0.0')
         self.declare_parameter('port', 8080)
+        self.declare_parameter('rig', 'wavemaker')
+        rig = self.get_parameter('rig').value
+        if rig not in RIG_TEXTS:
+            raise ValueError(f"rig must be one of {', '.join(RIG_TEXTS)}, not '{rig}'")
+        self.texts = RIG_TEXTS[rig]
         self.declare_parameter('idle_timeout_s', 7200.0)
         self.declare_parameter('idle_warning_s', 600.0)
         self._idle_timeout = float(self.get_parameter('idle_timeout_s').value)
@@ -188,16 +222,18 @@ class WebNode(Node):
             threading.Thread(target=self._auto_stop, daemon=True).start()
         elif warn:
             self.get_logger().warn(
-                f'No wave for {format_duration(idle)}: the wavemaker stops in '
-                f'{format_duration(remaining)}. Press Keep running on the page to stay on.')
+                f"No {self.texts['motion']} for {format_duration(idle)}: the "
+                f"{self.texts['machine']} stops in {format_duration(remaining)}. Press Keep "
+                'running on the page to stay on.')
 
     def _auto_stop(self):
+        machine, motion = self.texts['machine'], self.texts['motion']
         self.get_logger().warn(
-            f'No wave for {format_duration(self._idle_timeout)}: stopping the wavemaker')
+            f'No {motion} for {format_duration(self._idle_timeout)}: stopping the {machine}')
         with self._lock:
             self._notice = (
-                f'Stopped after {format_duration(self._idle_timeout)} without a wave. Start the '
-                'wavemaker again to continue.')
+                f'Stopped after {format_duration(self._idle_timeout)} without '
+                f"{self.texts['a_motion']}. Start the {machine} again to continue.")
         self._shutdown_managed_nodes()
         time.sleep(EXIT_DELAY_S)
         # Ends spin() in main(); the launch file then shuts the whole launch down.
@@ -263,12 +299,13 @@ class WebNode(Node):
     def start(self, height, period):
         with self._lock:
             if self._auto_stopping:
-                return False, 'The wavemaker is stopping after the idle timeout.'
+                return False, f"The {self.texts['machine']} is stopping after the idle timeout."
             state = self._state
             first_message = self._message_count
             self._notice = ''
         if state != 'idle':
-            return False, f'The bridge is {state}; it must be idle to start a wave.'
+            return False, (
+                f"The bridge is {state}; it must be idle to start {self.texts['a_motion']}.")
         self._height_pub.publish(Float64(data=height))
         self._period_pub.publish(Float64(data=period))
         time.sleep(START_DELAY_S)
@@ -303,18 +340,21 @@ class WebNode(Node):
     def keep_running(self):
         with self._lock:
             if self._auto_stopping:
-                return False, 'The wavemaker is already stopping after the idle timeout.'
+                return False, (
+                    f"The {self.texts['machine']} is already stopping after the idle timeout.")
             self._last_activity = time.monotonic()
             self._idle_warned = False
+        machine, a_motion = self.texts['machine'], self.texts['a_motion']
         timeout = format_duration(self._idle_timeout)
-        self.get_logger().info(f'Keep running pressed: the wavemaker stops after {timeout} '
-                               'without a wave from now')
-        return True, f'Keeping the wavemaker on for another {timeout} without a wave.'
+        self.get_logger().info(
+            f'Keep running pressed: the {machine} stops after {timeout} without {a_motion} '
+            'from now')
+        return True, f'Keeping the {machine} on for another {timeout} without {a_motion}.'
 
     def return_to_upright(self):
         with self._lock:
             if self._auto_stopping:
-                return False, 'The wavemaker is stopping after the idle timeout.'
+                return False, f"The {self.texts['machine']} is stopping after the idle timeout."
         if not self._return_client.wait_for_service(timeout_sec=1.0):
             return False, 'The return_to_upright service is not available.'
         request = ReturnToUpright.Request(requester='web', tolerance=0.0)
@@ -339,6 +379,9 @@ def make_handler(node, html_dir):
         def do_GET(self):
             if self.path == '/api/events':
                 self._events()
+            elif self.path == '/api/config':
+                body = json.dumps(node.texts).encode()
+                self._send(HTTPStatus.OK, body, 'application/json')
             elif self.path in STATIC_FILES:
                 name, content_type = STATIC_FILES[self.path]
                 self._send(HTTPStatus.OK, (html_dir / name).read_bytes(), content_type)
@@ -426,7 +469,7 @@ def main():
     server = ThreadingHTTPServer((host, port), make_handler(node, html_dir))
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    node.get_logger().info(f'Open the wavemaker page at {page_url(host, port)}')
+    node.get_logger().info(f"Open the {node.texts['machine']} page at {page_url(host, port)}")
 
     executor = MultiThreadedExecutor()
     executor.add_node(node)

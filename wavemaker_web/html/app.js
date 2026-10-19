@@ -8,6 +8,11 @@ const LOG_LINES = 500;  // older log lines are dropped from the page
 const $ = (id) => document.getElementById(id);
 const series = { setpoint: [], position: [] };
 let state = 'unknown';
+// The rig's texts, from api/config; index.html shows the wavemaker texts until they arrive.
+let texts = {
+  machine: 'wavemaker', motion: 'wave', a_motion: 'a wave',
+  returning: 'Returning to upright…',
+};
 let serverTime = 0;
 let lastUpdate = 0;
 
@@ -45,7 +50,8 @@ function showIdleWarning(update) {
   const minutes = Math.floor(stopIn / 60);
   const seconds = String(Math.floor(stopIn % 60)).padStart(2, '0');
   $('idleText').textContent =
-    `No wave for ${formatDuration(update.idle_timeout - stopIn)}: the wavemaker stops at ` +
+    `No ${texts.motion} for ${formatDuration(update.idle_timeout - stopIn)}: ` +
+    `the ${texts.machine} stops at ` +
     `${at} (in ${minutes}:${seconds}).`;
 }
 
@@ -207,7 +213,7 @@ $('stop').addEventListener('click', async () => {
 
 $('return').addEventListener('click', async () => {
   $('return').disabled = true;
-  $('returnResult').textContent = 'Returning to upright…';
+  $('returnResult').textContent = texts.returning;
   try {
     const result = await post('api/return');
     $('returnResult').textContent = result.message;
@@ -233,6 +239,26 @@ $('logLevel').addEventListener('change', () => {
 
 $('logClear').addEventListener('click', () => $('log').replaceChildren());
 
+async function loadTexts() {
+  try {
+    const response = await fetch('api/config');
+    texts = await response.json();
+  } catch (error) {
+    return;  // keep the defaults
+  }
+  document.title = texts.title;
+  for (const [id, key] of [
+    ['title', 'title'], ['waveCard', 'wave_card'], ['motionCard', 'motion_card'],
+    ['plotNote', 'plot_note'], ['return', 'return_button'],
+  ]) {
+    $(id).textContent = texts[key];
+  }
+  for (const [cls, key] of [['motion', 'motion'], ['a-motion', 'a_motion'], ['machine', 'machine']]) {
+    for (const element of document.getElementsByClassName(cls)) element.textContent = texts[key];
+  }
+}
+
+loadTexts();
 render();
 setInterval(render, 500);
 window.addEventListener('resize', drawPlot);
