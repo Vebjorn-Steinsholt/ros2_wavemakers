@@ -185,6 +185,33 @@ TEST(WaveTrajectoryTest, TransferGainScalesOneSidedRange)
     corrected.required_maximum() - 0.25, (nominal.required_maximum() - 0.25) / 2.0, 1e-12);
 }
 
+TEST(WaveMathTest, GainTableInterpolatesAndClampsAtTheEnds)
+{
+  const std::vector<double> periods{1.0, 2.0, 4.0};
+  const std::vector<double> values{1.2, 1.0, 0.9};
+  struct Case
+  {
+    double period;
+    double gain;
+    bool clamped;
+  };
+  for (const Case & expected : std::vector<Case>{
+    {1.0, 1.2, false},     // first point
+    {1.5, 1.1, false},     // between the first two points
+    {2.0, 1.0, false},     // inner point
+    {3.0, 0.95, false},    // between the last two points
+    {4.0, 0.9, false},     // last point
+    {0.5, 1.2, true},      // below the table: first value
+    {5.0, 0.9, true},      // above the table: last value
+  })
+  {
+    const wavemaker_controller::GainLookup lookup =
+      wavemaker_controller::interpolate_gain(periods, values, expected.period);
+    EXPECT_NEAR(lookup.gain, expected.gain, 1e-12) << "period " << expected.period;
+    EXPECT_EQ(lookup.clamped, expected.clamped) << "period " << expected.period;
+  }
+}
+
 TEST(WaveTrajectoryTest, FlapAmplitudeFollowsLinearTheoryAtCurrentDepth)
 {
   // The flap stroke is the one at the waterline, scaled up to the attachment height.

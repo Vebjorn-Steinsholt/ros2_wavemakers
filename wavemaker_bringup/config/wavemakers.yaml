@@ -39,6 +39,12 @@
     # Measured / target wave height (regular waves only); the stroke is divided by it.
     # 1.0 = linear theory. To correct: new gain = old gain * measured / target.
     wavemaker_transfer_gain: 1.0
+    # Gain per period [s], interpolated linearly, nearest end value outside; replaces
+    # wavemaker_transfer_gain when set. All 1.0 = linear theory, not yet calibrated: fill in
+    # from the wave-probe runs (COMMISSIONING.md, Transfer gain calibration). Valid for
+    # water_depth 1.0 only.
+    wavemaker_transfer_gain_periods: [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7]
+    wavemaker_transfer_gain_values:  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
 /wavemakers/lilletanken/controller:
   ros__parameters:

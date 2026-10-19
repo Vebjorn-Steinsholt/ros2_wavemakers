@@ -79,9 +79,8 @@ both files; gaps in the numbering are the items kept there.
   Confirm on the drive how the position tag is scaled (it is read as degrees and used as metres unchanged) and the velocity unit. The code change that depends on it is item 19 in [TODO.md](TODO.md).
 
 - [ ] **33. Calibrate the wave-height transfer gain.** (rig; wave probes, flap connected)
-  `wavemaker_transfer_gain` (default 1.0 = linear theory, in `wavemakers.yaml`) divides the stroke of regular waves to correct the generated height. Run regular waves over the periods and heights in use, measure the height with wave probes away from the paddle, and set new gain = old gain × measured / target.
-  - If the ratio varies with period, one gain is not enough; record the ratios and decide whether the gain should depend on period.
-  - Recheck after changing the water depth or the calibration from item 14.
+  `wavemaker_transfer_gain` (default 1.0 = linear theory, in `wavemakers.yaml`) divides the stroke of regular waves to correct the generated height; `wavemaker_transfer_gain_periods` / `wavemaker_transfer_gain_values` replace it with a gain per period. Follow [Transfer gain calibration](#transfer-gain-calibration).
+  - The gain holds for one water depth; recalibrate after changing it, or after the calibration from item 14.
   - Not applied to pregenerated waves; decide whether it should be.
 
 ## Verified so far
@@ -126,6 +125,166 @@ wavemaker limits, and fit `x = a + b * theta`:
 
 If the fit has significant residual error, use a geometry-based conversion or a calibrated lookup table
 instead of one constant scale.
+
+## Transfer gain calibration
+
+Finds the gain per wave period for item 33. The controller computes the stroke for a regular wave
+from linear theory and divides it by the gain, so for each run
+
+    new gain = gain used × measured height / target height
+
+Measured above 1 the waves came out too high, and the higher gain shrinks the next stroke.
+
+### Before you start
+
+- Items 3, 13, 14 and 34 are done: the flap moves the right way, follows the setpoint at the
+  periods to be calibrated, the angle-to-position conversion is right and the springs suit the
+  water depth. A tracking or conversion error would otherwise end up in the gain.
+- `water_depth` in `wavemakers.yaml` is the depth measured today, and the water is still.
+- The beach or absorber is in place, as it will be for experiments.
+- The wave probes have a fresh static calibration (raise and lower each probe by known steps in
+  still water, at least 5 points over the expected range; check that the fit is linear).
+- Probe placement:
+  - Put the main probe on the tank centreline at least 3 water depths from the flap. Closer than
+    that, the local (evanescent) waves near the paddle add to the reading.
+  - Optional: put a second probe across the tank at the same distance. If the two differ by more
+    than a few per cent at some period, there are cross waves; note those periods.
+  - Optional: 3 probes along the tank (Mansard & Funke spacing) separate the incident wave from
+    the reflected one, which allows long records.
+- Record the depth, the probe positions and the beach state in the results table below.
+
+### Run the waves
+
+1. Start in terminal mode with the gain set to theory, so "gain used" is 1.0 for every run.
+   Set all `wavemaker_transfer_gain_values` in `wavemakers.yaml` to 1.0 (the starting table), or
+   comment out both table lists and set `wavemaker_transfer_gain: 1.0`. When the table is set,
+   it takes the place of `wavemaker_transfer_gain`. Then launch, configure and activate as in
+   [Rig test procedure](#rig-test-procedure).
+2. Record the paddle alongside the probes:
+   ```bash
+   ros2 bag record $NS/wavemaker_setpoint $NS/wavemaker_position
+   ```
+3. Test matrix:
+   - Periods: cover every period used in experiments, plus one point just beyond each end, so no
+     experiment falls outside the table. Use steps of 0.1 s where the gain changes quickly
+     (usually the short periods) and up to 0.2–0.3 s elsewhere.
+   - Heights: two per period, at steepness H/L ≈ 1/60 and 1/30, where L is the wavelength at
+     that period and depth. Steep waves (1/15) are nonlinear and are not used to set the gain.
+     - Keep every wave at least 20 mm high. Smaller waves are too small to measure well, because
+       probe resolution and the servo's standstill wobble become a large part of them. At short
+       periods use 1/30 and 1/20 instead.
+     - Where 1/30 needs more than about 150° (three quarters of the travel limit), use 1/45 instead.
+     - Short waves lose height along the tank, so put the probe where experiments measure.
+   - Ladertanken at 1.0 m depth (angle and peak speed by linear theory at gain 1.0; limits
+     ±200°, 170 rpm). Recompute for another depth or wavemaker:
+
+     | T [s] | L [m] | Low H [m] | Steepness | Angle, speed | High H [m] | Steepness | Angle, speed |
+     | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+     | 0.6 | 0.56 | 0.020 | 1/28 | ±13°, 24 rpm | 0.028 | 1/20 | ±19°, 33 rpm |
+     | 0.7 | 0.77 | 0.020 | 1/38 | ±14°, 21 rpm | 0.039 | 1/20 | ±27°, 41 rpm |
+     | 0.8 | 1.00 | 0.020 | 1/50 | ±15°, 19 rpm | 0.033 | 1/30 | ±24°, 31 rpm |
+     | 0.9 | 1.26 | 0.021 | 1/60 | ±16°, 19 rpm | 0.042 | 1/30 | ±32°, 37 rpm |
+     | 1.0 | 1.56 | 0.026 | 1/60 | ±21°, 22 rpm | 0.052 | 1/30 | ±42°, 44 rpm |
+     | 1.1 | 1.88 | 0.031 | 1/60 | ±27°, 26 rpm | 0.063 | 1/30 | ±55°, 52 rpm |
+     | 1.2 | 2.23 | 0.037 | 1/60 | ±35°, 30 rpm | 0.074 | 1/30 | ±69°, 61 rpm |
+     | 1.3 | 2.60 | 0.044 | 1/60 | ±45°, 36 rpm | 0.088 | 1/30 | ±90°, 73 rpm |
+     | 1.4 | 2.97 | 0.050 | 1/60 | ±56°, 42 rpm | 0.100 | 1/30 | ±113°, 84 rpm |
+     | 1.5 | 3.35 | 0.056 | 1/60 | ±70°, 49 rpm | 0.112 | 1/30 | ±139°, 97 rpm |
+     | 1.7 | 4.11 | 0.068 | 1/60 | ±102°, 63 rpm | 0.091 | 1/45 | ±136°, 84 rpm |
+
+     That is 22 runs. Use 1.0 s / 0.026 m as the repeat condition. Also run two lab waves at
+     1/15 (0.104 m / 1.0 s and 0.171 m / 1.3 s) after the table is set, to see how far the
+     calibrated gain is off for steep waves.
+   - Repeat one middle condition at the start, the middle and the end of the session. This gives
+     the scatter and shows drift, for example from the water level changing.
+4. For each run, send the wave and let it run long enough to fill the analysis window (next
+   section), then stop it:
+   ```bash
+   ros2 action send_goal $NS/move_wavemaker wavemaker_interfaces/action/MoveWavemaker \
+     "{height: 0.026, period: 1.0}"                 # Ctrl-C cancels
+   ```
+   The controller rejects a wave that would exceed the travel or speed limits; that period and
+   height cannot be run, so note it and continue. Wait until the probe is back within about
+   1 mm of still water before the next run.
+
+### Analyse each run
+
+1. Analysis window: use only waves at full height that have not yet been disturbed by the
+   reflection.
+   - Start: the paddle reaches full stroke one period after the start, and the waves then travel
+     at the group velocity `cg`. Start at about `T + x / cg + 3 T`, where x is the distance from
+     the flap to the probe.
+   - End: the reflection from the beach arrives at `(2 L_tank − x) / cg`, where L_tank is the
+     distance from the flap to the beach.
+   - Group velocity: `cg = (ω / k) · ½ · (1 + 2kh / sinh 2kh)`, with k from the dispersion
+     relation `ω² = g k tanh kh`.
+   - Aim for 10 or more whole periods in the window. If the window is shorter, move the probe
+     closer to the flap (but no closer than 3 depths) or use the 3-probe reflection analysis.
+2. Wave height: fit a sine at the known frequency over a whole number of periods in the window,
+   and take H = 2 × amplitude. This is less sensitive to noise than single crests and troughs.
+   ```python
+   import numpy as np
+   # t [s], eta [m]: the probe record cut to the window; T: wave period [s]
+   w = 2 * np.pi / T
+   A = np.column_stack([np.cos(w * t), np.sin(w * t), np.ones_like(t)])
+   a, b, _ = np.linalg.lstsq(A, eta, rcond=None)[0]
+   H_measured = 2 * np.hypot(a, b)
+   ```
+   Fit the second harmonic (2ω) the same way. If its amplitude is more than about 10 % of the
+   first harmonic's, the wave is nonlinear; do not use that run to set the gain.
+3. Paddle check: fit `wavemaker_position` from the bag in the same way and compare it with
+   `wavemaker_setpoint`. If the position amplitude is more than about 2 % below the setpoint
+   amplitude, the drive is lagging: fix item 13 first, because that error would end up in the
+   gain.
+4. Ratio: r = H_measured / H_target. With gain 1.0 used, r is the gain.
+
+### Build the table
+
+- Per period, average r over the heights.
+  - If the two steepnesses differ by more than about 5 %, the response depends on height. Use the
+    value at the steepness used most in experiments and note the difference.
+  - If the repeat runs scatter more than the differences between periods, the table only fits
+    noise: take more runs or improve the probe setup before going on.
+- If all periods are within about ±3 % of one value, one gain is enough: set
+  `wavemaker_transfer_gain` to the mean and leave the table out.
+- Otherwise set the table in `wavemakers.yaml`, under the wavemaker's controller:
+  ```yaml
+      # Transfer gain calibration <date>, water depth <m>; see COMMISSIONING.md.
+      wavemaker_transfer_gain_periods: [0.6, 0.7, 0.8, 1.0, 1.2, 1.5, 1.7]   # [s], ascending
+      wavemaker_transfer_gain_values:  [0.90, 0.93, 0.95, 0.97, 0.98, 1.00, 1.01]   # example values only
+  ```
+  - The two lists must be the same length, with at least 2 points; the periods must ascend
+    strictly, and all values must be finite and above 0.
+  - Between points the gain is interpolated linearly. Outside the table the nearest end value is
+    used and the controller logs a warning, so any period that shows that warning in an
+    experiment is outside the calibration.
+  - The yaml is only read at launch. To try a table without relaunching, set both lists while the
+    controller is unconfigured (deactivate, then cleanup), then configure and activate again:
+    ```bash
+    ros2 param set $NS/controller wavemaker_transfer_gain_periods "[0.6, 1.0, 1.7]"
+    ros2 param set $NS/controller wavemaker_transfer_gain_values "[0.90, 0.97, 1.01]"
+    ```
+    A configure that fails logs why (lengths, order or values).
+
+### Verify
+
+Relaunch with the new table and run about four waves:
+
+- two at table periods;
+- two halfway between table points, where the interpolation is least certain;
+- each at the main experiment steepness.
+
+The measured height should be within ±3 % of the target (or within the repeat scatter, if that
+is larger). Where a between-points run misses, add that period to the table.
+
+### Results
+
+Keep one table per calibration, including the depth, and copy the final gains into *Verified so
+far* with the date.
+
+| Date | Depth [m] | Probe x [m] | Period [s] | H target [m] | H measured [m] | r | Paddle amp. / setpoint | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| | | | | | | | | |
 
 ## Rig test procedure
 

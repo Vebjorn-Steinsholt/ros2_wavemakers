@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace wavemaker_controller
 {
@@ -51,6 +52,22 @@ double compute_stroke(
   }
 
   return target_height / transfer_ratio;
+}
+
+GainLookup interpolate_gain(
+  const std::vector<double> & periods, const std::vector<double> & values, double period)
+{
+  if (period <= periods.front()) {
+    return {values.front(), period < periods.front()};
+  }
+  if (period >= periods.back()) {
+    return {values.back(), period > periods.back()};
+  }
+  // periods[i - 1] <= period < periods[i]
+  const auto i = static_cast<std::size_t>(
+    std::upper_bound(periods.begin(), periods.end(), period) - periods.begin());
+  const double fraction = (period - periods[i - 1]) / (periods[i] - periods[i - 1]);
+  return {values[i - 1] + fraction * (values[i] - values[i - 1]), false};
 }
 
 }  // namespace wavemaker_controller

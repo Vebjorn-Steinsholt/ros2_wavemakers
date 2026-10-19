@@ -255,6 +255,27 @@ bool spin_until(
   return true;
 }
 
+// The controller starts soft stopped and rejects goals until the latched release arrives,
+// which can be after its action server is discoverable. Waits for the controller's
+// subscription to match the releaser, then spins so the release is processed.
+bool wait_for_soft_stop_release(rclcpp::Executor & executor, const WavemakerNode & node)
+{
+  const auto & publisher = soft_stop_releaser().publishers.at(node.get_namespace());
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+  while (publisher->get_subscription_count() == 0) {
+    if (std::chrono::steady_clock::now() >= deadline) {
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  const auto settled = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while (std::chrono::steady_clock::now() < settled) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  return true;
+}
+
 // Creates a controller whose fake drive accepts at most max_velocity_mps.
 std::shared_ptr<WavemakerNode> speed_limited_node(
   const std::string & ns, bool pregenerated, double max_velocity_mps,
@@ -293,6 +314,7 @@ bool goal_accepted(
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
   EXPECT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  EXPECT_TRUE(wait_for_soft_stop_release(executor, *node));
 
   auto goal_future = client->async_send_goal(goal);
   EXPECT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
@@ -368,6 +390,7 @@ struct ReturnToUprightRig
     executor.add_node(node->get_node_base_interface());
     executor.add_node(client_node);
     ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(1)));
+    ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   }
 
   ReturnToUpright::Response call(double tolerance)
@@ -434,6 +457,7 @@ TEST_F(WavemakerNodeTest, PregeneratedActionCompletesAndKeepsActuatorEnabled)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   MoveWavemaker::Goal goal;
   goal.positions = {0.25, 0.26};
   goal.sample_interval = 0.02;
@@ -475,6 +499,7 @@ TEST_F(WavemakerNodeTest, PregeneratedGoalBlendsFromMeasuredPosition)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   // 0.05 m from the paddle to positions[0]; the samples themselves move at 0.1 m/s.
   MoveWavemaker::Goal goal;
   goal.positions = {0.25, 0.26};
@@ -521,6 +546,7 @@ TEST_F(WavemakerNodeTest, CancelledActionHaltsAndAcceptsNextGoal)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   MoveWavemaker::Goal goal;
   goal.height = 0.002;
   goal.period = 10.0;
@@ -591,6 +617,7 @@ TEST_F(WavemakerNodeTest, SinusoidalGoalBlendsFromMeasuredPosition)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   MoveWavemaker::Goal goal;
   goal.height = 0.002;
   goal.period = 10.0;
@@ -644,6 +671,7 @@ TEST_F(WavemakerNodeTest, UprightMinimumWaveformNeverCommandsBehindUpright)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   MoveWavemaker::Goal goal;
   goal.height = 0.00002;
   goal.period = 0.5;
@@ -696,6 +724,7 @@ TEST_F(WavemakerNodeTest, SymmetricGoalOscillatesAroundUpright)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   MoveWavemaker::Goal goal;
   goal.height = 0.00002;
   goal.period = 0.5;
@@ -744,6 +773,7 @@ TEST_F(WavemakerNodeTest, AngularDriveLimitsOverrideWavemakerMeterBounds)
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   MoveWavemaker::Goal goal;
   goal.positions = {0.15, 0.16};
   goal.sample_interval = 0.02;
@@ -1053,6 +1083,7 @@ TEST_F(WavemakerNodeTest, SetpointWriteFailureAbortsGoalAndDeactivates)
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
 
   fake->reject_writes = true;
   MoveWavemaker::Goal goal;
@@ -1146,6 +1177,75 @@ TEST_F(WavemakerNodeTest, TransferGainScalesRequiredStroke)
   EXPECT_TRUE(
     goal_accepted_with_speed_limit(
       "/gain_high_test", false, 0.06, fast, {rclcpp::Parameter("wavemaker_transfer_gain", 4.0)}));
+}
+
+TEST_F(WavemakerNodeTest, ConfigureFailsForInvalidGainTable)
+{
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  struct Table
+  {
+    const char * problem;
+    std::vector<double> periods;
+    std::vector<double> values;
+  };
+  for (const Table & table : std::vector<Table>{
+    {"lengths differ", {1.0, 2.0}, {1.0}},
+    {"only periods set", {1.0, 2.0}, {}},
+    {"only values set", {}, {1.0, 1.1}},
+    {"one point", {1.0}, {1.0}},
+    {"periods descend", {2.0, 1.0}, {1.0, 1.1}},
+    {"duplicate period", {1.0, 1.0}, {1.0, 1.1}},
+    {"zero period", {0.0, 1.0}, {1.0, 1.1}},
+    {"negative value", {1.0, 2.0}, {1.0, -1.0}},
+    {"zero value", {1.0, 2.0}, {0.0, 1.0}},
+    {"NaN period", {nan, 2.0}, {1.0, 1.1}},
+    {"NaN value", {1.0, 2.0}, {1.0, nan}},
+  })
+  {
+    auto options = node_options("/gain_table_test", false);
+    options.append_parameter_override("wavemaker_transfer_gain_periods", table.periods);
+    options.append_parameter_override("wavemaker_transfer_gain_values", table.values);
+    auto node = std::make_shared<WavemakerNode>(
+      options, [](rclcpp_lifecycle::LifecycleNode &) {return std::make_unique<FakeActuator>();});
+    EXPECT_EQ(
+      node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+      lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED) << table.problem;
+  }
+}
+
+TEST_F(WavemakerNodeTest, GainTableScalesRequiredStroke)
+{
+  // As in TransferGainScalesRequiredStroke: the 1 s wave is too fast for the drive at gain 1 and
+  // fits at gain 4.
+  MoveWavemaker::Goal fast;
+  fast.height = 0.1;
+  fast.period = 1.0;
+  const auto table = [](std::vector<double> periods, std::vector<double> values) {
+      return std::vector<rclcpp::Parameter>{
+      rclcpp::Parameter("wavemaker_transfer_gain_periods", periods),
+      rclcpp::Parameter("wavemaker_transfer_gain_values", values)};
+    };
+
+  EXPECT_FALSE(
+    goal_accepted_with_speed_limit(
+      "/gain_table_low_test", false, 0.06, fast, table({0.5, 2.0}, {1.0, 1.0})));
+  EXPECT_TRUE(
+    goal_accepted_with_speed_limit(
+      "/gain_table_high_test", false, 0.06, fast, table({0.5, 2.0}, {4.0, 4.0})));
+  // Interpolated: halfway between 1 at 0.5 s and 7 at 1.5 s gives 4 at 1 s.
+  EXPECT_TRUE(
+    goal_accepted_with_speed_limit(
+      "/gain_table_between_test", false, 0.06, fast, table({0.5, 1.5}, {1.0, 7.0})));
+  // Outside the table the nearest end value applies: 1 s is below 2 s, so the gain is 4.
+  EXPECT_TRUE(
+    goal_accepted_with_speed_limit(
+      "/gain_table_clamped_test", false, 0.06, fast, table({2.0, 3.0}, {4.0, 4.0})));
+
+  // The table replaces wavemaker_transfer_gain instead of multiplying it.
+  auto replaces = table({0.5, 2.0}, {1.0, 1.0});
+  replaces.emplace_back("wavemaker_transfer_gain", 4.0);
+  EXPECT_FALSE(
+    goal_accepted_with_speed_limit("/gain_table_replaces_test", false, 0.06, fast, replaces));
 }
 
 TEST_F(WavemakerNodeTest, WaterDepthChangeTakesEffectAtNextConfigure)
@@ -1252,6 +1352,7 @@ TEST_F(WavemakerNodeTest, LadertankenAcceptsEveryLabWave)
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
 
   // Sends one goal (wave height H in cm), cancels it if accepted and reports acceptance.
   auto accepted = [&](double height_cm, double period) {
