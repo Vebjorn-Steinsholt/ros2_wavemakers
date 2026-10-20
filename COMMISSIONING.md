@@ -16,10 +16,10 @@ both files; gaps in the numbering are the items kept there.
 ## Before any motion
 
 - [ ] **1. Narrow the ladertanken limits once the transfer gain is known.** (rig)
-  The limits are ±200° (`min_position_deg` / `max_position_deg`, ±10.6 cm at the flap top) and 170 rpm (`max_velocity_rpm`), set 2026-10-08 for the lab waves and verified with them (see *Verified so far*). There are no mechanical end stops, so these are the only travel limits.
+  The limits are ±275° (`min_position_deg` / `max_position_deg`, ±14.6 cm at the flap top) and 240 rpm (`max_velocity_rpm`), raised 2026-10-20 from ±200° / 170 rpm (verified with the lab waves on 2026-10-08, see *Verified so far*). With the provisional gain table and `hinge_height: 0.09`, the largest lab wave (0.171 m / 1.3 s) needs ±248° and 200 rpm; the new limits add 10 % travel and 1.2 × that speed. Not yet run at these strokes. There are no mechanical end stops, so these are the only travel limits.
   - Once the transfer gain is measured (item 33), recompute the required angles and speeds (theory / gain) and narrow the limits to the largest lab wave plus 10–20 %; keep `max_velocity_rpm` at 1.2 × the largest wave's peak speed.
   - If the old system's settings or logs exist, compare its largest commanded stroke and speed with these numbers.
-  - Optional: confirm the drive's degrees are motor degrees by counting the motor pulley's teeth and measuring the belt pitch (teeth × pitch ≈ 190 mm), and check the drive's velocity limit (S-0-0091) is at least 170 rpm.
+  - Optional: confirm the drive's degrees are motor degrees by counting the motor pulley's teeth and measuring the belt pitch (teeth × pitch ≈ 190 mm), and check the drive's velocity limit (S-0-0091) is at least 240 rpm.
   - (Mechanical, for whoever owns the mechanics.) The belt can jump a tooth under hard turns, and the motor encoder does not see it: the flap would then be offset from the zero and the travel limits without any warning. Check belt tension and condition regularly; after long lab sessions run `return_to_upright` and check the flap is visually upright.
 
 - [ ] **2. Linear drive limits.** (rig)
@@ -92,7 +92,7 @@ Kept as a record of physical checks already done.
 - Full travel is physically clear (wavemaker, actuator, tank walls, personnel area).
 - The actuator is mounted rigidly, without backlash or free play.
 - Wavemaker type, flap attachment height and water depth match `wavemakers.yaml`.
-- Drive limits −550° / 500° are configured in IndraWorks and are kept there by decision (2026-10-07); the controller's ±200° is the travel limit.
+- Drive limits −550° / 500° are configured in IndraWorks and are kept there by decision (2026-10-07); the controller's ±275° is the travel limit (±200° until 2026-10-20).
 - No mechanical end stops. The lab waves above have been run on this hardware at 1 m depth (Pål Lader, 2026-10-08), which by linear theory needs about ±9.3 cm at the flap top; the earlier ±5 cm figure (2026-10-07) was too low.
 - `wavemaker_upright_position_m` matches the physical upright: 0.0 m for ladertanken.
 - Activation caused no physical motion.
@@ -176,7 +176,7 @@ Measured above 1 the waves came out too high, and the higher gain shrinks the ne
      - Where 1/30 needs more than about 150° (three quarters of the travel limit), use 1/45 instead.
      - Short waves lose height along the tank, so put the probe where experiments measure.
    - Ladertanken at 1.0 m depth (angle and peak speed by linear theory at gain 1.0; limits
-     ±200°, 170 rpm). Recompute for another depth or wavemaker:
+     ±200°, 170 rpm when computed; now ±275°, 240 rpm). Recompute for another depth or wavemaker:
 
      | T [s] | L [m] | Low H [m] | Steepness | Angle, speed | High H [m] | Steepness | Angle, speed |
      | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
