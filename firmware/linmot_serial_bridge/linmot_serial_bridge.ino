@@ -40,6 +40,11 @@
 // WATCHDOG_MS. If none arrives it aborts the running motion command once and sets
 // FLAG_WATCHDOG_TRIPPED until the next go-to-position command. The drive stays switched on.
 //
+// Drive state machine (LinMot Motion Control SW manual, chapter 3): after power-up or an error the
+// drive switches on only after control word bit 0 has been cleared, so CMD_SWITCH_ON clears it
+// first unless the drive already reports operation enabled. CMD_ACK_ERROR acknowledges a drive
+// error with a rising edge of bit 7 and leaves the drive switched off.
+//
 // Removed from the UDP version: the drive's built-in sine command (old choice 8), which keeps
 // running when the computer stops sending, and the force-control commands (old choices 7, 10, 11).
 
@@ -61,6 +66,7 @@ const uint8_t CMD_GO_TO_POS = 3;         // VAI go to position (position, veloci
 const uint8_t CMD_SWITCH_ON = 4;
 const uint8_t CMD_SWITCH_OFF = 5;
 const uint8_t CMD_REQUEST_STATUS = 6;    // SYNC, so the drive sends position and status
+const uint8_t CMD_ACK_ERROR = 7;         // acknowledge a drive error (was force control in UDP)
 
 // Replies
 const uint8_t REPLY_READY = 0x10;
@@ -91,6 +97,7 @@ int rxCount = 0;
 uint8_t lastSequence = 0;
 uint8_t badFrames = 0;
 uint8_t flags = 0;
+uint16_t lastStatusWord = 0;             // from the drive's last feedback; 0 until the first one
 bool watchdogArmed = false;
 unsigned long lastValidFrameMs = 0;
 
@@ -165,6 +172,23 @@ void switchOn()
 
 void switchOff()
 {
+  sendControlWord(0x3E, 0x00);
+}
+
+// Switch on from any state: unless the drive reports operation enabled (status bit 0), clear
+// control word bit 0 first, which the drive needs after power-up, an error or a switch off.
+void switchOnFromAnyState()
+{
+  if (!(lastStatusWord & 0x0001)) {
+    switchOff();
+  }
+  switchOn();
+}
+
+// Rising edge of control word bit 7 with bit 0 cleared; the drive stays switched off.
+void acknowledgeError()
+{
+  sendControlWord(0xBE, 0x00);
   sendControlWord(0x3E, 0x00);
 }
 
@@ -244,7 +268,7 @@ void handleCommand(const uint8_t * frame)
       goToPosition(position, velocity, acceleration, deceleration);
       break;
     case CMD_SWITCH_ON:
-      switchOn();
+      switchOnFromAnyState();
       break;
     case CMD_SWITCH_OFF:
       watchdogArmed = false;
@@ -252,6 +276,10 @@ void handleCommand(const uint8_t * frame)
       break;
     case CMD_REQUEST_STATUS:
       requestStatus();
+      break;
+    case CMD_ACK_ERROR:
+      watchdogArmed = false;
+      acknowledgeError();
       break;
     default:
       flags |= FLAG_REJECTED;
@@ -307,6 +335,7 @@ void readCan()
     }
     if (id == 0x180 + NODE_ID && length == 8) {
       uint16_t statusWord = (uint16_t)data[0] | ((uint16_t)data[1] << 8);
+      lastStatusWord = statusWord;
       long position = (long)((uint32_t)data[4] | ((uint32_t)data[5] << 8) |
         ((uint32_t)data[6] << 16) | ((uint32_t)data[7] << 24));
       sendReply(REPLY_FEEDBACK, position, statusWord);
