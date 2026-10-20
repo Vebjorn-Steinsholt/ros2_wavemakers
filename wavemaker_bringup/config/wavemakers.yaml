@@ -32,7 +32,7 @@
     wavemaker_mode_pregenerated: false
     water_depth: 1.0         
     flap_attachment_height: 1.30
-    hinge_height: 0.0
+    hinge_height: 0.09  # pivot above the floor, wall below closed (2026-10-20)
     actuator_drive_type: "angular"
     actuator_upright_angle_deg: 0.0
     actuator_lead_m_per_degree: 0.00053  # 5.3 cm flap change per 100 deg [m/deg]
@@ -40,11 +40,12 @@
     # 1.0 = linear theory. To correct: new gain = old gain * measured / target.
     wavemaker_transfer_gain: 1.0
     # Gain per period [s], interpolated linearly, nearest end value outside; replaces
-    # wavemaker_transfer_gain when set. All 1.0 = linear theory, not yet calibrated: fill in
-    # from the wave-probe runs (COMMISSIONING.md, Transfer gain calibration). Valid for
-    # water_depth 1.0 only.
-    wavemaker_transfer_gain_periods: [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7]
-    wavemaker_transfer_gain_values:  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # wavemaker_transfer_gain when set (COMMISSIONING.md, Transfer gain calibration).
+    # Provisional, from the 2026-10-19 wave-probe runs at gain 1.0 and 0.8 (taken with
+    # hinge_height 0.0, converted to 0.09). 0.7 s (measured 0.55) is left out until it is
+    # remeasured; below 0.8 s the 0.86 end value is used. Valid for water_depth 1.0 only.
+    wavemaker_transfer_gain_periods: [0.8, 0.9, 1.0, 1.3, 1.5]
+    wavemaker_transfer_gain_values:  [0.86, 0.73, 0.85, 0.76, 0.78]
 
 /wavemakers/lilletanken/controller:
   ros__parameters:
