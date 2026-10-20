@@ -160,7 +160,7 @@ Bridge (the web page's role played from the terminal), with the controller activ
 
 ```bash
 ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken with_bridge:=true
-# configure + activate the controller, then the bridge ($NS/wavemaker_bridge)
+# configure + activate the controller, then the bridge ($NS/bridge)
 ros2 topic pub -r 5 $NS/heartbeat std_msgs/msg/Bool "{data: true}"
 ros2 topic echo $NS/wavemaker_message
 ros2 topic pub --once -w 1 $NS/height std_msgs/msg/Float64 "{data: 0.0001}"

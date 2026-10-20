@@ -136,7 +136,7 @@ There are two ways to run a wavemaker. Both read `config/wavemakers.yaml` and ta
 | | Terminal mode (experienced users) | Bridge mode (normal users) |
 |---|---|---|
 | Launch file | `wavemakers.launch.py` | `wavemaker_bridge.launch.py` |
-| Nodes | Controller only | Controller and `wavemaker_bridge` |
+| Nodes | `controller` | `controller` and `bridge` |
 | Lifecycle | Stepped by hand (lifecycle manager optional, off by default) | Configured and activated automatically by the Nav2 lifecycle manager |
 | Control | `ros2 action` / `ros2 service` (see [Interfaces](#interfaces)) | The bridge's topics: `height`, `period`, then `start`; `stop`; a `heartbeat` from the client (the web page) |
 | If a node dies | Nothing stops the controller | The lifecycle manager brings both nodes down after `bond_timeout` (default 1 s), which disables the drive |
@@ -272,6 +272,9 @@ messages, a live plot of setpoint and measured position, Return to upright, and 
 - The `rig` launch argument of `web.launch.py` (`wavemaker`, the default, or `oscillator`) picks the
   page's texts and the server's messages, for example "Paddle" and "Return to upright" or "Slide"
   and "Go to centre". The controls are the same.
+- The `namespace` launch argument of `web.launch.py` sets where the page runs and which bridge it
+  talks to; the default is `wavemakers/<wavemaker>`. The oscillator uses
+  `namespace:=oscillators/sloshing rig:=oscillator`.
 
 To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the
 lifecycle manager and the page on their own ROS domain (77), reachable only from this computer,

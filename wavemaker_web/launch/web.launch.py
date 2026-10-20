@@ -6,6 +6,9 @@ After idle_timeout_s without a wave the server stops the managed nodes and exits
 (or lab.launch.py, which includes it) shuts down with it. A crash of the server does the same.
 
     ros2 launch wavemaker_web web.launch.py wavemaker:=ladertanken port:=8080
+
+The page runs in wavemakers/<wavemaker> unless namespace is given, for example
+namespace:=oscillators/sloshing for the oscillator (with rig:=oscillator).
 """
 
 from launch import LaunchDescription
@@ -31,6 +34,12 @@ def generate_launch_description():
             choices=['ladertanken', 'lilletanken', 'mclab'],
             description='Wavemaker the page controls',
         ),
+        DeclareLaunchArgument(
+            'namespace',
+            default_value=['wavemakers/', LaunchConfiguration('wavemaker')],
+            description='Namespace of the page and the bridge it talks to; '
+                        'default wavemakers/<wavemaker>',
+        ),
         DeclareLaunchArgument('port', default_value='8080', description='HTTP port'),
         DeclareLaunchArgument(
             'rig', default_value='wavemaker', choices=['wavemaker', 'oscillator'],
@@ -41,8 +50,8 @@ def generate_launch_description():
         Node(
             package='wavemaker_web',
             executable='web_server',
-            namespace=['wavemakers/', LaunchConfiguration('wavemaker')],
-            name='wavemaker_web',
+            namespace=LaunchConfiguration('namespace'),
+            name='web',
             output='screen',
             parameters=[{
                 'port': ParameterValue(LaunchConfiguration('port'), value_type=int),

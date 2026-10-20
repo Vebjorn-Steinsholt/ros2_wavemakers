@@ -59,12 +59,12 @@ def _launch_setup(context):
                 package='wavemaker_controller',
                 executable='wavemaker_bridge',
                 namespace=namespace,
-                name='wavemaker_bridge',
+                name='bridge',
                 parameters=[{'bond_timeout': bond_timeout}],
                 output='screen',
             )
         )
-        managed_nodes.append('wavemaker_bridge')
+        managed_nodes.append('bridge')
 
     if enable_lifecycle_manager:
         # The manager configures and activates the nodes in order and, if any of them stops
@@ -74,7 +74,7 @@ def _launch_setup(context):
             Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
-                name='lifecycle_manager_wavemaker',
+                name='lifecycle_manager',
                 namespace=namespace,
                 output='screen',
                 parameters=[{

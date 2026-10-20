@@ -12,5 +12,5 @@ source "$HOME/ros_ws/install/setup.bash"
 
 # ros2 service call has no timeout; without one it waits forever for the service.
 timeout 15 ros2 service call \
-  "/wavemakers/$WAVEMAKER/lifecycle_manager_wavemaker/manage_nodes" \
+  "/wavemakers/$WAVEMAKER/lifecycle_manager/manage_nodes" \
   nav2_msgs/srv/ManageLifecycleNodes "{command: 4}"   # 4 = SHUTDOWN

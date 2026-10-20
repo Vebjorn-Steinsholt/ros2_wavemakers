@@ -41,7 +41,7 @@ private:
 
 public:
   explicit WavemakerBridge(const rclcpp::NodeOptions & options)
-  : LifecycleNode("wavemaker_bridge", options)
+  : LifecycleNode("bridge", options)
   {
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
     declare_parameter<double>("bond_timeout", 4.0);

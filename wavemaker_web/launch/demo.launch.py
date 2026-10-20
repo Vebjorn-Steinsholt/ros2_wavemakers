@@ -12,11 +12,9 @@ To try the idle auto-stop: idle_timeout_s:=120 (warning shown for the last 10 mi
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable, Shutdown
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-
-NAMESPACE = 'wavemakers/ladertanken'
 
 
 def _shutdown_unless_stopping(event, context):
@@ -29,11 +27,18 @@ def _shutdown_unless_stopping(event, context):
 
 def generate_launch_description():
     port = LaunchConfiguration('port')
+    namespace = LaunchConfiguration('namespace')
     return LaunchDescription([
         DeclareLaunchArgument('port', default_value='8080', description='HTTP port'),
         DeclareLaunchArgument(
             'rig', default_value='wavemaker', choices=['wavemaker', 'oscillator'],
             description='Texts on the page: wavemaker or oscillator'),
+        DeclareLaunchArgument(
+            'namespace',
+            default_value=PythonExpression([
+                "'oscillators/sloshing' if '", LaunchConfiguration('rig'),
+                "' == 'oscillator' else 'wavemakers/ladertanken'"]),
+            description='Namespace of the demo nodes; default by rig'),
         DeclareLaunchArgument(
             'idle_timeout_s', default_value='7200',
             description='Stop after this long without a wave; 0 turns it off'),
@@ -44,22 +49,22 @@ def generate_launch_description():
         SetEnvironmentVariable('ROS_AUTOMATIC_DISCOVERY_RANGE', 'LOCALHOST'),
         Node(
             package='wavemaker_controller', executable='fake_controller',
-            namespace=NAMESPACE, name='controller', output='screen'),
+            namespace=namespace, name='controller', output='screen'),
         Node(
             package='wavemaker_controller', executable='wavemaker_bridge',
-            namespace=NAMESPACE, name='wavemaker_bridge', output='screen',
+            namespace=namespace, name='bridge', output='screen',
             parameters=[{'bond_timeout': 1.0}]),
         Node(
             package='nav2_lifecycle_manager', executable='lifecycle_manager',
-            namespace=NAMESPACE, name='lifecycle_manager_wavemaker', output='screen',
+            namespace=namespace, name='lifecycle_manager', output='screen',
             parameters=[{
                 'autostart': True,
-                'node_names': ['wavemaker_bridge'],
+                'node_names': ['bridge'],
                 'bond_timeout': 1.0,
             }]),
         Node(
             package='wavemaker_web', executable='web_server',
-            namespace=NAMESPACE, name='wavemaker_web', output='screen',
+            namespace=namespace, name='web', output='screen',
             parameters=[{
                 'port': ParameterValue(port, value_type=int),
                 'idle_timeout_s': ParameterValue(

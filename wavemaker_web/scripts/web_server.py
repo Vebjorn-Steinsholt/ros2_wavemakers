@@ -99,7 +99,7 @@ STATIC_FILES = {
 class WebNode(Node):
 
     def __init__(self):
-        super().__init__('wavemaker_web')
+        super().__init__('web')
         self.declare_parameter('host', '0.0.0.0')
         self.declare_parameter('port', 8080)
         self.declare_parameter('rig', 'wavemaker')
@@ -155,7 +155,7 @@ class WebNode(Node):
         self.create_subscription(Log, '/rosout', self._on_log, rosout_qos)
         self._return_client = self.create_client(ReturnToUpright, 'return_to_upright')
         self._manager_client = self.create_client(
-            ManageLifecycleNodes, 'lifecycle_manager_wavemaker/manage_nodes')
+            ManageLifecycleNodes, 'lifecycle_manager/manage_nodes')
         self.create_timer(0.1, self._send_heartbeat)
         if self._idle_timeout > 0.0:
             self.create_timer(1.0, self._check_idle)
