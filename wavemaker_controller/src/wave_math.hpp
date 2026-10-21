@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace wavemaker_controller
 {
@@ -25,5 +26,16 @@ double solve_dispersion(double omega, double depth, double g = 9.81);
 // (0 = hinged at the floor, must be < 1).
 double compute_stroke(
   double mu, double target_height, const std::string & type, double hinge_fraction = 0.0);
+
+struct GainLookup
+{
+  double gain;
+  bool clamped;  // period outside the table; gain is the nearest end value
+};
+
+// Transfer gain for period, interpolated linearly between the table points. periods must
+// ascend strictly and have the same length as values, with at least two points.
+GainLookup interpolate_gain(
+  const std::vector<double> & periods, const std::vector<double> & values, double period);
 
 }  // namespace wavemaker_controller

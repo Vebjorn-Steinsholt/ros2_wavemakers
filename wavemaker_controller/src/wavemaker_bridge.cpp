@@ -210,7 +210,7 @@ public:
       };
     options.result_callback =
       [this, generation](const MoveWavemakerGoalHandle::WrappedResult & result) {
-        if(generation == goal_generation_){on_goal_result(result);}
+        if(generation == goal_generation_) {on_goal_result(result);}
       };
     goal_requested_ = true;
     // The values are in the message so clients can check which ones were used: height,
@@ -272,13 +272,13 @@ public:
       if(done) {
         stop_done_ = done; //Goal result or timeout
       }
-       if (!stop_timeout_) {  
+      if (!stop_timeout_) {
         stop_timeout_ = create_wall_timer(stop_timeout_s_, [this]() {
-          abandon_goal("No result from the controller");
+              abandon_goal("No result from the controller");
         });
       }
     }
-     if (!action_client_ || !action_client_->action_server_is_ready()) {
+    if (!action_client_ || !action_client_->action_server_is_ready()) {
       if (ours) {
         abandon_goal("Move Wavemaker action is not available");   // fixes A
       } else {
@@ -380,17 +380,17 @@ public:
     }
   }
   // Gives up on our goal when controller does not confirm a stop. A new start is then possible
-  
-  void abandon_goal(const std::string & reason){
-    ++goal_generation_; 
+  void abandon_goal(const std::string & reason)
+  {
+    ++goal_generation_;
     goal_handle_.reset();
     goal_requested_ = false;
     cancel_on_accept_ = false;
-    const std::string message = reason +"; stop not confirmed by controller, verify";
+    const std::string message = reason + "; stop not confirmed by controller, verify";
     RCLCPP_WARN(get_logger(), "%s", message.c_str());
-    publish_state(idle_unless_inactive(),message);
-    finish_stop(false,message);
-  };
+    publish_state(idle_unless_inactive(), message);
+    finish_stop(false, message);
+  }
   rclcpp_action::Client<MoveWavemaker>::SharedPtr action_client_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr height_subscription_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr period_subscription_;
