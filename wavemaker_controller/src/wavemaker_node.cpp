@@ -35,6 +35,7 @@ using CancelAllGoals = wavemaker_interfaces::srv::CancelAllGoals;
 using ReturnToUpright = wavemaker_interfaces::srv::ReturnToUpright;
 
 using wavemaker_controller::Blend;
+using wavemaker_controller::interpolate_gain;
 using wavemaker_controller::kQuinticPeakVelocityFactor;
 using wavemaker_controller::quintic_blend;
 
@@ -63,6 +64,11 @@ public:
     declare_parameter<bool>("wavemaker_upright_is_minimum", false);
     declare_parameter<double>("water_depth", 0.6);
     declare_parameter<double>("wavemaker_transfer_gain", 1.0);
+    // Transfer gain per wave period, interpolated; replaces wavemaker_transfer_gain when set.
+    declare_parameter<std::vector<double>>("wavemaker_transfer_gain_periods",
+      std::vector<double>{});
+    declare_parameter<std::vector<double>>("wavemaker_transfer_gain_values", std::vector<double>{});
+
     declare_parameter<bool>("wavemaker_mode_pregenerated", false);
     declare_parameter<double>("flap_attachment_height", 0.0);
     declare_parameter<double>("hinge_height", 0.0);
@@ -123,6 +129,8 @@ public:
     wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
     wavemaker_transfer_gain_ = get_parameter("wavemaker_transfer_gain").as_double();
+    gain_periods_ = get_parameter("wavemaker_transfer_gain_periods").as_double_array();
+    gain_values_ = get_parameter("wavemaker_transfer_gain_values").as_double_array();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
     hinge_height_ = get_parameter("hinge_height").as_double();
     actuator_upright_angle_deg_ = get_parameter("actuator_upright_angle_deg").as_double();
@@ -206,6 +214,35 @@ public:
         get_logger(), "wavemaker_type must be either 'flap' or 'piston'");
       return CallbackReturn::FAILURE;
     }
+    if (gain_periods_.size() != gain_values_.size()) {
+      RCLCPP_ERROR(
+        get_logger(),
+        "wavemaker_transfer_gain_periods and wavemaker_transfer_gain_values must have the same "
+        "length");
+      return CallbackReturn::FAILURE;
+    }
+    if (gain_periods_.size() == 1) {
+      RCLCPP_ERROR(
+        get_logger(), "wavemaker_transfer_gain_periods/values need at least 2 points when set");
+      return CallbackReturn::FAILURE;
+    }
+    const auto not_finite_positive = [](double v) {return !std::isfinite(v) || v <= 0.0;};
+    if (std::any_of(gain_periods_.begin(), gain_periods_.end(), not_finite_positive)) {
+      RCLCPP_ERROR(get_logger(), "All wavemaker_transfer_gain_periods must be finite and > 0");
+      return CallbackReturn::FAILURE;
+    }
+    if (std::any_of(gain_values_.begin(), gain_values_.end(), not_finite_positive)) {
+      RCLCPP_ERROR(get_logger(), "All wavemaker_transfer_gain_values must be finite and > 0");
+      return CallbackReturn::FAILURE;
+    }
+    if (std::adjacent_find(
+        gain_periods_.begin(), gain_periods_.end(),
+        [](double a, double b) {return a >= b;}) != gain_periods_.end())
+    {
+      RCLCPP_ERROR(get_logger(), "wavemaker_transfer_gain_periods must be strictly ascending");
+      return CallbackReturn::FAILURE;
+    }
+
     if (water_depth_ <= 0.0) {
       RCLCPP_ERROR(get_logger(), "water_depth must be set (> 0)");
       return CallbackReturn::FAILURE;
@@ -676,7 +713,8 @@ private:
         goal.sample_interval <= 0.0)
       {
         RCLCPP_WARN(
-          get_logger(), "Pregenerated mode:  goal requires positions and a positive sample_interval");
+          get_logger(),
+          "Pregenerated mode:  goal requires positions and a positive sample_interval");
         return false;
       }
       for (const double position : goal.positions) {
@@ -702,7 +740,7 @@ private:
       }
       return accept_peak_velocity(pregenerated_.peak_velocity());
     }
-    if (!wavemaker_mode_pregenerated_ && !goal.positions.empty()){
+    if (!wavemaker_mode_pregenerated_ && !goal.positions.empty()) {
       RCLCPP_WARN(
         get_logger(),
         "Received a pregenerated goal (positions), but wavemaker_mode_pregenerated is false; "
@@ -715,10 +753,21 @@ private:
       RCLCPP_WARN(get_logger(), "Received goal with non-positive height or period, rejecting");
       return false;
     }
+    double gain = wavemaker_transfer_gain_;
+    if (!gain_periods_.empty()) {
+      const auto lookup = interpolate_gain(gain_periods_, gain_values_, goal.period);
+      gain = lookup.gain;
+      if (lookup.clamped) {
+        RCLCPP_WARN(
+          get_logger(),
+          "Period %.2f is outside the configured gain table, using nearest end value %.3f",
+          goal.period, gain);
+      }
+    }
 
     trajectory_.configure(
       {wavemaker_type_, water_depth_, flap_attachment_height_, wavemaker_position_offset_,
-        upright_is_minimum_, wavemaker_transfer_gain_, hinge_height_},
+        upright_is_minimum_, gain, hinge_height_},
       goal.height, goal.period, start_position);
 
     const double required_minimum = trajectory_.required_minimum();
@@ -1225,6 +1274,8 @@ private:
   double return_default_tolerance_m_{0.002};
   double return_timeout_margin_s_{2.0};
   double wavemaker_transfer_gain_{1.0};
+  std::vector<double> gain_periods_;
+  std::vector<double> gain_values_;
   rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
   rclcpp::CallbackGroup::SharedPtr cancel_service_callback_group_;

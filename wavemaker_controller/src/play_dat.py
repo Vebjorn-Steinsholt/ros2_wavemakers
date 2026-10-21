@@ -45,7 +45,7 @@ import numpy as np
 HEADER_BYTES = 8           # int32 time step [ms], int32 channel count
 MIN_GAP_S = 1.0            # rest at least this long separates two runs
 REST_SPEED = 1e-3          # file units per s; slower than this (and near zero) counts as rest
-SHORT_PAUSE_REPORT_S = 0.1 # rest shorter than MIN_GAP_S but longer than this is reported
+SHORT_PAUSE_REPORT_S = 0.1  # rest shorter than MIN_GAP_S but longer than this is reported
 UPRIGHT_TOLERANCE_M = 0.002  # a run should start and end this close to upright (blend tolerance)
 CLASSIFY_SPREAD = 0.02     # zero-crossing spacing std / mean below this -> regular
 UNIT_SCALE = {'mm': 1e-3, 'm': 1.0}
@@ -75,9 +75,6 @@ class Run:
 
 def read_mcl(path) -> McLFile:
     """Read a write2mcl file; raise ValueError if it is not one."""
-
-
-
     file_size = os.path.getsize(path)
     if (file_size < HEADER_BYTES):
         raise ValueError(f'{path}: {file_size} bytes. File is too small to contain a valid header')
@@ -87,9 +84,9 @@ def read_mcl(path) -> McLFile:
         raise ValueError(f'{path}: interval_ms must be positive, got {interval_ms}')
     if (channels <= 0):
         raise ValueError(f'{path}: channels must be positive, got {channels}')
-    if (file_size-HEADER_BYTES)%(channels*4) != 0:
-        raise ValueError("File size does not match header information")
-    
+    if (file_size - HEADER_BYTES) % (channels * 4) != 0:
+        raise ValueError('File size does not match header information')
+
     # TODO 4: body as '<f4', reshape to (frames, channels).
     # TODO 5: reject non-finite values.
     raise NotImplementedError
@@ -104,7 +101,8 @@ def select_channel(mcl: McLFile, channel: int) -> np.ndarray:
 
 def split_runs(values: np.ndarray, sample_interval: float, scale: float, upright: float,
                gap_threshold: float = 0.0, min_gap_s: float = MIN_GAP_S) -> list[Run]:
-    """Split only where the paddle is at rest for at least min_gap_s; gaps may differ in length.
+    """
+    Split only where the paddle is at rest for at least min_gap_s; gaps may differ in length.
 
     At rest: |value| <= gap_threshold (file units) and |velocity| <= REST_SPEED, so a slow pass
     through zero inside an irregular run is never taken for a gap. When in doubt, keep it in the
@@ -173,7 +171,8 @@ def check_run(run: Run, sample_interval: float, minimum: float, maximum: float,
 
 def print_table(runs: list[Run], sample_interval: float, units: str,
                 problems: dict[int, list[str]]):
-    """One line per run, with OK or the problems; short pauses listed under their run.
+    """
+    One line per run, with OK or the problems; short pauses listed under their run.
 
     Showing the amplitude in file units next to metres makes a unit mixup obvious
     (±47.9 is mm, ±0.0479 would be m).
@@ -232,7 +231,7 @@ def main(argv=None):
     parser.add_argument('--max', type=float, required=True, help='highest position [m]')
     parser.add_argument('--max-velocity', type=float, required=True, help='[m/s]')
     parser.add_argument('--dry-run', action='store_true', help='print the run table only')
-    args = parser.parse_args(remove_ros_args(argv)[1:])
+    args = parser.parse_args(remove_ros_args(argv)[1:])  # noqa: F841, used by the TODOs below
 
     # TODO: mcl = read_mcl(args.file)                       (ValueError -> message, exit 2)
     # TODO: values = select_channel(mcl, args.channel); scale = UNIT_SCALE[args.units]
