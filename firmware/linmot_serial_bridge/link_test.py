@@ -35,8 +35,9 @@ REPLY_READY, REPLY_FEEDBACK = 0x10, 0x01
 FLAG_WATCHDOG, FLAG_CAN_ERROR, FLAG_REJECTED = 0x01, 0x02, 0x04
 
 # Status word bits (LinMot Motion Control SW manual, section 3.23).
-STATUS_BITS = {0: 'operation enabled', 3: 'error', 6: 'switch on locked', 9: 'special motion',
-               10: 'in target', 11: 'homed', 12: 'fatal error', 13: 'motion active'}
+STATUS_BITS = {0: 'operation enabled', 3: 'error', 6: 'switch on locked', 7: 'warning',
+               9: 'special motion', 10: 'in target', 11: 'homed', 12: 'fatal error',
+               13: 'motion active'}
 
 POS_PER_MM = 10000              # position unit 0.1 um
 VEL_PER_MPS = 1_000_000         # velocity unit 1e-6 m/s
@@ -183,7 +184,8 @@ def link_checks(link, test):
     link.send(CMD_OPERATIONAL)
     status = status_reply(link, 2.0)
     if not test.check(status is not None, 'drive answers a status request (CAN, TPDO1 on SYNC)'):
-        print('  No feedback: check CAN wiring, 500 kbit/s, node 4 and that TPDO1 is synchronous.')
+        print('  No feedback: check CAN wiring, 500 kbit/s, node 12, INT on pin D2 and that TPDO1 '
+              'is synchronous.')
         return False
     print(f"  position {status['position_mm']:.3f} mm, status {describe_status(status['status'])}")
     test.check(not status['flags'] & FLAG_CAN_ERROR, 'no CAN send error')

@@ -1,8 +1,8 @@
 // LinMot serial-to-CAN bridge for the sloshing oscillator
-// Arduino Uno R4 WiFi with an MCP2515 CAN shield (CS pin 10, INT pin 5), LinMot drive on CANopen
-// node 4 at 500 kbit/s. Based on the UDP2CAN-BUS controller by Robert Opland and Vebjorn
-// Steinsholt (NTNU); the CAN frames for the drive are unchanged, the link to the computer is now
-// USB serial instead of Wi-Fi/UDP.
+// Arduino Uno R4 WiFi (or Uno R3) with an MCP2515 CAN shield (CS pin 10, INT pin 2), LinMot drive
+// on CANopen node 12 (0x0C) at 500 kbit/s. Based on the UDP2CAN-BUS controller by Robert Opland
+// and Vebjorn Steinsholt (NTNU); the CAN frames for the drive are unchanged, the link to the
+// computer is now USB serial instead of Wi-Fi/UDP.
 //
 // Serial link: 115200 baud, 8N1, binary frames, little-endian, CRC-16/CCITT-FALSE (poly 0x1021,
 // init 0xFFFF, no reflection, no final XOR; Python: binascii.crc_hqx(data, 0xFFFF)) over every
@@ -33,7 +33,7 @@
 //
 // REPLY_READY is sent at start and in reply to CMD_PING. Opening the port can reset the board, so
 // the computer sends CMD_PING until it gets REPLY_READY before anything else.
-// REPLY_FEEDBACK is sent for every position/status frame the drive sends (CAN ID 0x184). The drive
+// REPLY_FEEDBACK is sent for every position/status frame the drive sends (CAN ID 0x18C). The drive
 // sends one after each SYNC if its TPDO1 is synchronous; every command below ends with a SYNC.
 //
 // Watchdog: after a go-to-position command, the Arduino expects a valid frame at least every
@@ -53,9 +53,9 @@
 #include <string.h>
 
 // Hardware
-#define CAN0_INT 5
+#define CAN0_INT 2
 MCP_CAN CAN0(10);
-const int NODE_ID = 0x04;
+const int NODE_ID = 0x0C;
 const unsigned long SERIAL_BAUD = 115200;
 
 // Commands (numbers as in the UDP version)
