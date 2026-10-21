@@ -38,11 +38,11 @@ Modbus TCP / PROFIBUS gateway.
 | `drivers/mgate5101_driver` | Standalone C++ driver: cyclic Modbus TCP client for the MGate (`MGateDriver`) and the IndraDrive state machine on top of it (`IndraDrive`). Includes `poll_rate_probe` and a monitor/move example. Register mapping is explained in [MAPPING.md](drivers/mgate5101_driver/MAPPING.md). |
 | `drivers/linmot_serial_driver` | Standalone C++ driver for the LinMot oscillator: the serial link to the Arduino serial-to-CAN bridge (`SerialBridge`, firmware in `firmware/linmot_serial_bridge`) and the LinMot drive's start-up and faults on top of it (`LinMotDrive`). `linmot_probe` checks the link without moving anything. Not used by the controller yet. |
 | `wavemaker_interfaces` | `MoveWavemaker` action, `ReturnToUpright` and `CancelAllGoals` services. |
-| `rig_controller` | `wavemaker_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `wavemaker_bridge` (see the note below). |
+| `rig_controller` | `controller_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `bridge_node` (see the note below). |
 | `wavemaker_bringup` | Launch file and per-wavemaker configuration (`config/wavemakers.yaml`). |
 | `wavemaker_web` | Web page for running a wavemaker through the bridge (see [Web page](#web-page)). |
 
-> **`wavemaker_bridge`** connects topic-based clients, such as the web page, to the controller.
+> **`bridge_node`** connects topic-based clients, such as the web page, to the controller.
 > Its topics are `height`, `period`, `start`, `stop` and `heartbeat` in, and `wavemaker_state` /
 > `wavemaker_message` out.
 
@@ -136,7 +136,7 @@ There are two ways to run a wavemaker. Both read `config/wavemakers.yaml` and ta
 
 | | Terminal mode (experienced users) | Bridge mode (normal users) |
 |---|---|---|
-| Launch file | `wavemakers.launch.py` | `wavemaker_bridge.launch.py` |
+| Launch file | `wavemakers.launch.py` | `bridge.launch.py` |
 | Nodes | `controller` | `controller` and `bridge` |
 | Lifecycle | Stepped by hand (lifecycle manager optional, off by default) | Configured and activated automatically by the Nav2 lifecycle manager |
 | Control | `ros2 action` / `ros2 service` (see [Interfaces](#interfaces)) | The bridge's topics: `height`, `period`, then `start`; `stop`; a `heartbeat` from the client (the web page) |
@@ -171,7 +171,7 @@ lifecycle testing.
 ### Bridge mode
 
 ```bash
-ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken
+ros2 launch wavemaker_bringup bridge.launch.py wavemaker:=ladertanken
 ```
 
 Both nodes are configured and activated as soon as they start, so the drive is enabled
@@ -185,7 +185,7 @@ Launch arguments of `wavemakers.launch.py`: `wavemaker`, `with_bridge` (default 
 lifecycle manager and to both nodes), `water_depth` (see below), `wavemaker_transfer_gain` and
 `wavemaker_mode_pregenerated`. The last three override the values in `wavemakers.yaml` for that
 run; empty (the default) keeps the yaml value.
-`wavemaker_bridge.launch.py` sets the first three for you, defaults `bond_timeout` to `1.0`, and
+`bridge.launch.py` sets the first three for you, defaults `bond_timeout` to `1.0`, and
 always sets `wavemaker_mode_pregenerated` to `false`, because the bridge only sends regular waves.
 `lab.launch.py` passes on `water_depth` and `wavemaker_transfer_gain`.
 
@@ -208,7 +208,7 @@ Measure it before a session and pass it at launch; it overrides `water_depth` in
 ros2 launch wavemaker_bringup lab.launch.py wavemaker:=ladertanken water_depth:=0.95
 
 # the same for bridge mode or terminal mode
-ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken water_depth:=0.95
+ros2 launch wavemaker_bringup bridge.launch.py wavemaker:=ladertanken water_depth:=0.95
 ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken water_depth:=0.95
 ```
 
@@ -229,7 +229,7 @@ commit and pull on the Pi) only when the usual depth changes; editing it on the 
 then the page server for the same wavemaker:
 
 ```bash
-ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken
+ros2 launch wavemaker_bringup bridge.launch.py wavemaker:=ladertanken
 ros2 launch wavemaker_web web.launch.py wavemaker:=ladertanken port:=8080
 ```
 
@@ -409,7 +409,7 @@ colcon test --packages-select mgate5101_driver rig_controller
 colcon test-result --verbose
 ```
 
-- `test_wavemaker_node`: lifecycle, goals, cancel, return to upright, faults, speed limits, clamping
+- `test_controller_node`: lifecycle, goals, cancel, return to upright, faults, speed limits, clamping
   and topics, using a fake actuator.
 - `test_wave_trajectory`: start blends, peak-speed bounds and pregenerated sampling.
 - `test_indradrive_actuator`: unit conversion and parameter checks.

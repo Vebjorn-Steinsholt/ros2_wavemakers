@@ -16,13 +16,13 @@ find_package(mgate5101_driver REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 
-add_executable(wavemaker_node
-  src/wavemaker_node.cpp
+add_executable(controller_node
+  src/controller_node.cpp
   src/indradrive_actuator.cpp
   src/wave_math.cpp
   src/wave_trajectory.cpp
 )
-ament_target_dependencies(wavemaker_node
+ament_target_dependencies(controller_node
   lifecycle_msgs
   rclcpp
   rclcpp_lifecycle
@@ -33,8 +33,8 @@ ament_target_dependencies(wavemaker_node
   mgate5101_driver
 )
 
-add_executable(wavemaker_bridge src/wavemaker_bridge.cpp)
-ament_target_dependencies(wavemaker_bridge
+add_executable(bridge_node src/bridge_node.cpp)
+ament_target_dependencies(bridge_node
   rclcpp
   rclcpp_lifecycle
   rclcpp_action
@@ -44,7 +44,7 @@ ament_target_dependencies(wavemaker_bridge
   std_srvs
 )
 
-install(TARGETS wavemaker_node wavemaker_bridge
+install(TARGETS controller_node bridge_node
   DESTINATION lib/${PROJECT_NAME}
 )
 # Test tool: stands in for the controller without hardware (see the script's docstring).
@@ -56,7 +56,7 @@ install(PROGRAMS src/soft_stop.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME soft_stop
 )
-target_link_libraries(wavemaker_node mgate5101_driver::mgate5101)
+target_link_libraries(controller_node mgate5101_driver::mgate5101)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
@@ -83,14 +83,14 @@ if(BUILD_TESTING)
   )
   target_include_directories(test_wave_trajectory PRIVATE src)
 
-  ament_add_gtest(test_wavemaker_node
-    test/test_wavemaker_node.cpp
+  ament_add_gtest(test_controller_node
+    test/test_controller_node.cpp
     src/indradrive_actuator.cpp
     src/wave_math.cpp
     src/wave_trajectory.cpp
   )
-  target_include_directories(test_wavemaker_node PRIVATE src)
-  ament_target_dependencies(test_wavemaker_node
+  target_include_directories(test_controller_node PRIVATE src)
+  ament_target_dependencies(test_controller_node
     lifecycle_msgs
     rclcpp
     rclcpp_lifecycle
@@ -99,7 +99,7 @@ if(BUILD_TESTING)
     bondcpp
     std_msgs
   )
-  target_link_libraries(test_wavemaker_node mgate5101_driver::mgate5101)
+  target_link_libraries(test_controller_node mgate5101_driver::mgate5101)
 endif()
 
 ament_package()

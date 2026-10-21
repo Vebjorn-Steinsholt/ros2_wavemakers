@@ -6,7 +6,7 @@ Terminal use (experienced users): the controller only, lifecycle stepped by hand
     ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
       wavemaker_mode_pregenerated:=true      # for pregenerated goals (e.g. .dat files)
 
-Bridge use (normal users): use wavemaker_bridge.launch.py, which includes this file with
+Bridge use (normal users): use bridge.launch.py, which includes this file with
 with_bridge:=true and the lifecycle manager on.
 """
 
@@ -44,7 +44,7 @@ def _launch_setup(context):
     actions = [
         LifecycleNode(
             package='rig_controller',
-            executable='wavemaker_node',
+            executable='controller_node',
             namespace=namespace,
             name='controller',
             parameters=[config_file, {'bond_timeout': bond_timeout}, overrides],
@@ -57,7 +57,7 @@ def _launch_setup(context):
         actions.append(
             LifecycleNode(
                 package='rig_controller',
-                executable='wavemaker_bridge',
+                executable='bridge_node',
                 namespace=namespace,
                 name='bridge',
                 parameters=[{'bond_timeout': bond_timeout}],
@@ -100,7 +100,7 @@ def generate_launch_description():
             'with_bridge',
             default_value='false',
             choices=['true', 'false'],
-            description='Also start wavemaker_bridge (normally via wavemaker_bridge.launch.py)',
+            description='Also start bridge_node (normally via bridge.launch.py)',
         ),
         DeclareLaunchArgument(
             'enable_lifecycle_manager',

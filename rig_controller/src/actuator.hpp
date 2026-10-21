@@ -14,12 +14,12 @@ struct ActuatorSetpoint
   double velocity;
 };
 
-class WavemakerActuator
+class Actuator
 {
 public:
   using FaultCallback = std::function<void(const std::string &)>;
 
-  virtual ~WavemakerActuator() = default;
+  virtual ~Actuator() = default;
 
   virtual void set_fault_callback(FaultCallback callback) = 0;
   virtual bool start(const rclcpp::Logger & logger) = 0;

@@ -1,7 +1,7 @@
 """
 Web page for one wavemaker, served by wavemaker_web's web_server.
 
-The page talks to wavemaker_bridge, so start the bridge (wavemaker_bridge.launch.py) as well.
+The page talks to bridge_node, so start the bridge (bridge.launch.py) as well.
 After idle_timeout_s without a wave the server stops the managed nodes and exits, and this launch
 (or lab.launch.py, which includes it) shuts down with it. A crash of the server does the same.
 

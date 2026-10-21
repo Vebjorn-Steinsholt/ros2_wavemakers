@@ -6,7 +6,7 @@ topics. The lifecycle manager configures and activates both nodes automatically.
 (or the controller) stops sending bond heartbeats for bond_timeout seconds, the manager brings
 both down, and deactivating the controller disables the drive, so the paddle stops.
 
-    ros2 launch wavemaker_bringup wavemaker_bridge.launch.py wavemaker:=ladertanken
+    ros2 launch wavemaker_bringup bridge.launch.py wavemaker:=ladertanken
 """
 
 from ament_index_python.packages import get_package_share_directory

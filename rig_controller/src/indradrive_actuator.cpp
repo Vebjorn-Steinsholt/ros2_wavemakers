@@ -149,7 +149,7 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
   indradrive_ = std::make_unique<mgate::IndraDrive>(*mgate_driver_, drive_config);
 }
 
-void IndraDriveActuator::set_fault_callback(WavemakerActuator::FaultCallback callback)
+void IndraDriveActuator::set_fault_callback(Actuator::FaultCallback callback)
 {
   indradrive_->set_fault_callback(std::move(callback));
 }

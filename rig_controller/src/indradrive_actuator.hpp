@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "wavemaker_actuator.hpp"
+#include "actuator.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "mgate/indradrive.h"
 #include "mgate/mgate_driver.h"
@@ -13,7 +13,7 @@
 namespace rig_controller
 {
 
-class IndraDriveActuator final : public WavemakerActuator
+class IndraDriveActuator final : public Actuator
 {
 public:
   explicit IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node);

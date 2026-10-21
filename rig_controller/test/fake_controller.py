@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fake wavemaker controller for testing wavemaker_bridge without hardware.
+Fake wavemaker controller for testing bridge_node without hardware.
 
 Serves the move_wavemaker action like the real controller, without a drive:
   - accepts one goal at a time and rejects goals while one is running ("busy"),

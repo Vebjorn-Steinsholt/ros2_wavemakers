@@ -20,7 +20,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     bridge_launch = (
-        get_package_share_directory('wavemaker_bringup') + '/launch/wavemaker_bridge.launch.py')
+        get_package_share_directory('wavemaker_bringup') + '/launch/bridge.launch.py')
     web_launch = get_package_share_directory('wavemaker_web') + '/launch/web.launch.py'
     return LaunchDescription([
         DeclareLaunchArgument(

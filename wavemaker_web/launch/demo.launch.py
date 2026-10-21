@@ -51,7 +51,7 @@ def generate_launch_description():
             package='rig_controller', executable='fake_controller',
             namespace=namespace, name='controller', output='screen'),
         Node(
-            package='rig_controller', executable='wavemaker_bridge',
+            package='rig_controller', executable='bridge_node',
             namespace=namespace, name='bridge', output='screen',
             parameters=[{'bond_timeout': 1.0}]),
         Node(

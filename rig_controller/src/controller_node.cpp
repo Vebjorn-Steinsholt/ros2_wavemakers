@@ -41,13 +41,13 @@ using rig_controller::quintic_blend;
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-class WavemakerNode final : public rclcpp_lifecycle::LifecycleNode
+class ControllerNode final : public rclcpp_lifecycle::LifecycleNode
 {
 public:
-  using ActuatorFactory = std::function<std::unique_ptr<rig_controller::WavemakerActuator>(
+  using ActuatorFactory = std::function<std::unique_ptr<rig_controller::Actuator>(
         rclcpp_lifecycle::LifecycleNode &)>;
 
-  explicit WavemakerNode(
+  explicit ControllerNode(
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
     ActuatorFactory actuator_factory = [] (rclcpp_lifecycle::LifecycleNode & node) {
     return std::make_unique<rig_controller::IndraDriveActuator>(node);
@@ -101,7 +101,7 @@ public:
       });
   }
 
-  ~WavemakerNode() override
+  ~ControllerNode() override
   {
     get_node_base_interface()->get_context()->remove_pre_shutdown_callback(
       pre_shutdown_callback_handle_);
@@ -296,9 +296,9 @@ public:
     action_server_ = rclcpp_action::create_server<MoveWavemaker>(
       shared_from_this(),
       "move_wavemaker",
-      std::bind(&WavemakerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
-      std::bind(&WavemakerNode::cancel_callback, this, std::placeholders::_1),
-      std::bind(&WavemakerNode::handle_accepted_callback, this, std::placeholders::_1),
+      std::bind(&ControllerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
+      std::bind(&ControllerNode::cancel_callback, this, std::placeholders::_1),
+      std::bind(&ControllerNode::handle_accepted_callback, this, std::placeholders::_1),
       rcl_action_server_get_default_options(),
       action_callback_group_);
 
@@ -1303,7 +1303,7 @@ private:
   std::mutex execution_mutex_;  // guards execution_thread_
   std::thread execution_thread_;
   ActuatorFactory actuator_factory_;
-  std::unique_ptr<rig_controller::WavemakerActuator> actuator_;
+  std::unique_ptr<rig_controller::Actuator> actuator_;
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;
@@ -1312,16 +1312,16 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<WavemakerNode>();
+  auto node = std::make_shared<ControllerNode>();
 
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   try {
     executor.spin();
   } catch (const std::exception & e) {
-    RCLCPP_ERROR(rclcpp::get_logger("wavemaker_node"), "Exception in executor: %s", e.what());
+    RCLCPP_ERROR(rclcpp::get_logger("controller_node"), "Exception in executor: %s", e.what());
   } catch (...) {
-    RCLCPP_ERROR(rclcpp::get_logger("wavemaker_node"), "Unknown exception in executor");
+    RCLCPP_ERROR(rclcpp::get_logger("controller_node"), "Unknown exception in executor");
   }
 
   rclcpp::shutdown();

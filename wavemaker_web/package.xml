@@ -3,7 +3,7 @@
 <package format="3">
   <name>wavemaker_web</name>
   <version>0.0.0</version>
-  <description>Web page for running a wavemaker through wavemaker_bridge, in place of LabVIEW.</description>
+  <description>Web page for running a wavemaker through bridge_node, in place of LabVIEW.</description>
   <maintainer email="vebjorn.steinsholt@ntnu.no">vebjorn-steinsholt</maintainer>
   <license>TODO: License declaration</license>
 

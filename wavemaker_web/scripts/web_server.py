@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Web page for running a wavemaker through wavemaker_bridge, in place of LabVIEW.
+Web page for running a wavemaker through bridge_node, in place of LabVIEW.
 
 Serves the page in html/ and a small JSON API on one port. The page plays LabVIEW's role: the
 server publishes height, period, start and stop to the bridge, and the bridge heartbeat only

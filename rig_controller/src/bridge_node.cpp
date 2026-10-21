@@ -22,7 +22,7 @@ using StopDone = std::function<void(bool, const std::string &)>;
 using MoveWavemakerGoalHandle = rclcpp_action::ClientGoalHandle<MoveWavemaker>;
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-class WavemakerBridge : public LifecycleNode
+class BridgeNode : public LifecycleNode
 {
 private:
   enum class State { Inactive, Idle, Starting, Running, Stopping };
@@ -40,7 +40,7 @@ private:
   }
 
 public:
-  explicit WavemakerBridge(const rclcpp::NodeOptions & options)
+  explicit BridgeNode(const rclcpp::NodeOptions & options)
   : LifecycleNode("bridge", options)
   {
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
@@ -84,13 +84,13 @@ public:
 
     height_subscription_ = create_subscription<std_msgs::msg::Float64>(
       "height", 10,
-      std::bind(&WavemakerBridge::height_callback, this, std::placeholders::_1));
+      std::bind(&BridgeNode::height_callback, this, std::placeholders::_1));
     period_subscription_ = create_subscription<std_msgs::msg::Float64>(
       "period", 10,
-      std::bind(&WavemakerBridge::period_callback, this, std::placeholders::_1));
+      std::bind(&BridgeNode::period_callback, this, std::placeholders::_1));
     stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
       "stop", 10,
-      std::bind(&WavemakerBridge::stop_callback, this, std::placeholders::_1));
+      std::bind(&BridgeNode::stop_callback, this, std::placeholders::_1));
     start_subscription_ = create_subscription<std_msgs::msg::Bool>(
       "start", command_qos, [this](std_msgs::msg::Bool::ConstSharedPtr msg) {
         if (msg->data) {
@@ -424,7 +424,7 @@ public:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<WavemakerBridge>(rclcpp::NodeOptions());
+  auto node = std::make_shared<BridgeNode>(rclcpp::NodeOptions());
   rclcpp::spin(node->get_node_base_interface());
   rclcpp::shutdown();
   return 0;
