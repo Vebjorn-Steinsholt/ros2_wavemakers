@@ -1419,3 +1419,35 @@ TEST_F(ControllerNodeTest, ConfigureRejectsHingeOutsideWater)
       lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE) << "hinge " << hinge;
   }
 }
+
+TEST_F(ControllerNodeTest, ActuatorTypeSelectsTheActuator)
+{
+  // The default factory, not a fake: configure builds the actuator, activate would open its link.
+  const auto configured = [](const std::vector<rclcpp::Parameter> & parameters) {
+      auto options = node_options("/actuator_type_test", false);
+      for (const auto & parameter : parameters) {
+        options.append_parameter_override(parameter.get_name(), parameter.get_parameter_value());
+      }
+      auto node = std::make_shared<ControllerNode>(options);
+      return node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id();
+    };
+  const std::vector<rclcpp::Parameter> linmot{
+    rclcpp::Parameter("actuator_type", "linmot"),
+    rclcpp::Parameter("serial_port", "/dev/null"),
+    rclcpp::Parameter("wavemaker_minimum", 0.005),
+    rclcpp::Parameter("wavemaker_maximum", 0.195),
+    rclcpp::Parameter("wavemaker_upright_position_m", 0.1),
+    rclcpp::Parameter("min_position_m", 0.005),
+    rclcpp::Parameter("max_position_m", 0.195),
+  };
+
+  EXPECT_EQ(
+    configured({rclcpp::Parameter("actuator_type", "bogus")}),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+  EXPECT_EQ(configured(linmot), lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+
+  // max_position_m left at the node's default (1.0 m) is beyond the bridge firmware's range.
+  auto forgotten = linmot;
+  forgotten.pop_back();
+  EXPECT_EQ(configured(forgotten), lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+}

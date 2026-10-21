@@ -10,8 +10,9 @@ namespace rig_controller
 
 struct ActuatorSetpoint
 {
-  double position;
-  double velocity;
+  double position{0.0};
+  double velocity{0.0};
+  double acceleration{0.0};
 };
 
 class Actuator

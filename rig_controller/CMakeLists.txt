@@ -13,12 +13,14 @@ find_package(rclcpp_action REQUIRED)
 find_package(wavemaker_interfaces REQUIRED)
 find_package(bondcpp REQUIRED)
 find_package(mgate5101_driver REQUIRED)
+find_package(linmot_serial_driver REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 
 add_executable(controller_node
   src/controller_node.cpp
   src/indradrive_actuator.cpp
+  src/linmot_actuator.cpp
   src/wave_math.cpp
   src/wave_trajectory.cpp
 )
@@ -56,7 +58,10 @@ install(PROGRAMS src/soft_stop.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME soft_stop
 )
-target_link_libraries(controller_node mgate5101_driver::mgate5101)
+target_link_libraries(controller_node
+  mgate5101_driver::mgate5101
+  linmot_serial_driver::linmot_serial
+)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
@@ -76,6 +81,18 @@ if(BUILD_TESTING)
   )
   target_link_libraries(test_indradrive_actuator mgate5101_driver::mgate5101)
 
+  # Runs the actuator against the simulated Arduino and drive from linmot_serial_driver.
+  ament_add_gtest(test_linmot_actuator
+    test/test_linmot_actuator.cpp
+    src/linmot_actuator.cpp
+  )
+  target_include_directories(test_linmot_actuator PRIVATE src)
+  ament_target_dependencies(test_linmot_actuator
+    rclcpp
+    rclcpp_lifecycle
+  )
+  target_link_libraries(test_linmot_actuator linmot_serial_driver::linmot_serial)
+
   ament_add_gtest(test_wave_trajectory
     test/test_wave_trajectory.cpp
     src/wave_math.cpp
@@ -86,6 +103,7 @@ if(BUILD_TESTING)
   ament_add_gtest(test_controller_node
     test/test_controller_node.cpp
     src/indradrive_actuator.cpp
+    src/linmot_actuator.cpp
     src/wave_math.cpp
     src/wave_trajectory.cpp
   )
@@ -99,7 +117,10 @@ if(BUILD_TESTING)
     bondcpp
     std_msgs
   )
-  target_link_libraries(test_controller_node mgate5101_driver::mgate5101)
+  target_link_libraries(test_controller_node
+    mgate5101_driver::mgate5101
+    linmot_serial_driver::linmot_serial
+  )
 endif()
 
 ament_package()

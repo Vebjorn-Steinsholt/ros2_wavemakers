@@ -44,6 +44,8 @@ install(TARGETS linmot_serial
     RUNTIME DESTINATION bin
 )
 install(DIRECTORY include/ DESTINATION include)
+# The simulated Arduino and drive, for tests of code that uses this driver (rig_controller).
+install(FILES tests/bridge_sim.h DESTINATION include/linmot/testing)
 
 ament_export_targets(linmot_serial_driverTargets HAS_LIBRARY_TARGET)
 ament_export_include_directories(include)

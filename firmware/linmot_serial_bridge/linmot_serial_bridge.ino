@@ -1,8 +1,9 @@
 // LinMot serial-to-CAN bridge for the sloshing oscillator
-// Arduino Uno R4 WiFi (or Uno R3) with an MCP2515 CAN shield (CS pin 10, INT pin 2), LinMot drive
-// on CANopen node 12 (0x0C) at 500 kbit/s. Based on the UDP2CAN-BUS controller by Robert Opland
-// and Vebjorn Steinsholt (NTNU); the CAN frames for the drive are unchanged, the link to the
-// computer is now USB serial instead of Wi-Fi/UDP.
+// Arduino Uno R3 (an Uno R4 WiFi also works) with an MCP2515 CAN shield (CS pin 10, INT pin 2),
+// LinMot drive on CANopen node 12 (0x0C) at 500 kbit/s. Based on the UDP2CAN-BUS controller by
+// Robert Opland and Vebjorn Steinsholt (NTNU); the link to the computer is now USB serial instead
+// of Wi-Fi/UDP, and the go-to-position command counts up the motion command count instead of
+// sending an empty header and an extra SYNC first.
 //
 // Serial link: 115200 baud, 8N1, binary frames, little-endian, CRC-16/CCITT-FALSE (poly 0x1021,
 // init 0xFFFF, no reflection, no final XOR; Python: binascii.crc_hqx(data, 0xFFFF)) over every
@@ -34,7 +35,8 @@
 // REPLY_READY is sent at start and in reply to CMD_PING. Opening the port can reset the board, so
 // the computer sends CMD_PING until it gets REPLY_READY before anything else.
 // REPLY_FEEDBACK is sent for every position/status frame the drive sends (CAN ID 0x18C). The drive
-// sends one after each SYNC if its TPDO1 is synchronous; every command below ends with a SYNC.
+// sends one after each SYNC if its TPDO1 is synchronous. Each command sends one SYNC and so gets
+// one feedback, except CMD_ACK_ERROR and CMD_SWITCH_ON from a switched-off drive, which get two.
 //
 // Watchdog: after a go-to-position command, the Arduino expects a valid frame at least every
 // WATCHDOG_MS. If none arrives it aborts the running motion command once and sets
@@ -98,6 +100,7 @@ uint8_t lastSequence = 0;
 uint8_t badFrames = 0;
 uint8_t flags = 0;
 uint16_t lastStatusWord = 0;             // from the drive's last feedback; 0 until the first one
+uint8_t motionCommandCount = 0;          // low 4 bits of the motion command header
 bool watchdogArmed = false;
 unsigned long lastValidFrameMs = 0;
 
@@ -149,8 +152,7 @@ void sendSync()
   sendCan(0x80, 0, NULL);
 }
 
-// Sends the control word alone with an empty motion command header, so the next command's header
-// counts as new for the drive.
+// Sends the control word alone with an empty motion command header (No Operation).
 void sendControlWord(uint8_t low, uint8_t high)
 {
   uint8_t data[8] = {low, high, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -208,14 +210,15 @@ void requestStatus()
   sendSync();
 }
 
-// VAI go to position: motion command header 0x0101, position in PDO1, velocity and acceleration in
-// PDO2, deceleration in PDO3.
+// VAI go to position: control word 0x003F (switch on), motion command header 0x010x and position
+// in PDO1, velocity and acceleration in PDO2, deceleration in PDO3. The drive executes a motion
+// command only when its header changes, so the command count x counts up every time.
 void goToPosition(long position, unsigned long velocity, unsigned long acceleration,
                   unsigned long deceleration)
 {
-  switchOn();
+  motionCommandCount = (motionCommandCount + 1) & 0x0F;
 
-  uint8_t pdo1[8] = {0x3F, 0x00, 0x01, 0x01, 0, 0, 0, 0};
+  uint8_t pdo1[8] = {0x3F, 0x00, motionCommandCount, 0x01, 0, 0, 0, 0};
   memcpy(&pdo1[4], &position, 4);
   uint8_t pdo2[8];
   memcpy(&pdo2[0], &velocity, 4);
@@ -223,9 +226,10 @@ void goToPosition(long position, unsigned long velocity, unsigned long accelerat
   uint8_t pdo3[8] = {0, 0, 0, 0, 0x00, 0x00, 0x00, 0x00};
   memcpy(&pdo3[0], &deceleration, 4);
 
-  sendCan(0x200 + NODE_ID, 8, pdo1);
+  // PDO1 last: it carries the new header, and the parameters must be there when it arrives.
   sendCan(0x300 + NODE_ID, 8, pdo2);
   sendCan(0x400 + NODE_ID, 8, pdo3);
+  sendCan(0x200 + NODE_ID, 8, pdo1);
   sendSync();
 }
 

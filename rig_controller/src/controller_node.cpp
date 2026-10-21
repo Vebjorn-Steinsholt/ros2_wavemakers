@@ -10,6 +10,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -25,6 +26,7 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "indradrive_actuator.hpp"
+#include "linmot_actuator.hpp"
 #include "wave_math.hpp"
 #include "wave_trajectory.hpp"
 
@@ -41,6 +43,26 @@ using rig_controller::quintic_blend;
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
+namespace
+{
+
+// The actuator for actuator_type: "indradrive" (MGate gateway, the wavemakers) or "linmot"
+// (Arduino serial-to-CAN bridge, the oscillator). Throws on anything else, which fails configure.
+std::unique_ptr<rig_controller::Actuator> make_actuator(rclcpp_lifecycle::LifecycleNode & node)
+{
+  const std::string type = node.get_parameter("actuator_type").as_string();
+  if (type == "indradrive") {
+    return std::make_unique<rig_controller::IndraDriveActuator>(node);
+  }
+  if (type == "linmot") {
+    return std::make_unique<rig_controller::LinMotActuator>(node);
+  }
+  throw std::invalid_argument(
+          "actuator_type must be 'indradrive' or 'linmot', not '" + type + "'");
+}
+
+}  // namespace
+
 class ControllerNode final : public rclcpp_lifecycle::LifecycleNode
 {
 public:
@@ -49,14 +71,13 @@ public:
 
   explicit ControllerNode(
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
-    ActuatorFactory actuator_factory = [] (rclcpp_lifecycle::LifecycleNode & node) {
-    return std::make_unique<rig_controller::IndraDriveActuator>(node);
-  })
-    : LifecycleNode("controller", options), actuator_factory_(std::move(actuator_factory))
+    ActuatorFactory actuator_factory = make_actuator)
+  : LifecycleNode("controller", options), actuator_factory_(std::move(actuator_factory))
   {
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
     declare_parameter<double>("bond_timeout", 4.0);
     declare_parameter<double>("soft_stop_timeout_s", 0.2);
+    declare_parameter<std::string>("actuator_type", "indradrive");
     declare_parameter<std::string>("wavemaker_type", "piston");
     declare_parameter<std::string>("driver_address", "");
     declare_parameter<std::string>("wavemaker_id", "");
