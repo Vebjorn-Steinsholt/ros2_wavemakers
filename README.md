@@ -6,7 +6,7 @@ Modbus TCP / PROFIBUS gateway.
 
 ```
  ROS 2 client ──action/services──▶ controller node ──Modbus TCP──▶ MGate 5101 ──PROFIBUS──▶ IndraDrive ──▶ paddle
- (ros2 CLI, bridge)                (wavemaker_controller)           (gateway)                (servo drive)
+ (ros2 CLI, bridge)                (rig_controller)                 (gateway)                (servo drive)
 ```
 
 > **Safety first.** Do not start physical motion until the checks in
@@ -37,7 +37,7 @@ Modbus TCP / PROFIBUS gateway.
 |---|---|
 | `drivers/mgate5101_driver` | Standalone C++ driver: cyclic Modbus TCP client for the MGate (`MGateDriver`) and the IndraDrive state machine on top of it (`IndraDrive`). Includes `poll_rate_probe` and a monitor/move example. Register mapping is explained in [MAPPING.md](drivers/mgate5101_driver/MAPPING.md). |
 | `wavemaker_interfaces` | `MoveWavemaker` action, `ReturnToUpright` and `CancelAllGoals` services. |
-| `wavemaker_controller` | `wavemaker_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `wavemaker_bridge` (see the note below). |
+| `rig_controller` | `wavemaker_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `wavemaker_bridge` (see the note below). |
 | `wavemaker_bringup` | Launch file and per-wavemaker configuration (`config/wavemakers.yaml`). |
 | `wavemaker_web` | Web page for running a wavemaker through the bridge (see [Web page](#web-page)). |
 
@@ -403,8 +403,8 @@ at several times it. The register layout in the tool matches ladertanken.
 
 ```bash
 cd ~/ros_ws
-colcon build --packages-select mgate5101_driver wavemaker_controller
-colcon test --packages-select mgate5101_driver wavemaker_controller
+colcon build --packages-select mgate5101_driver rig_controller
+colcon test --packages-select mgate5101_driver rig_controller
 colcon test-result --verbose
 ```
 

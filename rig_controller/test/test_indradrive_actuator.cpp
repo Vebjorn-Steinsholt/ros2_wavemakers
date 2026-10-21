@@ -67,7 +67,7 @@ TEST_F(IndraDriveActuatorTest, ConvertsAngularWavemakerSetpoint)
   node->declare_parameter<std::string>("driver_address", "127.0.0.1");
   node->declare_parameter<double>("actuator_upright_angle_deg", 12.0);
   node->declare_parameter<double>("wavemaker_upright_position_m", 0.25);
-  wavemaker_controller::IndraDriveActuator actuator(*node);
+  rig_controller::IndraDriveActuator actuator(*node);
 
   const auto setpoint = actuator.to_actuator_setpoint(0.25, 0.053);
 
@@ -88,7 +88,7 @@ TEST_F(IndraDriveActuatorTest, RejectsHoldVelocityAboveDriveMaximum)
   node->declare_parameter<double>("actuator_upright_angle_deg", 12.0);
   node->declare_parameter<double>("wavemaker_upright_position_m", 0.25);
 
-  EXPECT_THROW(wavemaker_controller::IndraDriveActuator actuator(*node), std::invalid_argument);
+  EXPECT_THROW(rig_controller::IndraDriveActuator actuator(*node), std::invalid_argument);
 }
 
 TEST_F(IndraDriveActuatorTest, HaltBeforeStartDoesNotThrow)
@@ -98,7 +98,7 @@ TEST_F(IndraDriveActuatorTest, HaltBeforeStartDoesNotThrow)
   node->declare_parameter<std::string>("driver_address", "127.0.0.1");
   node->declare_parameter<double>("actuator_upright_angle_deg", 12.0);
   node->declare_parameter<double>("wavemaker_upright_position_m", 0.25);
-  wavemaker_controller::IndraDriveActuator actuator(*node);
+  rig_controller::IndraDriveActuator actuator(*node);
 
   // The drive is not enabled, so move_to() refuses the hold; halt() must still be safe.
   EXPECT_NO_THROW(actuator.halt());
@@ -114,7 +114,7 @@ TEST_F(IndraDriveActuatorTest, CanBeRecreatedAfterParametersAreDeclared)
   node->declare_parameter<double>("wavemaker_upright_position_m", 0.25);
 
   EXPECT_NO_THROW({
-    wavemaker_controller::IndraDriveActuator first(*node);
-    wavemaker_controller::IndraDriveActuator second(*node);
+    rig_controller::IndraDriveActuator first(*node);
+    rig_controller::IndraDriveActuator second(*node);
   });
 }

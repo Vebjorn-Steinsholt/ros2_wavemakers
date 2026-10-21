@@ -8,9 +8,9 @@
 #include "wave_math.hpp"
 #include "wave_trajectory.hpp"
 
-using wavemaker_controller::PregeneratedWaveTrajectory;
-using wavemaker_controller::WavemakerGeometry;
-using wavemaker_controller::WaveTrajectory;
+using rig_controller::PregeneratedWaveTrajectory;
+using rig_controller::WavemakerGeometry;
+using rig_controller::WaveTrajectory;
 
 namespace
 {
@@ -205,8 +205,8 @@ TEST(WaveMathTest, GainTableInterpolatesAndClampsAtTheEnds)
     {5.0, 0.9, true},      // above the table: last value
   })
   {
-    const wavemaker_controller::GainLookup lookup =
-      wavemaker_controller::interpolate_gain(periods, values, expected.period);
+    const rig_controller::GainLookup lookup =
+      rig_controller::interpolate_gain(periods, values, expected.period);
     EXPECT_NEAR(lookup.gain, expected.gain, 1e-12) << "period " << expected.period;
     EXPECT_EQ(lookup.clamped, expected.clamped) << "period " << expected.period;
   }
@@ -217,9 +217,9 @@ TEST(WaveTrajectoryTest, FlapAmplitudeFollowsLinearTheoryAtCurrentDepth)
   // The flap stroke is the one at the waterline, scaled up to the attachment height.
   for (const double depth : {0.5, 0.72, 0.73, 1.0}) {
     const double omega = 2.0 * M_PI / 2.0;
-    const double mu = wavemaker_controller::solve_dispersion(omega, depth);
+    const double mu = rig_controller::solve_dispersion(omega, depth);
     const double expected =
-      wavemaker_controller::compute_stroke(mu, 0.02, "flap") / 2.0 * 1.3 / depth;
+      rig_controller::compute_stroke(mu, 0.02, "flap") / 2.0 * 1.3 / depth;
     EXPECT_NEAR(
       paddle_amplitude({"flap", depth, 1.3, 0.0, false, 1.0}, 0.02, 2.0), expected, 1e-12)
       << "depth " << depth;
@@ -275,7 +275,7 @@ TEST(WaveTrajectoryTest, FlapHingedAtFloorUsesBottomHingedFormula)
     const double bottom_hinged = 4.0 * std::sinh(mu) *
       (mu * std::sinh(mu) - std::cosh(mu) + 1.0) / (mu * (std::sinh(2.0 * mu) + 2.0 * mu));
     EXPECT_NEAR(
-      wavemaker_controller::compute_stroke(mu, 0.1, "flap", 0.0), 0.1 / bottom_hinged, 1e-12)
+      rig_controller::compute_stroke(mu, 0.1, "flap", 0.0), 0.1 / bottom_hinged, 1e-12)
       << "mu " << mu;
   }
 }

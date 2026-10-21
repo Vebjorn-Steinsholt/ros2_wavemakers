@@ -34,23 +34,23 @@ using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
 using CancelAllGoals = wavemaker_interfaces::srv::CancelAllGoals;
 using ReturnToUpright = wavemaker_interfaces::srv::ReturnToUpright;
 
-using wavemaker_controller::Blend;
-using wavemaker_controller::interpolate_gain;
-using wavemaker_controller::kQuinticPeakVelocityFactor;
-using wavemaker_controller::quintic_blend;
+using rig_controller::Blend;
+using rig_controller::interpolate_gain;
+using rig_controller::kQuinticPeakVelocityFactor;
+using rig_controller::quintic_blend;
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
 class WavemakerNode final : public rclcpp_lifecycle::LifecycleNode
 {
 public:
-  using ActuatorFactory = std::function<std::unique_ptr<wavemaker_controller::WavemakerActuator>(
+  using ActuatorFactory = std::function<std::unique_ptr<rig_controller::WavemakerActuator>(
         rclcpp_lifecycle::LifecycleNode &)>;
 
   explicit WavemakerNode(
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
     ActuatorFactory actuator_factory = [] (rclcpp_lifecycle::LifecycleNode & node) {
-    return std::make_unique<wavemaker_controller::IndraDriveActuator>(node);
+    return std::make_unique<rig_controller::IndraDriveActuator>(node);
   })
     : LifecycleNode("controller", options), actuator_factory_(std::move(actuator_factory))
   {
@@ -1253,8 +1253,8 @@ private:
   double goal_position_minimum_{0.0};
   double goal_position_maximum_{0.0};
   bool upright_is_minimum_{false};
-  wavemaker_controller::WaveTrajectory trajectory_;
-  wavemaker_controller::PregeneratedWaveTrajectory pregenerated_;
+  rig_controller::WaveTrajectory trajectory_;
+  rig_controller::PregeneratedWaveTrajectory pregenerated_;
   double wavemaker_position_offset_{0.0};
   bool wavemaker_mode_pregenerated_{false};
   double flap_attachment_height_{0.0};
@@ -1303,7 +1303,7 @@ private:
   std::mutex execution_mutex_;  // guards execution_thread_
   std::thread execution_thread_;
   ActuatorFactory actuator_factory_;
-  std::unique_ptr<wavemaker_controller::WavemakerActuator> actuator_;
+  std::unique_ptr<rig_controller::WavemakerActuator> actuator_;
 
   // std::unique_ptr<WavemakerDriver> driver_;
   // rclcpp::TimerBase::SharedPtr command_timer_;

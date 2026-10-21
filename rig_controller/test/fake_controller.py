@@ -15,10 +15,10 @@ Serves the move_wavemaker action like the real controller, without a drive:
 Do not run it next to the real controller: both would serve the same action.
 
     source ~/ros_ws/install/setup.bash
-    ros2 run wavemaker_controller fake_controller --ros-args -r __ns:=/wavemakers/ladertanken
-    ros2 run wavemaker_controller fake_controller --abort-after 5 \
+    ros2 run rig_controller fake_controller --ros-args -r __ns:=/wavemakers/ladertanken
+    ros2 run rig_controller fake_controller --abort-after 5 \
       --ros-args -r __ns:=/wavemakers/ladertanken
-    ros2 run wavemaker_controller fake_controller --pregenerated \
+    ros2 run rig_controller fake_controller --pregenerated \
       --ros-args -r __ns:=/wavemakers/ladertanken
 """
 

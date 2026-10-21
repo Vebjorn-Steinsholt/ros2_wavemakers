@@ -43,7 +43,7 @@ def _launch_setup(context):
 
     actions = [
         LifecycleNode(
-            package='wavemaker_controller',
+            package='rig_controller',
             executable='wavemaker_node',
             namespace=namespace,
             name='controller',
@@ -56,7 +56,7 @@ def _launch_setup(context):
     if with_bridge:
         actions.append(
             LifecycleNode(
-                package='wavemaker_controller',
+                package='rig_controller',
                 executable='wavemaker_bridge',
                 namespace=namespace,
                 name='bridge',

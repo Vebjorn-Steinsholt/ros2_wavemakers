@@ -68,7 +68,7 @@ def generate_launch_description():
             }.items(),
         ),
         Node(
-            package='wavemaker_controller',
+            package='rig_controller',
             executable='soft_stop',
             name='soft_stop',
             namespace=['wavemakers/', LaunchConfiguration('wavemaker')],

@@ -8,7 +8,7 @@
 
 #include "wave_math.hpp"
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 namespace
@@ -155,4 +155,4 @@ bool PregeneratedWaveTrajectory::sample(double elapsed, double & position, doubl
     position, velocity);
 }
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

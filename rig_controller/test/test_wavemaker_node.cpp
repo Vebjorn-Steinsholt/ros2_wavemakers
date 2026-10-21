@@ -29,7 +29,7 @@ namespace
 using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-class FakeActuator final : public wavemaker_controller::WavemakerActuator
+class FakeActuator final : public rig_controller::WavemakerActuator
 {
 public:
   ~FakeActuator() override
@@ -72,13 +72,13 @@ public:
   double max_velocity_mps() const override {return max_velocity;}
   int update_period_ms() const override {return update_period;}
 
-  wavemaker_controller::ActuatorSetpoint to_actuator_setpoint(
+  rig_controller::ActuatorSetpoint to_actuator_setpoint(
     double position_m, double velocity_mps) const override
   {
     return {position_m * units_per_m, velocity_mps * units_per_m};
   }
 
-  bool write_setpoint(const wavemaker_controller::ActuatorSetpoint & setpoint) override
+  bool write_setpoint(const rig_controller::ActuatorSetpoint & setpoint) override
   {
     if (reject_writes.load() || std::abs(setpoint.velocity) / units_per_m > max_velocity ||
       setpoint.position < min_position || setpoint.position > max_position)

@@ -5,7 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 struct ActuatorSetpoint
@@ -40,4 +40,4 @@ public:
   virtual int update_period_ms() const = 0;
 };
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

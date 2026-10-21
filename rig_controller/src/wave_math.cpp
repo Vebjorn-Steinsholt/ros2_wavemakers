@@ -4,7 +4,7 @@
 #include <cmath>
 #include <vector>
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 Blend quintic_blend(double elapsed, double duration)
@@ -70,4 +70,4 @@ GainLookup interpolate_gain(
   return {values[i - 1] + fraction * (values[i] - values[i - 1]), false};
 }
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

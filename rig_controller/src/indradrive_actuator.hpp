@@ -10,7 +10,7 @@
 #include "mgate/indradrive.h"
 #include "mgate/mgate_driver.h"
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 class IndraDriveActuator final : public WavemakerActuator
@@ -50,4 +50,4 @@ private:
   std::atomic<bool> has_target_{false};
 };
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

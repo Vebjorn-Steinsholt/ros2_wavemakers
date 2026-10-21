@@ -9,7 +9,7 @@
 #include <thread>
 #include <utility>
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 namespace
@@ -309,4 +309,4 @@ ActuatorSetpoint IndraDriveActuator::to_actuator_setpoint(
   return {position_m, velocity_mps};
 }
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

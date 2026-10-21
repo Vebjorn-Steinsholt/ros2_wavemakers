@@ -333,5 +333,5 @@ ros2 topic pub --once -w 1 $NS/start std_msgs/msg/Bool "{data: true}"
 ros2 topic pub --once -w 1 $NS/stop std_msgs/msg/Bool "{data: true}"
 ```
 
-Without hardware, run `ros2 run wavemaker_controller fake_controller --ros-args -r __ns:=$NS`
+Without hardware, run `ros2 run rig_controller fake_controller --ros-args -r __ns:=$NS`
 instead of the controller (options `--reject`, `--abort-after SECONDS`).

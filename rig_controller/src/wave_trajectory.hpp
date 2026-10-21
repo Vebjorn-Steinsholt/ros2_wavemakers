@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 struct WavemakerGeometry
@@ -69,4 +69,4 @@ private:
   double blend_duration_{0.0};
 };
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

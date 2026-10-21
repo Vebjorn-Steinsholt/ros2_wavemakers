@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace wavemaker_controller
+namespace rig_controller
 {
 
 // Peak of ds for the quintic blend: v_max = 1.875 * distance / duration.
@@ -38,4 +38,4 @@ struct GainLookup
 GainLookup interpolate_gain(
   const std::vector<double> & periods, const std::vector<double> & values, double period);
 
-}  // namespace wavemaker_controller
+}  // namespace rig_controller

@@ -26,12 +26,12 @@ The controller must run in pregenerated mode (terminal mode; the bridge only sen
     ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
       wavemaker_mode_pregenerated:=true
 Without hardware:
-    ros2 run wavemaker_controller fake_controller --pregenerated \
+    ros2 run rig_controller fake_controller --pregenerated \
       --ros-args -r __ns:=/wavemakers/ladertanken
 
-    ros2 run wavemaker_controller play_dat 2002.dat --min -0.106 --max 0.106 \
+    ros2 run rig_controller play_dat 2002.dat --min -0.106 --max 0.106 \
       --max-velocity 0.54 --dry-run
-    ros2 run wavemaker_controller play_dat 2002.dat --min -0.106 --max 0.106 \
+    ros2 run rig_controller play_dat 2002.dat --min -0.106 --max 0.106 \
       --max-velocity 0.54 --runs 3-5 --ros-args -r __ns:=/wavemakers/ladertanken
 """
 

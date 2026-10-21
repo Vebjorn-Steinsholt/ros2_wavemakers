@@ -48,10 +48,10 @@ def generate_launch_description():
         SetEnvironmentVariable('ROS_DOMAIN_ID', LaunchConfiguration('domain_id')),
         SetEnvironmentVariable('ROS_AUTOMATIC_DISCOVERY_RANGE', 'LOCALHOST'),
         Node(
-            package='wavemaker_controller', executable='fake_controller',
+            package='rig_controller', executable='fake_controller',
             namespace=namespace, name='controller', output='screen'),
         Node(
-            package='wavemaker_controller', executable='wavemaker_bridge',
+            package='rig_controller', executable='wavemaker_bridge',
             namespace=namespace, name='bridge', output='screen',
             parameters=[{'bond_timeout': 1.0}]),
         Node(
