@@ -44,6 +44,7 @@ VEL_PER_MPS = 1_000_000         # velocity unit 1e-6 m/s
 ACC_PER_MPS2 = 100_000          # acceleration unit 1e-5 m/s^2
 
 CENTRE_MM = 100.0
+ARRIVED_MM = 0.5                # "at the target"; the rig's friction leaves a few 0.1 mm
 APPROACH_MPS = 0.02             # speed for moves to the centre
 APPROACH_MPS2 = 0.2
 SINE_AMPLITUDE_MM = 5.0
@@ -149,7 +150,7 @@ def go_to(link, mm, velocity_mps, acceleration_mps2):
 
 
 def stream_to(link, mm, rate_hz, timeout_s):
-    """Streams one target at rate_hz until the slide is within 0.05 mm of it."""
+    """Streams one target at rate_hz until the slide is within ARRIVED_MM of it."""
     period = 1.0 / rate_hz
     deadline = time.monotonic() + timeout_s
     last = None
@@ -158,10 +159,29 @@ def stream_to(link, mm, rate_hz, timeout_s):
         for reply in link.replies():
             if reply['type'] == REPLY_FEEDBACK:
                 last = reply
-        if last and abs(last['position_mm'] - mm) < 0.05:
+        if last and abs(last['position_mm'] - mm) < ARRIVED_MM:
             return last
         time.sleep(period)
     return last
+
+
+def wait_until_still(link, timeout_s=3.0, window_s=0.2, tolerance_mm=0.02):
+    """Status replies until the position has changed less than tolerance_mm over window_s."""
+    deadline = time.monotonic() + timeout_s
+    window = []
+    while time.monotonic() < deadline:
+        reply = status_reply(link, 0.5)
+        if reply is None:
+            continue
+        now = time.monotonic()
+        window = [(t, mm) for t, mm in window if now - t <= window_s]
+        window.append((now, reply['position_mm']))
+        positions = [mm for _, mm in window]
+        spread = max(positions) - min(positions)
+        if now - window[0][0] >= 0.75 * window_s and spread < tolerance_mm:
+            return reply
+        time.sleep(0.02)
+    return None
 
 
 def link_checks(link, test):
@@ -231,7 +251,7 @@ def motion_checks(link, test, args):
     print(f'Move to the centre ({CENTRE_MM:.0f} mm) at {APPROACH_MPS * 1000:.0f} mm/s')
     distance = abs(status['position_mm'] - CENTRE_MM) / 1000
     reached = stream_to(link, CENTRE_MM, args.rate, distance / APPROACH_MPS + 5.0)
-    if not test.check(reached is not None and abs(reached['position_mm'] - CENTRE_MM) < 0.05,
+    if not test.check(reached is not None and abs(reached['position_mm'] - CENTRE_MM) < ARRIVED_MM,
                       'at the centre',
                       f"{reached['position_mm']:.3f} mm" if reached else 'no feedback'):
         return
@@ -244,6 +264,7 @@ def motion_checks(link, test, args):
     link.round_trips.clear()
     sent = received = 0
     errors = []
+    positions = []
     last = reached
     bad_before = reached['bad_frames']
     start = time.monotonic()
@@ -263,9 +284,13 @@ def motion_checks(link, test, args):
                 t = time.monotonic() - start
                 errors.append(reply['position_mm'] - (
                     CENTRE_MM + SINE_AMPLITUDE_MM * math.sin(omega * t)))
+                positions.append(reply['position_mm'])
                 last = reply
         time.sleep(0.0005)
     rtt = sorted(link.round_trips)
+    stroke = max(positions) - min(positions) if positions else 0.0
+    test.check(stroke >= 0.8 * 2 * SINE_AMPLITUDE_MM, 'slide followed the sine',
+               f'{stroke:.2f} mm peak to peak, commanded {2 * SINE_AMPLITUDE_MM:.0f} mm')
     test.check(received >= 0.95 * sent, 'one feedback per command', f'{received} of {sent}')
     if rtt:
         print(f'  round trip median {1000 * rtt[len(rtt) // 2]:.1f} ms, '
@@ -282,7 +307,10 @@ def motion_checks(link, test, args):
         return
 
     print('Out-of-range command (to the current position, too fast; nothing should move)')
-    here = reached['position_mm']
+    still = wait_until_still(link)
+    if not test.check(still is not None, 'slide at rest before the check'):
+        return
+    here = still['position_mm']
     seq = link.send(CMD_GO_TO_POS, here * POS_PER_MM, 3_100_000, APPROACH_MPS2 * ACC_PER_MPS2,
                     APPROACH_MPS2 * ACC_PER_MPS2)
     reply = link.wait_for(lambda r: r['type'] == REPLY_FEEDBACK and r['seq'] == seq, 1.0)
