@@ -61,7 +61,14 @@ LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
   comes from `wavemaker_type` (`oscillator`, step D).
 - **Topics and actions name the rig (2026-10-21):** a `rig` parameter (`wavemaker` |
   `oscillator`, default `wavemaker`) on the controller, bridge and web page; for the oscillator
-  `move_oscillator`, `oscillator_setpoint` and so on (step R). Proposed; scheme to be confirmed.
+  `move_oscillator`, `oscillator_setpoint` and so on (step R). Confirmed: for example
+  `/wavemakers/ladertanken/move_wavemaker`, `/wavemakers/ladertanken/wavemaker_position`,
+  `/oscillators/sloshing/move_oscillator`, `/oscillators/sloshing/oscillator_position`.
+- **`rig` decides the rig's behaviour (2026-10-21):** `rig: oscillator` selects the oscillator
+  trajectory and checks. `wavemaker_type` (`piston` | `flap`) stays, for wavemakers only; there
+  is no `wavemaker_type: oscillator`.
+- **Neutral parameter names (2026-10-21):** the parameters both rigs use lose their `wavemaker_`
+  prefix (step R); `wavemaker_id`, unused, is removed. Names confirmed 2026-10-21.
 - **Pregenerated goals (2026-10-21):** allowed for the oscillator, very low priority.
 - **Bringup (2026-10-21):** a separate package `oscillator_bringup` with its own
   `oscillator.launch.py`, namespace `/oscillators/sloshing`.
@@ -96,12 +103,40 @@ LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
   No `height`/`period` goals before step D: they would be turned into a stroke by wave theory.
   (rig)
 
+### R: names that fit both rigs
+
+- [ ] `rig` parameter (`wavemaker` | `oscillator`, default `wavemaker`) on `controller_node`,
+  `bridge_node` and the web page.
+- [ ] Topics and the action built from it: `move_<rig>`, `<rig>_setpoint`, `<rig>_position`,
+  `<rig>_velocity`, `<rig>_actuator_setpoint`, `<rig>_state`, `<rig>_message`. Neutral names
+  (`return_to_upright`, `cancel_all_goals`, `soft_stop`, `heartbeat`, `height`, `period`,
+  `start`, `stop`) and the action type `MoveWavemaker` stay. With the default, every wavemaker
+  topic keeps its name.
+- [ ] Parameters:
+
+  | Today | New |
+  | --- | --- |
+  | `wavemaker_upright_position_m` | `upright_position_m` |
+  | `wavemaker_upright_is_minimum` | `upright_is_minimum` |
+  | `wavemaker_minimum` / `wavemaker_maximum` | `travel_minimum_m` / `travel_maximum_m` (goal travel limits; not the actuator's `min_position_m` / `max_position_m`) |
+  | `wavemaker_mode_pregenerated` | `mode_pregenerated` (also the launch argument) |
+  | `wavemaker_id` | removed (unused) |
+  | `wavemaker_type` | unchanged, wavemakers only |
+
+  In the controller, `wavemakers.yaml`, the launch files, `play_dat.py`, `fake_controller.py`,
+  the tests, README, TODO and COMMISSIONING.
+- [ ] The controller fails configure when it is given an old parameter name, with the new name in
+  the message. ROS 2 ignores undeclared parameters silently, so an old `wavemaker_minimum`
+  would otherwise leave the travel limit at its default.
+- [ ] `--rig` for `fake_controller.py` and `play_dat.py`.
+
 ### C + D: the oscillator in the controller
 
-- [ ] `wavemaker_type: "oscillator"`: amplitude H/2 around `wavemaker_upright_position_m`; no
-  dispersion relation, transfer function or gain (`wave_trajectory.cpp`, `controller_node.cpp`).
-- [ ] `on_configure`: accept `oscillator`; water depth, flap, hinge and gain checks only for
-  `flap` / `piston`; `wavemaker_upright_is_minimum` must be false.
+- [ ] Oscillator trajectory, selected by `rig: oscillator` (from step R): amplitude H/2 around
+  `upright_position_m`; no dispersion relation, transfer function or gain
+  (`wave_trajectory.cpp`, `controller_node.cpp`).
+- [ ] `on_configure`: for the oscillator, skip the water depth, flap, hinge, gain and
+  `wavemaker_type` checks; upright must not be the minimum (it oscillates around 100 mm).
 - [ ] `peak_acceleration()` for regular waves (sampled over the start blend, like
   `peak_velocity()`), pregenerated goals and the return to upright.
 - [ ] Goal checks for every type, off by default: peak acceleration (9.81 m/s² for the
@@ -110,13 +145,6 @@ LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
   `linmot_default_acceleration_mps2`.
 - [ ] Tests (`test_wave_trajectory.cpp`, `test_controller_node.cpp`) and the README parameter
   table.
-
-### R: topics and actions name the rig
-
-- [ ] `rig` parameter on `controller_node`, `bridge_node` and the web page; names built from it.
-- [ ] The controller fails configure if `wavemaker_type: oscillator` and `rig` do not match.
-- [ ] `--rig` for `fake_controller.py` and `play_dat.py`.
-- [ ] Defaults keep every wavemaker name as it is.
 
 ### E: bringup
 
@@ -147,7 +175,9 @@ LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
 
 - [ ] Merge `feat/oscillator` into master once G is far enough along.
 - [ ] On the lab Pi, remove `build/` and `install/` of `wavemaker_controller` and rebuild. The
-  wavemaker runs unchanged: `actuator_type` defaults to `indradrive`.
+  wavemaker runs with its topic names unchanged (`actuator_type` defaults to `indradrive`,
+  `rig` to `wavemaker`); its parameters have the new names from step R, so any parameter file
+  or command kept outside the repository has to be updated.
 
 ## Found on the rig
 
