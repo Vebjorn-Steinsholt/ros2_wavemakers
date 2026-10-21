@@ -92,20 +92,100 @@ LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
 
 ### Now: step B on the rig
 
+Commands below assume the environment in [How to run](#how-to-run). Close the Arduino IDE's
+Serial Monitor first: only one program can have the port open.
+
 - [x] Commit step B.
-- [ ] Firmware: upload the command-count change (motion command count instead of an empty header
-  and an extra SYNC; PDO1 last) and run `link_test.py --move`; expect about one feedback per
-  command. The change is committed with step B (`d0cf237`) but has not run on the rig yet. See
-  [Upload the firmware](#upload-the-firmware) and
-  [`link_test.py`](#link_testpy-the-bridge-without-ros). (rig)
-- [ ] Run `linmot_probe` against the Uno and drive (no motion); see
-  [`linmot_probe`](#linmot_probe-the-link-through-the-c-driver-nothing-moves). (rig)
-- [ ] First controller run with a temporary parameter file (`actuator_type: linmot`,
-  `wavemaker_type: piston` as a placeholder), lifecycle by hand: configure, activate (homing),
-  `return_to_upright`, faults (USB unplugged, e-stop, LinMot-Talk switching off), deactivate.
-  No `height`/`period` goals before step D: they would be turned into a stroke by wave theory.
-  Commands and the parameter file: [The controller by hand](#the-controller-by-hand-step-b-rig-test).
-  (rig)
+- [ ] Upload the firmware's command-count change (motion command count instead of an empty
+  header and an extra SYNC; PDO1 last). It is committed with step B (`d0cf237`) but has not run
+  on the rig yet. In the Arduino IDE: open the sketch, board "Arduino Uno", port
+  `/dev/ttyACM0`, Upload (needs the `mcp_can` library in `~/Arduino/libraries`). Or, with the
+  IDE closed: (rig)
+
+  ```bash
+  arduino --upload --board arduino:avr:uno --port /dev/ttyACM0 \
+    ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge/linmot_serial_bridge.ino
+  ```
+
+- [ ] Run `link_test.py` with motion; expect "one feedback per command: about 300 of 300"
+  (before the change it was 600 of 300) and "All checks passed". The drive must be homed; e-stop
+  at hand. (rig)
+
+  ```bash
+  cd ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge
+  python3 link_test.py --move           # add --home if the drive is not homed
+  ```
+
+  Without `--move` it only checks the link and the CAN path, and nothing moves. With `--move` it
+  also switches on, moves to 100 mm, streams a 5 mm sine, checks that an out-of-range command is
+  rejected and that the watchdog stops a move, and switches the drive off.
+
+- [ ] Run `linmot_probe` against the Uno and drive (no motion). (rig)
+
+  ```bash
+  ros2 run linmot_serial_driver linmot_probe /dev/ttyACM0      # 2 s; add a number for longer
+  ```
+
+  Expect READY after about 0.5 s, the drive's position and status word, as many feedbacks as
+  frames, 0 bad CRCs and about 71 skipped bytes (the Arduino's start-up text). It sends NMT
+  operational and status requests only.
+
+- [ ] First controller run, lifecycle by hand: configure, activate (homing), `return_to_upright`,
+  faults, deactivate. Until steps R and D it uses today's parameter names and
+  `wavemaker_type: piston` as a placeholder: send no `height`/`period` goals, they would be
+  turned into a stroke by wave theory. (rig)
+
+  Save as `/tmp/oscillator_test.yaml`:
+
+  ```yaml
+  /**:
+    ros__parameters:
+      actuator_type: linmot
+      serial_port: /dev/ttyACM0
+      actuator_drive_type: linear
+      wavemaker_type: piston          # placeholder until step D
+      water_depth: 1.0                # required > 0 for piston, not used otherwise
+      wavemaker_upright_position_m: 0.1
+      wavemaker_minimum: 0.005
+      wavemaker_maximum: 0.195
+      min_position_m: 0.005
+      max_position_m: 0.195
+      positioning_velocity_margin: 1.0
+      return_to_upright_max_velocity_mps: 0.02   # slow for the first runs
+      step_timeout_ms: 2000
+  ```
+
+  Terminal 1, the controller:
+
+  ```bash
+  ros2 run rig_controller controller_node --ros-args \
+    -r __ns:=/oscillators/sloshing --params-file /tmp/oscillator_test.yaml
+  ```
+
+  Terminal 2, in place of the soft stop button. The controller allows no motion unless it hears
+  `soft_stop: false` at least every 0.2 s; Ctrl-C here acts like pressing the button.
+
+  ```bash
+  ros2 topic pub -r 20 /oscillators/sloshing/soft_stop std_msgs/msg/Bool "{data: false}" \
+    --qos-reliability reliable --qos-durability transient_local
+  ```
+
+  Terminal 3, the lifecycle and a return to 100 mm:
+
+  ```bash
+  NS=/oscillators/sloshing
+  ros2 lifecycle set $NS/controller configure    # reads parameters, port not opened yet
+  ros2 lifecycle set $NS/controller activate     # opens the port, switches on, homes if needed
+  ros2 lifecycle get $NS/controller
+  ros2 service call $NS/return_to_upright \
+    wavemaker_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
+  ros2 topic echo $NS/wavemaker_position          # measured position, m
+  ros2 lifecycle set $NS/controller deactivate   # switches the drive off
+  ```
+
+  Faults, one at a time while active, each followed by a new configure and activate: pull the
+  USB cable, press the e-stop, switch the drive off in LinMot-Talk. Each should end in a fault
+  with a clear reason in terminal 1 and no further motion.
 
 ### R: names that fit both rigs
 
@@ -185,12 +265,17 @@ LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
 
 ## How to run
 
-Commands assume a sourced workspace (`source /opt/ros/jazzy/setup.bash` and
-`source ~/ros_ws/install/setup.bash`) and, for ROS commands, `export ROS_DOMAIN_ID=<n>` other
-than 0. Only one program can have the serial port open: close the Arduino IDE's Serial Monitor
-first.
+Commands assume a sourced workspace and a ROS domain other than 0:
 
-### Build and unit tests (no hardware)
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/ros_ws/install/setup.bash
+export ROS_DOMAIN_ID=<n>
+```
+
+The commands for each rig step are under its item in the [Plan](#plan). Build and unit tests,
+with no hardware (the driver's tests and `test_linmot_actuator` run against a simulated Arduino
+and drive on a pseudo-terminal):
 
 ```bash
 cd ~/ros_ws
@@ -198,100 +283,6 @@ colcon build --packages-up-to rig_controller linmot_serial_driver
 colcon test --packages-select linmot_serial_driver rig_controller
 colcon test-result --verbose
 ```
-
-`linmot_serial_driver`'s tests and `test_linmot_actuator` run against a simulated Arduino and
-drive on a pseudo-terminal.
-
-### Upload the firmware
-
-Arduino IDE: open `firmware/linmot_serial_bridge/linmot_serial_bridge.ino`, board "Arduino Uno",
-port `/dev/ttyACM0`, Upload. Needs the `mcp_can` library (`~/Arduino/libraries/mcp_can`). From a
-terminal, with the IDE closed:
-
-```bash
-arduino --upload --board arduino:avr:uno --port /dev/ttyACM0 \
-  ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge/linmot_serial_bridge.ino
-```
-
-### `link_test.py`: the bridge without ROS
-
-```bash
-cd ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge
-python3 link_test.py                  # link and CAN path only, nothing moves
-python3 link_test.py --move           # also motion: drive must be homed; e-stop at hand
-python3 link_test.py --move --home    # home first (the slide moves to the 200 mm stop)
-python3 link_test.py --port /dev/ttyACM1   # another port
-```
-
-Without `--move` it checks READY, a frame with a bad CRC and a status reply from the drive. With
-`--move` it also switches on, moves to 100 mm, streams a 5 mm sine, checks that an out-of-range
-command is rejected and that the watchdog stops a move, and switches the drive off.
-
-### `linmot_probe`: the link through the C++ driver, nothing moves
-
-```bash
-ros2 run linmot_serial_driver linmot_probe /dev/ttyACM0      # 2 s
-ros2 run linmot_serial_driver linmot_probe /dev/ttyACM0 10   # 10 s
-```
-
-Prints the time to READY (about 0.5 s), the drive's position and status word, and feedbacks
-against frames sent (should be equal), bad CRCs and skipped bytes (about 71 from the Arduino's
-start-up text). Sends NMT operational and status requests only.
-
-### The controller by hand (step B rig test)
-
-Until steps R and D, use the current parameter names and `wavemaker_type: piston` as a
-placeholder. Save as `/tmp/oscillator_test.yaml`:
-
-```yaml
-/**:
-  ros__parameters:
-    actuator_type: linmot
-    serial_port: /dev/ttyACM0
-    actuator_drive_type: linear
-    wavemaker_type: piston          # placeholder until step D; do not send height/period goals
-    water_depth: 1.0                # required > 0 for piston, not used otherwise
-    wavemaker_upright_position_m: 0.1
-    wavemaker_minimum: 0.005
-    wavemaker_maximum: 0.195
-    min_position_m: 0.005
-    max_position_m: 0.195
-    positioning_velocity_margin: 1.0
-    return_to_upright_max_velocity_mps: 0.02   # slow for the first runs
-    step_timeout_ms: 2000
-```
-
-Terminal 1, the controller:
-
-```bash
-ros2 run rig_controller controller_node --ros-args \
-  -r __ns:=/oscillators/sloshing --params-file /tmp/oscillator_test.yaml
-```
-
-Terminal 2, stands in for the soft stop button (the controller rejects motion unless it hears
-`soft_stop: false` regularly; Ctrl-C here acts as a soft stop):
-
-```bash
-ros2 topic pub -r 20 /oscillators/sloshing/soft_stop std_msgs/msg/Bool "{data: false}" \
-  --qos-reliability reliable --qos-durability transient_local
-```
-
-Terminal 3, the lifecycle and a return to 100 mm:
-
-```bash
-NS=/oscillators/sloshing
-ros2 lifecycle set $NS/controller configure    # reads parameters, port not opened yet
-ros2 lifecycle set $NS/controller activate     # opens the port, switches on, homes if needed
-ros2 lifecycle get $NS/controller
-ros2 service call $NS/return_to_upright \
-  wavemaker_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
-ros2 topic echo $NS/wavemaker_position          # measured position, m
-ros2 lifecycle set $NS/controller deactivate   # switches the drive off
-```
-
-Faults to try while active, one at a time, each followed by a new configure and activate: pull
-the USB cable, press the e-stop, switch the drive off in LinMot-Talk. Each should end in a fault
-with a clear reason in terminal 1 and no further motion.
 
 ## Found on the rig
 
