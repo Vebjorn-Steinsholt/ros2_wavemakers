@@ -36,6 +36,7 @@ Modbus TCP / PROFIBUS gateway.
 | Package | Contents |
 |---|---|
 | `drivers/mgate5101_driver` | Standalone C++ driver: cyclic Modbus TCP client for the MGate (`MGateDriver`) and the IndraDrive state machine on top of it (`IndraDrive`). Includes `poll_rate_probe` and a monitor/move example. Register mapping is explained in [MAPPING.md](drivers/mgate5101_driver/MAPPING.md). |
+| `drivers/linmot_serial_driver` | Standalone C++ driver for the LinMot oscillator: the serial link to the Arduino serial-to-CAN bridge (`SerialBridge`, firmware in `firmware/linmot_serial_bridge`) and the LinMot drive's start-up and faults on top of it (`LinMotDrive`). `linmot_probe` checks the link without moving anything. Not used by the controller yet. |
 | `wavemaker_interfaces` | `MoveWavemaker` action, `ReturnToUpright` and `CancelAllGoals` services. |
 | `rig_controller` | `wavemaker_node` (the lifecycle controller), the wave and trajectory maths, the IndraDrive actuator adapter, and `wavemaker_bridge` (see the note below). |
 | `wavemaker_bringup` | Launch file and per-wavemaker configuration (`config/wavemakers.yaml`). |
