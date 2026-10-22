@@ -259,7 +259,7 @@ Serial Monitor first: only one program can have the port open.
   ros2 lifecycle set $NS/controller activate     # opens the port, switches on, homes if needed
   ros2 lifecycle get $NS/controller
   ros2 service call $NS/return_to_upright \
-    wavemaker_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
+    rig_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
   ros2 topic echo $NS/oscillator_position         # only during goals and returns: start it
                                                   # in another terminal before the return
   ros2 lifecycle set $NS/controller deactivate   # switches the drive off
@@ -293,8 +293,11 @@ and a `return_to_upright` with the new parameter file ends at 0.09976 m (`status
 - [x] Topics and the action built from it: `move_<rig>`, `<rig>_setpoint`, `<rig>_position`,
   `<rig>_velocity`, `<rig>_actuator_setpoint`, `<rig>_state`, `<rig>_message`. Neutral names
   (`return_to_upright`, `cancel_all_goals`, `soft_stop`, `heartbeat`, `height`, `period`,
-  `start`, `stop`) and the action type `MoveWavemaker` stay. With the default, every wavemaker
-  topic keeps its name.
+  `start`, `stop`) stay. With the default, every wavemaker topic keeps its name.
+- [x] Packages and action type renamed as well (2026-10-22, after step R): `wavemaker_web` →
+  `rig_web`, `wavemaker_interfaces` → `rig_interfaces`, `MoveWavemaker` → `MoveRig`
+  (`ros2 launch rig_web demo.launch.py [rig:=oscillator]`; goals as
+  `rig_interfaces/action/MoveRig`). `wavemaker_bringup` keeps its name: it is wavemaker-only.
 - [x] Parameters:
 
   | Today | New |
@@ -315,6 +318,9 @@ and a `return_to_upright` with the new parameter file ends at 0.09976 m (`status
 
 ### C + D: the oscillator in the controller
 
+Code done 2026-10-22 (commit `e903684`): 151 tests pass. Deceleration is sent equal to the
+acceleration (the sine brakes as hard as it accelerates). The rig test below is still open.
+
 Three commits, each testable on its own. Decided 2026-10-22: the parameter names below; the start
 blend may reject a goal whose steady sine would pass (TODO 25 covers a longer blend later);
 pregenerated goals are checked and capped like regular ones, and the smoothing of noisy data
@@ -322,50 +328,50 @@ belongs in `play_dat.py` (item at the end).
 
 **D1: oscillator trajectory**
 
-- [ ] `WaveTrajectory::configure()`: type `"oscillator"` gives `amplitude_ = H / 2`, with no
+- [x] `WaveTrajectory::configure()`: type `"oscillator"` gives `amplitude_ = H / 2`, with no
   dispersion relation, gain or flap scaling; blend, `sample()` and the required range stay.
-- [ ] `controller_node.cpp`: the checks of `wavemaker_type`, `water_depth`, flap, hinge and gain
+- [x] `controller_node.cpp`: the checks of `wavemaker_type`, `water_depth`, flap, hinge and gain
   table only for `rig: wavemaker`; `rig: oscillator` requires `upright_is_minimum: false`; log
   "as an oscillator"; gain lookup only for wavemakers; `trajectory_.configure()` gets type
   `"oscillator"` when `rig` is `oscillator`.
 
 **C: the acceleration through to the drive**
 
-- [ ] `wave_math`: `Blend` gets `dds` (`(60u − 180u² + 120u³) / T²`);
+- [x] `wave_math`: `Blend` gets `dds` (`(60u − 180u² + 120u³) / T²`);
   `kQuinticPeakAccelerationFactor = 5.7735` (10/√3, peak acceleration 5.7735 · d / T²).
-- [ ] `peak_acceleration()`: `WaveTrajectory` (A·ω² after the blend, the blend sampled like
+- [x] `peak_acceleration()`: `WaveTrajectory` (A·ω² after the blend, the blend sampled like
   `peak_velocity()`), `PregeneratedWaveTrajectory` (blend, and second differences of the
   samples), and the return to upright in the node.
-- [ ] `Actuator`: `to_actuator_setpoint(position, velocity, acceleration)` and
+- [x] `Actuator`: `to_actuator_setpoint(position, velocity, acceleration)` and
   `max_acceleration_mps2()` (IndraDrive: infinity; LinMot: `max_acceleration_mps2`). Update
   both actuators, `FakeActuator` and the actuator tests.
-- [ ] Node: parameter `positioning_acceleration_margin` (default 1.2, ≥ 1);
+- [x] Node: parameter `positioning_acceleration_margin` (default 1.2, ≥ 1);
   `accept_peaks(velocity, acceleration)` stores the acceleration cap (peak × margin, at most
   the actuator's maximum) and rejects goals above `max_acceleration_mps2()`;
   `publish_and_write_setpoint()` passes the cap; the return passes its own.
-- [ ] `LinMotActuator`: remove `linmot_default_acceleration_mps2`; acceleration 0 is refused.
-- [ ] Oscillator yaml: `positioning_velocity_margin: 1.0`, `positioning_acceleration_margin: 1.0`
+- [x] `LinMotActuator`: remove `linmot_default_acceleration_mps2`; acceleration 0 is refused.
+- [x] Oscillator yaml: `positioning_velocity_margin: 1.0`, `positioning_acceleration_margin: 1.0`
   (VAI limits at the sine's maxima).
 
 **D2: goal checks** (0 = off, so the wavemakers are unchanged)
 
-- [ ] `max_goal_acceleration_mps2`: reject a goal whose peak acceleration (blend included) is
+- [x] `max_goal_acceleration_mps2`: reject a goal whose peak acceleration (blend included) is
   above it; 9.81 for the oscillator.
-- [ ] `min_period_s`: reject a regular goal with a shorter period; 0.2 for the oscillator.
+- [x] `min_period_s`: reject a regular goal with a shorter period; 0.2 for the oscillator.
   (2 m/s is already checked against the LinMot actuator's `max_velocity_mps`.)
 
 **Tests and docs**
 
-- [ ] `test_wave_trajectory.cpp`: oscillator amplitude H/2 independent of depth and gain;
+- [x] `test_wave_trajectory.cpp`: oscillator amplitude H/2 independent of depth and gain;
   `peak_acceleration()` = A·ω² for a steady sine and larger for an off-centre blend; quintic
   peak acceleration 5.7735 · d / T²; second differences of a known parabola.
-- [ ] `test_controller_node.cpp`: `rig: oscillator` configures without water depth or flap
+- [x] `test_controller_node.cpp`: `rig: oscillator` configures without water depth or flap
   parameters; `upright_is_minimum: true` rejected; goals above 9.81 m/s² or below 0.2 s
   rejected; `FakeActuator` sees acceleration = peak × margin, also for a return.
-- [ ] `test_linmot_actuator.cpp`: `write_setpoint` with acceleration 0 fails.
-- [ ] README parameter table: `positioning_acceleration_margin`, `max_goal_acceleration_mps2`,
+- [x] `test_linmot_actuator.cpp`: `write_setpoint` with acceleration 0 fails.
+- [x] README parameter table: `positioning_acceleration_margin`, `max_goal_acceleration_mps2`,
   `min_period_s`, and `rig: oscillator` as the oscillator's type.
-- [ ] Run the unit tests (no hardware):
+- [x] Run the unit tests (no hardware):
 
   ```bash
   cd ~/ros_ws
@@ -381,10 +387,10 @@ belongs in `play_dat.py` (item at the end).
   in step B; terminal 3 (Ctrl-C cancels the goal, then return to upright): (rig)
 
   ```bash
-  ros2 action send_goal $NS/move_oscillator wavemaker_interfaces/action/MoveWavemaker \
+  ros2 action send_goal $NS/move_oscillator rig_interfaces/action/MoveRig \
     "{height: 0.01, period: 2.0}"
   ros2 service call $NS/return_to_upright \
-    wavemaker_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
+    rig_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
   ```
 
   Expect the slide to move between 95 and 105 mm (`ros2 topic echo $NS/oscillator_position` in

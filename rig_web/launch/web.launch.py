@@ -1,11 +1,11 @@
 """
-Web page for one wavemaker, served by wavemaker_web's web_server.
+Web page for one wavemaker, served by rig_web's web_server.
 
 The page talks to bridge_node, so start the bridge (bridge.launch.py) as well.
 After idle_timeout_s without a wave the server stops the managed nodes and exits, and this launch
 (or lab.launch.py, which includes it) shuts down with it. A crash of the server does the same.
 
-    ros2 launch wavemaker_web web.launch.py wavemaker:=ladertanken port:=8080
+    ros2 launch rig_web web.launch.py wavemaker:=ladertanken port:=8080
 
 The page runs in wavemakers/<wavemaker> unless namespace is given, for example
 namespace:=oscillators/sloshing for the oscillator (with rig:=oscillator).
@@ -48,7 +48,7 @@ def generate_launch_description():
             'idle_timeout_s', default_value='7200',
             description='Stop the wavemaker after this long without a wave; 0 turns it off'),
         Node(
-            package='wavemaker_web',
+            package='rig_web',
             executable='web_server',
             namespace=LaunchConfiguration('namespace'),
             name='web',

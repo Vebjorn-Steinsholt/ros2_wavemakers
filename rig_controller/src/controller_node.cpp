@@ -21,9 +21,9 @@
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "bondcpp/bond.hpp"
-#include "wavemaker_interfaces/action/move_wavemaker.hpp"
-#include "wavemaker_interfaces/srv/cancel_all_goals.hpp"
-#include "wavemaker_interfaces/srv/return_to_upright.hpp"
+#include "rig_interfaces/action/move_rig.hpp"
+#include "rig_interfaces/srv/cancel_all_goals.hpp"
+#include "rig_interfaces/srv/return_to_upright.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "indradrive_actuator.hpp"
@@ -31,11 +31,11 @@
 #include "wave_math.hpp"
 #include "wave_trajectory.hpp"
 
-using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
-using MoveWavemakerGoalHandle = rclcpp_action::ServerGoalHandle<MoveWavemaker>;
+using MoveRig = rig_interfaces::action::MoveRig;
+using MoveRigGoalHandle = rclcpp_action::ServerGoalHandle<MoveRig>;
 
-using CancelAllGoals = wavemaker_interfaces::srv::CancelAllGoals;
-using ReturnToUpright = wavemaker_interfaces::srv::ReturnToUpright;
+using CancelAllGoals = rig_interfaces::srv::CancelAllGoals;
+using ReturnToUpright = rig_interfaces::srv::ReturnToUpright;
 
 using rig_controller::Blend;
 using rig_controller::interpolate_gain;
@@ -371,7 +371,7 @@ public:
       return CallbackReturn::FAILURE;
     }
     action_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-    action_server_ = rclcpp_action::create_server<MoveWavemaker>(
+    action_server_ = rclcpp_action::create_server<MoveRig>(
       shared_from_this(),
       "move_" + rig_,
       std::bind(&ControllerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
@@ -387,7 +387,7 @@ public:
     return_to_upright_service_callback_group_ =
       create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
-    cancel_client_ = rclcpp_action::create_client<MoveWavemaker>(
+    cancel_client_ = rclcpp_action::create_client<MoveRig>(
       shared_from_this(), "move_" + rig_, cancel_client_callback_group_);
 
     cancel_service_ = create_service<CancelAllGoals>(
@@ -783,7 +783,7 @@ private:
     actuator_.reset();
   }
 
-  bool prepare_goal(const MoveWavemaker::Goal & goal)
+  bool prepare_goal(const MoveRig::Goal & goal)
   {
     const double start_position = actuator_->actual_position_m();
     if (!std::isfinite(start_position) ||
@@ -988,11 +988,11 @@ private:
   }
 
   void abort_goal(
-    const std::shared_ptr<MoveWavemakerGoalHandle> & goal_handle, const std::string & message)
+    const std::shared_ptr<MoveRigGoalHandle> & goal_handle, const std::string & message)
   {
     try {
       if (goal_handle && goal_handle->is_active()) {
-        auto result = std::make_shared<MoveWavemaker::Result>();
+        auto result = std::make_shared<MoveRig::Result>();
         result->success = false;
         result->message = message;
         goal_handle->abort(result);
@@ -1006,7 +1006,7 @@ private:
 
   void abort_active_goal()
   {
-    std::shared_ptr<MoveWavemakerGoalHandle> goal_to_abort;
+    std::shared_ptr<MoveRigGoalHandle> goal_to_abort;
     {
       std::lock_guard<std::mutex> lock(goal_mutex_);
       goal_to_abort = goal_handle_;
@@ -1025,7 +1025,7 @@ private:
 
   rclcpp_action::GoalResponse goal_callback(
     const rclcpp_action::GoalUUID & uuid,
-    std::shared_ptr<const MoveWavemaker::Goal> goal)
+    std::shared_ptr<const MoveRig::Goal> goal)
   {
     (void)uuid;
     // Read before taking goal_mutex_ to avoid nesting the lifecycle state lock inside it.
@@ -1065,7 +1065,7 @@ private:
   }
 
   rclcpp_action::CancelResponse cancel_callback(
-    const std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
+    const std::shared_ptr<MoveRigGoalHandle> goal_handle)
   {
     (void)goal_handle;
     RCLCPP_INFO(get_logger(), "Received request to cancel goal");
@@ -1073,7 +1073,7 @@ private:
   }
 
   void handle_accepted_callback(
-    std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
+    std::shared_ptr<MoveRigGoalHandle> goal_handle)
   {
     bool can_start = false;
 
@@ -1116,7 +1116,7 @@ private:
   }
 
   void release_goal(
-    const std::shared_ptr<MoveWavemakerGoalHandle> & goal_handle, const std::string & message)
+    const std::shared_ptr<MoveRigGoalHandle> & goal_handle, const std::string & message)
   {
     try {
       if (actuator_) {
@@ -1207,10 +1207,10 @@ private:
   }
 
   void execute_goal(
-    std::shared_ptr<MoveWavemakerGoalHandle> goal_handle)
+    std::shared_ptr<MoveRigGoalHandle> goal_handle)
   {
-    auto result = std::make_shared<MoveWavemaker::Result>();
-    auto feedback = std::make_shared<MoveWavemaker::Feedback>();
+    auto result = std::make_shared<MoveRig::Result>();
+    auto feedback = std::make_shared<MoveRig::Feedback>();
 
     goal_handle->execute();
     const auto start_time = std::chrono::steady_clock::now();
@@ -1255,7 +1255,7 @@ private:
 
       if (!publish_and_write_setpoint(x, v, goal_velocity_cap_mps_, goal_acceleration_cap_mps2_)) {
         RCLCPP_ERROR(get_logger(), "Failed to write actuator setpoint");
-        auto failure = std::make_shared<MoveWavemaker::Result>();
+        auto failure = std::make_shared<MoveRig::Result>();
         failure->success = false;
         const std::string reason = actuator_->fault_reason();
         failure->message = reason.empty() ?
@@ -1394,7 +1394,7 @@ private:
   double actuator_upright_angle_deg_{0.0};
   std::string actuator_drive_type_;
   std::mutex goal_mutex_;
-  std::shared_ptr<MoveWavemakerGoalHandle> goal_handle_;
+  std::shared_ptr<MoveRigGoalHandle> goal_handle_;
   bool goal_pending_{false};
   bool returning_to_upright_{false};  // guarded by goal_mutex_
   double return_max_velocity_mps_{0.1};
@@ -1411,13 +1411,13 @@ private:
   double wavemaker_transfer_gain_{1.0};
   std::vector<double> gain_periods_;
   std::vector<double> gain_values_;
-  rclcpp_action::Server<MoveWavemaker>::SharedPtr action_server_;
+  rclcpp_action::Server<MoveRig>::SharedPtr action_server_;
   rclcpp::CallbackGroup::SharedPtr action_callback_group_;
   rclcpp::CallbackGroup::SharedPtr cancel_service_callback_group_;
   rclcpp::CallbackGroup::SharedPtr cancel_client_callback_group_;
   rclcpp::CallbackGroup::SharedPtr soft_stop_callback_group_;
   rclcpp::CallbackGroup::SharedPtr return_to_upright_service_callback_group_;
-  rclcpp_action::Client<MoveWavemaker>::SharedPtr cancel_client_;
+  rclcpp_action::Client<MoveRig>::SharedPtr cancel_client_;
   rclcpp::Service<CancelAllGoals>::SharedPtr cancel_service_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr soft_stop_subscription_;
   rclcpp::Service<ReturnToUpright>::SharedPtr return_to_upright_service_;

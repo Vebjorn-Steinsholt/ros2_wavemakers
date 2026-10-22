@@ -186,7 +186,7 @@ def print_table(runs: list[Run], sample_interval: float, units: str,
 def play(runs: list[Run], sample_interval: float, ros_args: list[str]) -> int:
     """Send each run as a move_wavemaker goal, in order; return an exit code."""
     # TODO 1: rclpy.init(args=ros_args); node 'play_dat';
-    #         ActionClient(node, MoveWavemaker, f'move_{rig}') (namespace via --ros-args;
+    #         ActionClient(node, MoveRig, f'move_{rig}') (namespace via --ros-args;
     #         add --rig wavemaker|oscillator, default wavemaker, as in fake_controller).
     # TODO 2: wait_for_server(SERVER_TIMEOUT_S); fail clearly if the controller is not up.
     # TODO 3: for each run:

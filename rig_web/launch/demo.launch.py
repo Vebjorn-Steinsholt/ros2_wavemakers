@@ -5,7 +5,8 @@ Everything runs on its own ROS domain (default 77) and only on this computer, so
 never reach LabVIEW, another computer or the real controller. The web server prints the page's
 address, http://<hostname>.local:8080/ (for example http://ladertanken-rpi.local:8080/).
 
-    ros2 launch wavemaker_web demo.launch.py
+    ros2 launch rig_web demo.launch.py
+    ros2 launch rig_web demo.launch.py rig:=oscillator port:=8081
 
 To try the idle auto-stop: idle_timeout_s:=120 (warning shown for the last 10 minutes, so at once).
 """
@@ -28,11 +29,12 @@ def _shutdown_unless_stopping(event, context):
 def generate_launch_description():
     port = LaunchConfiguration('port')
     namespace = LaunchConfiguration('namespace')
+    rig = LaunchConfiguration('rig')
     return LaunchDescription([
         DeclareLaunchArgument('port', default_value='8080', description='HTTP port'),
         DeclareLaunchArgument(
             'rig', default_value='wavemaker', choices=['wavemaker', 'oscillator'],
-            description='Texts on the page: wavemaker or oscillator'),
+            description="Rig: the page's texts, and the action and topic names of all nodes"),
         DeclareLaunchArgument(
             'namespace',
             default_value=PythonExpression([
@@ -49,11 +51,12 @@ def generate_launch_description():
         SetEnvironmentVariable('ROS_AUTOMATIC_DISCOVERY_RANGE', 'LOCALHOST'),
         Node(
             package='rig_controller', executable='fake_controller',
-            namespace=namespace, name='controller', output='screen'),
+            namespace=namespace, name='controller', output='screen',
+            arguments=['--rig', rig]),
         Node(
             package='rig_controller', executable='bridge_node',
             namespace=namespace, name='bridge', output='screen',
-            parameters=[{'bond_timeout': 1.0}]),
+            parameters=[{'bond_timeout': 1.0, 'rig': rig}]),
         Node(
             package='nav2_lifecycle_manager', executable='lifecycle_manager',
             namespace=namespace, name='lifecycle_manager', output='screen',
@@ -63,13 +66,13 @@ def generate_launch_description():
                 'bond_timeout': 1.0,
             }]),
         Node(
-            package='wavemaker_web', executable='web_server',
+            package='rig_web', executable='web_server',
             namespace=namespace, name='web', output='screen',
             parameters=[{
                 'port': ParameterValue(port, value_type=int),
                 'idle_timeout_s': ParameterValue(
                     LaunchConfiguration('idle_timeout_s'), value_type=float),
-                'rig': LaunchConfiguration('rig'),
+                'rig': rig,
             }],
             on_exit=_shutdown_unless_stopping),
     ])

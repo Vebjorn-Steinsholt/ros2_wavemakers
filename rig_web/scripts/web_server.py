@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Web page for running a wavemaker through bridge_node, in place of LabVIEW.
+Web page for running a wavemaker or the sloshing oscillator, in place of LabVIEW.
+
+It talks to bridge_node; the rig parameter selects the texts and the topic names.
 
 Serves the page in html/ and a small JSON API on one port. The page plays LabVIEW's role: the
 server publishes height, period, start and stop to the bridge, and the bridge heartbeat only
 while an open page keeps acknowledging the server's events. When the page closes, the browser
 freezes or the network drops, the heartbeat stops and the bridge stops the wave.
 
-    ros2 run wavemaker_web web_server --ros-args -r __ns:=/wavemakers/ladertanken -p port:=8080
+    ros2 run rig_web web_server --ros-args -r __ns:=/wavemakers/ladertanken -p port:=8080
 
 Every open page counts: the wave keeps running while any one of them is alive.
 
@@ -41,8 +43,8 @@ import rclpy
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
+from rig_interfaces.srv import ReturnToUpright
 from std_msgs.msg import Bool, Float64, String
-from wavemaker_interfaces.srv import ReturnToUpright
 
 ACK_TIMEOUT_S = 0.5      # a page is alive while it acknowledged an event this recently
 EVENT_PERIOD_S = 0.1     # how often the page gets an update
@@ -464,7 +466,7 @@ def page_url(host, port):
 def main():
     rclpy.init()
     node = WebNode()
-    html_dir = Path(get_package_share_directory('wavemaker_web')) / 'html'
+    html_dir = Path(get_package_share_directory('rig_web')) / 'html'
     host = node.get_parameter('host').value
     port = node.get_parameter('port').value
     server = ThreadingHTTPServer((host, port), make_handler(node, html_dir))

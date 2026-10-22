@@ -10,7 +10,7 @@ find_package(lifecycle_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(rclcpp_action REQUIRED)
-find_package(wavemaker_interfaces REQUIRED)
+find_package(rig_interfaces REQUIRED)
 find_package(bondcpp REQUIRED)
 find_package(mgate5101_driver REQUIRED)
 find_package(linmot_serial_driver REQUIRED)
@@ -29,7 +29,7 @@ ament_target_dependencies(controller_node
   rclcpp
   rclcpp_lifecycle
   rclcpp_action
-  wavemaker_interfaces
+  rig_interfaces
   bondcpp
   std_msgs
   mgate5101_driver
@@ -41,7 +41,7 @@ ament_target_dependencies(bridge_node
   rclcpp_lifecycle
   rclcpp_action
   bondcpp
-  wavemaker_interfaces
+  rig_interfaces
   std_msgs
   std_srvs
 )
@@ -113,7 +113,7 @@ if(BUILD_TESTING)
     rclcpp
     rclcpp_lifecycle
     rclcpp_action
-    wavemaker_interfaces
+    rig_interfaces
     bondcpp
     std_msgs
   )

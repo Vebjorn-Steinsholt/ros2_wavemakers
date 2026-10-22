@@ -19,7 +19,7 @@
 #include "lifecycle_msgs/msg/transition.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
-#include "wavemaker_interfaces/action/move_wavemaker.hpp"
+#include "rig_interfaces/action/move_rig.hpp"
 
 #define main controller_node_main
 #include "../src/controller_node.cpp"
@@ -28,7 +28,7 @@
 namespace
 {
 
-using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
+using MoveRig = rig_interfaces::action::MoveRig;
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
 class FakeActuator final : public rig_controller::Actuator
@@ -309,7 +309,7 @@ std::shared_ptr<ControllerNode> speed_limited_node(
 // and reports whether the controller accepted the goal.
 bool goal_accepted(
   const std::shared_ptr<ControllerNode> & node, const std::string & ns, bool pregenerated,
-  const MoveWavemaker::Goal & goal, const std::string & action = "move_wavemaker")
+  const MoveRig::Goal & goal, const std::string & action = "move_wavemaker")
 {
   EXPECT_EQ(
     node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
@@ -320,7 +320,7 @@ bool goal_accepted(
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "speed_limit_client", node_options(ns, pregenerated));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, action);
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, action);
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
@@ -341,7 +341,7 @@ bool goal_accepted(
 // Like goal_accepted() on a fresh speed_limited_node().
 bool goal_accepted_with_speed_limit(
   const std::string & ns, bool pregenerated, double max_velocity_mps,
-  const MoveWavemaker::Goal & goal, const std::vector<rclcpp::Parameter> & overrides = {})
+  const MoveRig::Goal & goal, const std::vector<rclcpp::Parameter> & overrides = {})
 {
   return goal_accepted(
     speed_limited_node(ns, pregenerated, max_velocity_mps, overrides), ns, pregenerated, goal);
@@ -368,7 +368,7 @@ struct ReturnToUprightRig
   std::shared_ptr<ControllerNode> node;
   std::shared_ptr<rclcpp::Node> client_node;
   rclcpp::Client<ReturnToUpright>::SharedPtr client;
-  rclcpp_action::Client<MoveWavemaker>::SharedPtr action_client;
+  rclcpp_action::Client<MoveRig>::SharedPtr action_client;
   rclcpp::executors::MultiThreadedExecutor executor;
 
   void setup(
@@ -397,7 +397,7 @@ struct ReturnToUprightRig
 
     client_node = std::make_shared<rclcpp::Node>("return_client", node_options(ns, false));
     client = client_node->create_client<ReturnToUpright>("return_to_upright");
-    action_client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+    action_client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
     executor.add_node(node->get_node_base_interface());
     executor.add_node(client_node);
     ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(1)));
@@ -462,14 +462,14 @@ TEST_F(ControllerNodeTest, PregeneratedActionCompletesAndKeepsActuatorEnabled)
 
   auto client_node = std::make_shared<rclcpp::Node>("completion_client",
     node_options("/completion_test", true));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.positions = {0.25, 0.26};
   goal.sample_interval = 0.02;
   auto goal_future = client->async_send_goal(goal);
@@ -504,7 +504,7 @@ TEST_F(ControllerNodeTest, PregeneratedGoalBlendsFromMeasuredPosition)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "pregenerated_blend_client", node_options("/pregenerated_blend_test", true));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
@@ -512,7 +512,7 @@ TEST_F(ControllerNodeTest, PregeneratedGoalBlendsFromMeasuredPosition)
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
   // 0.05 m from the paddle to positions[0]; the samples themselves move at 0.1 m/s.
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.positions = {0.25, 0.26};
   goal.sample_interval = 0.1;
   auto goal_future = client->async_send_goal(goal);
@@ -551,14 +551,14 @@ TEST_F(ControllerNodeTest, CancelledActionHaltsAndAcceptsNextGoal)
 
   auto client_node = std::make_shared<rclcpp::Node>("cancel_client",
     node_options("/cancel_test", false));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = 0.002;
   goal.period = 10.0;
   auto goal_future = client->async_send_goal(goal);
@@ -622,14 +622,14 @@ TEST_F(ControllerNodeTest, SinusoidalGoalBlendsFromMeasuredPosition)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "smooth_start_client", node_options("/smooth_start_test", false));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = 0.002;
   goal.period = 10.0;
   auto goal_future = client->async_send_goal(goal);
@@ -676,14 +676,14 @@ TEST_F(ControllerNodeTest, UprightMinimumWaveformNeverCommandsBehindUpright)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "upright_minimum_client", node_options("/upright_minimum_test", false));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = 0.00002;
   goal.period = 0.5;
   auto goal_future = client->async_send_goal(goal);
@@ -729,14 +729,14 @@ TEST_F(ControllerNodeTest, SymmetricGoalOscillatesAroundUpright)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "symmetric_client", node_options("/symmetric_test", false));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = 0.00002;
   goal.period = 0.5;
   auto goal_future = client->async_send_goal(goal);
@@ -778,14 +778,14 @@ TEST_F(ControllerNodeTest, AngularDriveLimitsOverrideWavemakerMeterBounds)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "angular_limits_client", node_options("/angular_limits_test", true));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
 
   ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.positions = {0.15, 0.16};
   goal.sample_interval = 0.02;
   auto goal_future = client->async_send_goal(goal);
@@ -813,7 +813,7 @@ TEST_F(ControllerNodeTest, ReturnToUprightRejectedWhileGoalRunning)
   ASSERT_NO_FATAL_FAILURE(rig.setup("/return_busy_test", 0.25, true));
   ASSERT_TRUE(rig.action_client->wait_for_action_server(std::chrono::seconds(1)));
 
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = 0.002;
   goal.period = 10.0;
   auto goal_future = rig.action_client->async_send_goal(goal);
@@ -1089,7 +1089,7 @@ TEST_F(ControllerNodeTest, SetpointWriteFailureAbortsGoalAndDeactivates)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "write_failure_client", node_options("/write_failure_test", true));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
@@ -1097,7 +1097,7 @@ TEST_F(ControllerNodeTest, SetpointWriteFailureAbortsGoalAndDeactivates)
   ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
 
   fake->reject_writes = true;
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.positions = {0.25, 0.26};
   goal.sample_interval = 0.1;
   auto goal_future = client->async_send_goal(goal);
@@ -1136,12 +1136,12 @@ TEST_F(ControllerNodeTest, ConfigureFailsWhenReturnSpeedExceedsDriveMaximum)
 TEST_F(ControllerNodeTest, RegularWaveAboveDriveSpeedIsRejected)
 {
   // Piston in 1 m water: a 0.1 m high wave at 1 s needs about 0.16 m/s.
-  MoveWavemaker::Goal fast;
+  MoveRig::Goal fast;
   fast.height = 0.1;
   fast.period = 1.0;
   EXPECT_FALSE(goal_accepted_with_speed_limit("/fast_wave_test", false, 0.06, fast));
 
-  MoveWavemaker::Goal slow;
+  MoveRig::Goal slow;
   slow.height = 0.002;
   slow.period = 10.0;
   EXPECT_TRUE(goal_accepted_with_speed_limit("/slow_wave_test", false, 0.06, slow));
@@ -1149,12 +1149,12 @@ TEST_F(ControllerNodeTest, RegularWaveAboveDriveSpeedIsRejected)
 
 TEST_F(ControllerNodeTest, PregeneratedGoalAboveDriveSpeedIsRejected)
 {
-  MoveWavemaker::Goal fast;  // 0.01 m per 0.1 s = 0.1 m/s
+  MoveRig::Goal fast;  // 0.01 m per 0.1 s = 0.1 m/s
   fast.positions = {0.25, 0.26};
   fast.sample_interval = 0.1;
   EXPECT_FALSE(goal_accepted_with_speed_limit("/fast_samples_test", true, 0.06, fast));
 
-  MoveWavemaker::Goal slow;  // 0.01 m per 0.5 s = 0.02 m/s
+  MoveRig::Goal slow;  // 0.01 m per 0.5 s = 0.02 m/s
   slow.positions = {0.25, 0.26};
   slow.sample_interval = 0.5;
   EXPECT_TRUE(goal_accepted_with_speed_limit("/slow_samples_test", true, 0.06, slow));
@@ -1179,7 +1179,7 @@ TEST_F(ControllerNodeTest, TransferGainScalesRequiredStroke)
 {
   // The fast wave of RegularWaveAboveDriveSpeedIsRejected needs about 0.16 m/s; a gain of 4
   // divides the stroke, and with it the speed, by 4.
-  MoveWavemaker::Goal fast;
+  MoveRig::Goal fast;
   fast.height = 0.1;
   fast.period = 1.0;
   EXPECT_FALSE(
@@ -1228,7 +1228,7 @@ TEST_F(ControllerNodeTest, GainTableScalesRequiredStroke)
 {
   // As in TransferGainScalesRequiredStroke: the 1 s wave is too fast for the drive at gain 1 and
   // fits at gain 4.
-  MoveWavemaker::Goal fast;
+  MoveRig::Goal fast;
   fast.height = 0.1;
   fast.period = 1.0;
   const auto table = [](std::vector<double> periods, std::vector<double> values) {
@@ -1262,7 +1262,7 @@ TEST_F(ControllerNodeTest, GainTableScalesRequiredStroke)
 TEST_F(ControllerNodeTest, WaterDepthChangeTakesEffectAtNextConfigure)
 {
   // A 0.02 m high, 10 s wave needs about 0.03 m/s in 1 m of water and about 0.07 m/s in 0.2 m.
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = 0.02;
   goal.period = 10.0;
   auto node = speed_limited_node("/water_depth_test", false, 0.06);
@@ -1358,7 +1358,7 @@ TEST_F(ControllerNodeTest, LadertankenAcceptsEveryLabWave)
     lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
 
   auto client_node = std::make_shared<rclcpp::Node>("lab_waves_client", node_options(ns, false));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_wavemaker");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
@@ -1367,7 +1367,7 @@ TEST_F(ControllerNodeTest, LadertankenAcceptsEveryLabWave)
 
   // Sends one goal (wave height H in cm), cancels it if accepted and reports acceptance.
   auto accepted = [&](double height_cm, double period) {
-      MoveWavemaker::Goal goal;
+      MoveRig::Goal goal;
       goal.height = height_cm / 100.0;
       goal.period = period;
       auto goal_future = client->async_send_goal(goal);
@@ -1568,9 +1568,9 @@ std::shared_ptr<ControllerNode> oscillator_node(
     });
 }
 
-MoveWavemaker::Goal regular_goal(double height, double period)
+MoveRig::Goal regular_goal(double height, double period)
 {
-  MoveWavemaker::Goal goal;
+  MoveRig::Goal goal;
   goal.height = height;
   goal.period = period;
   return goal;
@@ -1658,7 +1658,7 @@ TEST_F(ControllerNodeTest, OscillatorGoalMovesTheStrokeAndSendsAccelerationCap)
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "oscillator_client", node_options("/oscillator_goal_test", false));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_oscillator");
+  auto client = rclcpp_action::create_client<MoveRig>(client_node, "move_oscillator");
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);

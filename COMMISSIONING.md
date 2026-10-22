@@ -205,7 +205,7 @@ Measured above 1 the waves came out too high, and the higher gain shrinks the ne
 4. For each run, send the wave and let it run long enough to fill the analysis window (next
    section), then stop it:
    ```bash
-   ros2 action send_goal $NS/move_wavemaker wavemaker_interfaces/action/MoveWavemaker \
+   ros2 action send_goal $NS/move_wavemaker rig_interfaces/action/MoveRig \
      "{height: 0.026, period: 1.0}"                 # Ctrl-C cancels
    ```
    The controller rejects a wave that would exceed the travel or speed limits; that period and
@@ -312,9 +312,9 @@ ros2 lifecycle set $NS/controller activate          # enables the drive
 ros2 run rqt_plot rqt_plot $NS/wavemaker_setpoint/data $NS/wavemaker_position/data
 
 # small slow wave, then stop
-ros2 action send_goal --feedback $NS/move_wavemaker wavemaker_interfaces/action/MoveWavemaker \
+ros2 action send_goal --feedback $NS/move_wavemaker rig_interfaces/action/MoveRig \
   "{height: 0.0001, period: 10.0}"                # Ctrl-C cancels
-ros2 service call $NS/return_to_upright wavemaker_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
+ros2 service call $NS/return_to_upright rig_interfaces/srv/ReturnToUpright "{requester: 'cli', tolerance: 0.0}"
 
 # finish
 ros2 lifecycle set $NS/controller deactivate        # disables the drive

@@ -37,9 +37,9 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.utilities import remove_ros_args
+from rig_interfaces.action import MoveRig
+from rig_interfaces.srv import ReturnToUpright
 from std_msgs.msg import Float64
-from wavemaker_interfaces.action import MoveWavemaker
-from wavemaker_interfaces.srv import ReturnToUpright
 
 LOOP_S = 0.02            # setpoint rate, as the real controller at poll_interval_ms 20
 LAG_S = 0.04             # the fake "measured" position trails the setpoint by this much
@@ -74,7 +74,7 @@ class FakeController(Node):
             ReturnToUpright, 'return_to_upright', self._return_to_upright,
             callback_group=ReentrantCallbackGroup())
         self._server = ActionServer(
-            self, MoveWavemaker, f'move_{rig}',
+            self, MoveRig, f'move_{rig}',
             execute_callback=self._execute,
             goal_callback=self._on_goal,
             cancel_callback=self._on_cancel,
@@ -190,8 +190,8 @@ class FakeController(Node):
 
     def _execute(self, goal_handle):
         goal = goal_handle.request
-        result = MoveWavemaker.Result()
-        feedback = MoveWavemaker.Feedback()
+        result = MoveRig.Result()
+        feedback = MoveRig.Feedback()
         origin = self._position
         motion = (self._pregenerated_motion if self._pregenerated else self._regular_motion)(
             goal, origin)

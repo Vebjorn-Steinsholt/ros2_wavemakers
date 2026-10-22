@@ -12,14 +12,14 @@
 #include <cstdint>
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "wavemaker_interfaces/action/move_wavemaker.hpp"
+#include "rig_interfaces/action/move_rig.hpp"
 #include "std_srvs/srv/trigger.hpp"
 #include "std_msgs/msg/string.hpp"
 
 using rclcpp_lifecycle::LifecycleNode;
-using MoveWavemaker = wavemaker_interfaces::action::MoveWavemaker;
+using MoveRig = rig_interfaces::action::MoveRig;
 using StopDone = std::function<void(bool, const std::string &)>;
-using MoveWavemakerGoalHandle = rclcpp_action::ClientGoalHandle<MoveWavemaker>;
+using MoveRigGoalHandle = rclcpp_action::ClientGoalHandle<MoveRig>;
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
 class BridgeNode : public LifecycleNode
@@ -58,7 +58,7 @@ public:
       RCLCPP_ERROR(get_logger(), "rig must be 'wavemaker' or 'oscillator'");
       return CallbackReturn::FAILURE;
     }
-    action_client_ = rclcpp_action::create_client<MoveWavemaker>(
+    action_client_ = rclcpp_action::create_client<MoveRig>(
       shared_from_this(), "move_" + rig);
     const auto status_qos = rclcpp::QoS(1).reliable().transient_local();
     state_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
@@ -202,13 +202,13 @@ public:
     }
 
 
-    MoveWavemaker::Goal goal;
+    MoveRig::Goal goal;
     goal.height = height_;
     goal.period = period_;
-    rclcpp_action::Client<MoveWavemaker>::SendGoalOptions options;
+    rclcpp_action::Client<MoveRig>::SendGoalOptions options;
     const auto generation = ++goal_generation_;
     options.goal_response_callback =
-      [this, generation](MoveWavemakerGoalHandle::SharedPtr handle) {
+      [this, generation](MoveRigGoalHandle::SharedPtr handle) {
         if (generation != goal_generation_) {   // abandoned: make sure it does not run
           if (handle) {action_client_->async_cancel_goal(handle);}
           return;
@@ -216,7 +216,7 @@ public:
         on_goal_response(handle);
       };
     options.result_callback =
-      [this, generation](const MoveWavemakerGoalHandle::WrappedResult & result) {
+      [this, generation](const MoveRigGoalHandle::WrappedResult & result) {
         if(generation == goal_generation_) {on_goal_result(result);}
       };
     goal_requested_ = true;
@@ -295,7 +295,7 @@ public:
       return;
     }
     action_client_->async_cancel_all_goals(
-      [this, done, ours](rclcpp_action::Client<MoveWavemaker>::CancelResponse::SharedPtr response) {
+      [this, done, ours](rclcpp_action::Client<MoveRig>::CancelResponse::SharedPtr response) {
         RCLCPP_INFO(get_logger(), "Stop: %zu goal(s) canceling", response->goals_canceling.size());
         if (ours) {
           return;  // the result callback or the timer finishes the stop
@@ -329,7 +329,7 @@ public:
     RCLCPP_WARN(get_logger(), "%s", message.c_str());
     publish_state(state_, message);
   }
-  void on_goal_response(MoveWavemakerGoalHandle::SharedPtr handle_)
+  void on_goal_response(MoveRigGoalHandle::SharedPtr handle_)
   {
     goal_requested_ = false;
     if (!handle_) {
@@ -348,7 +348,7 @@ public:
     publish_state(State::Running, "Wave running");
   }
 
-  void on_goal_result(const MoveWavemakerGoalHandle::WrappedResult & result)
+  void on_goal_result(const MoveRigGoalHandle::WrappedResult & result)
   {
     goal_handle_.reset();
     std::string message;
@@ -398,7 +398,7 @@ public:
     publish_state(idle_unless_inactive(), message);
     finish_stop(false, message);
   }
-  rclcpp_action::Client<MoveWavemaker>::SharedPtr action_client_;
+  rclcpp_action::Client<MoveRig>::SharedPtr action_client_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr height_subscription_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr period_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_subscription_;
@@ -407,7 +407,7 @@ public:
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_service_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr state_publisher_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr message_publisher_;
-  MoveWavemakerGoalHandle::SharedPtr goal_handle_;
+  MoveRigGoalHandle::SharedPtr goal_handle_;
   rclcpp::TimerBase::SharedPtr watch_timer_;
   bool heartbeat_seen_ = {false};
   bool goal_requested_ = {false};

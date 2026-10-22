@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(wavemaker_web)
+project(rig_web)
 
 find_package(ament_cmake REQUIRED)
 

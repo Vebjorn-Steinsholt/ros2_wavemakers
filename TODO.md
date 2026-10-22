@@ -66,7 +66,7 @@ the items kept there.
 
 
 - [ ] **27. A regular wave from the terminal runs until it is cancelled.**
-  In bridge mode the heartbeat covers a lost client; from the terminal nothing does. Consider an optional `duration` in `MoveWavemaker.action`.
+  In bridge mode the heartbeat covers a lost client; from the terminal nothing does. Consider an optional `duration` in `MoveRig.action`.
 
 - [x] **28. Action feedback is sent every control cycle.** (`controller_node.cpp`)
   Measurements are on `wavemaker_setpoint` / `wavemaker_position`; publish feedback at about 10 Hz or lower.
