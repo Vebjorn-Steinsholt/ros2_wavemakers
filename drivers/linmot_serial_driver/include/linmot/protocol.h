@@ -38,6 +38,8 @@ enum class Command : std::uint8_t {
     SwitchOff = 5,
     RequestStatus = 6,  // SYNC only, so the drive sends position and status
     AckError = 7,       // rising edge of control word bit 7, drive left switched off
+    PreOperational = 8, // CANopen NMT: the drive ignores PDOs and its sync watchdog is off;
+                        // no reply, because the drive sends no feedback in that state
 };
 
 enum class ReplyType : std::uint8_t {

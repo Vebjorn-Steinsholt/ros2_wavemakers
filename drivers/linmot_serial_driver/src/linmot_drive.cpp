@@ -206,8 +206,19 @@ bool LinMotDrive::disable() {
     bridge_.clear_target();
     if (!bridge_.port_ok() || !bridge_.ready()) return fail("no link to the Arduino");
     const std::uint64_t seq = bridge_.send(Command::SwitchOff);
-    return wait_status("switched off", seq, cfg_.step_timeout_ms,
-                       [](std::uint16_t s) { return !(s & linmot_sw::kOperationEnabled); });
+    const bool off = wait_status("switched off", seq, cfg_.step_timeout_ms, [](std::uint16_t s) {
+        return !(s & linmot_sw::kOperationEnabled);
+    });
+    // Only once it is off: pre-operational turns off the drive's sync watchdog, so the idle drive
+    // does not go into error when the SYNC frames stop. A drive that is still on stays
+    // operational, and its sync watchdog stops it once the bridge stops sending.
+    if (off) {
+        const std::uint64_t pre = bridge_.send(Command::PreOperational);
+        if (!bridge_.wait_sent(pre, cfg_.step_timeout_ms)) {
+            return fail("could not send NMT pre-operational");
+        }
+    }
+    return off;
 }
 
 // --- monitoring (bridge thread) ----------------------------------------------

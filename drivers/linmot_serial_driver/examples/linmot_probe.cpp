@@ -2,7 +2,8 @@
 //
 // Opens the port, waits for READY, sends NMT operational and then only status requests for a
 // few seconds; prints the drive's position and status word and how many feedbacks arrived.
-// Never switches the drive on, homes or moves it.
+// Never switches the drive on, homes or moves it. A switched-off drive is left in NMT
+// pre-operational, so its sync watchdog does not raise an error after the probe.
 //
 //   ros2 run linmot_serial_driver linmot_probe [/dev/ttyACM0] [seconds]
 
@@ -63,6 +64,9 @@ int main(int argc, char** argv) {
                 static_cast<unsigned long long>(after.frames_sent - before.frames_sent), seconds,
                 static_cast<unsigned long long>(after.bad_crc),
                 static_cast<unsigned long long>(after.dropped_bytes), fb.bad_frames);
+    if (!(fb.status_word & linmot_sw::kOperationEnabled)) {
+        bridge.wait_sent(bridge.send(Command::PreOperational), 1000);
+    }
     bridge.stop();
     return 0;
 }

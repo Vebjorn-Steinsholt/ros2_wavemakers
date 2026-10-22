@@ -55,6 +55,13 @@ void SerialBridge::stop() {
     port_ok_ = false;
 }
 
+bool SerialBridge::wait_sent(std::uint64_t sequence, int timeout_ms) {
+    std::unique_lock<std::mutex> lk(mtx_);
+    return cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms), [&] {
+        return last_written_ >= sequence || !port_ok_.load() || !running_.load();
+    }) && last_written_ >= sequence;
+}
+
 bool SerialBridge::wait_ready(int timeout_ms) {
     std::unique_lock<std::mutex> lk(mtx_);
     return cv_.wait_for(lk, std::chrono::milliseconds(timeout_ms),
@@ -182,6 +189,7 @@ void SerialBridge::run() {
 void SerialBridge::send_frame(Clock::time_point now) {
     if (!port_ok_) return;
     CommandFrame frame;
+    std::uint64_t sent_sequence = 0;
     {
         std::lock_guard<std::mutex> lk(mtx_);
         if (!ready_) {
@@ -202,6 +210,7 @@ void SerialBridge::send_frame(Clock::time_point now) {
             frame.sequence = static_cast<std::uint8_t>(next_sequence_);
             last_sent_ = next_sequence_++;
         }
+        sent_sequence = last_sent_;
         ++stats_.frames_sent;
     }
     const auto bytes = encode(frame);
@@ -209,7 +218,13 @@ void SerialBridge::send_frame(Clock::time_point now) {
         port_ok_ = false;
         set_error(port_.last_error());
         cv_.notify_all();
+        return;
     }
+    {
+        std::lock_guard<std::mutex> lk(mtx_);
+        last_written_ = sent_sequence;
+    }
+    cv_.notify_all();
 }
 
 void SerialBridge::handle(const Reply& reply) {

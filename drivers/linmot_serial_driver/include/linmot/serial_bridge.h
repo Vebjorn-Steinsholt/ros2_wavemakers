@@ -82,6 +82,9 @@ public:
     // watchdog and NMT state are gone then; the drive keeps its own state.
     std::uint64_t restarts() const { return restarts_.load(); }
     bool wait_ready(int timeout_ms);
+    // Waits until the frame with this sequence number has been written to the port, for
+    // commands without a reply. False on timeout or when the port fails.
+    bool wait_sent(std::uint64_t sequence, int timeout_ms);
 
     // Queues a one-shot command for the next free period; returns its sequence number.
     std::uint64_t send(Command command);
@@ -127,6 +130,7 @@ private:
     std::condition_variable cv_;
     std::uint64_t next_sequence_ = 1;
     std::uint64_t last_sent_ = 0;
+    std::uint64_t last_written_ = 0;   // sequence of the last frame written to the port
     std::deque<Queued> queue_;
     bool streaming_ = false;
     CommandFrame target_;

@@ -172,6 +172,14 @@ void test_move_streams_and_halt_stops() {
 
     CHECK(rig.drive.disable());
     CHECK(!(rig.drive.status_word() & linmot_sw::kOperationEnabled));
+    // Switched off, then pre-operational: the drive's sync watchdog is off while idle.
+    // disable() returns once the frame is written; the simulator handles it a moment later.
+    sleep_ms(50);
+    CHECK(rig.sim.count(Command::PreOperational) == 1);
+    CHECK(!rig.sim.operational());
+    // The next bring_up() starts it again.
+    CHECK(rig.bring_up());
+    CHECK(rig.sim.operational());
     CHECK(rig.fault_count() == 0);
 }
 

@@ -3,6 +3,7 @@
 // SerialBridge opens device(); the simulator answers on the other end like the firmware does:
 // start-up text, READY, one feedback per command (two for ACK ERROR and for SWITCH ON from a
 // switched-off drive), with a drive that switches on, homes, follows targets and reports errors.
+// After PRE OPERATIONAL it sends nothing until the next OPERATIONAL, like the real drive.
 
 #pragma once
 
@@ -98,6 +99,7 @@ public:
         return n;
     }
     std::int32_t position() const { std::lock_guard<std::mutex> lk(mtx_); return position_; }
+    bool operational() const { std::lock_guard<std::mutex> lk(mtx_); return operational_; }
 
 private:
     void send(const Reply& r) {
@@ -163,6 +165,9 @@ private:
                 if (!fatal_) error_ = false;
                 enabled_ = false;
                 break;
+            case Command::PreOperational:
+                operational_ = false;  // no PDOs from now on, so no feedback either
+                return;
         }
         feedback();
     }

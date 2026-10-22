@@ -36,7 +36,8 @@
 // the computer sends CMD_PING until it gets REPLY_READY before anything else.
 // REPLY_FEEDBACK is sent for every position/status frame the drive sends (CAN ID 0x18C). The drive
 // sends one after each SYNC if its TPDO1 is synchronous. Each command sends one SYNC and so gets
-// one feedback, except CMD_ACK_ERROR and CMD_SWITCH_ON from a switched-off drive, which get two.
+// one feedback, except CMD_ACK_ERROR, CMD_SWITCH_ON from a switched-off drive, and the first
+// CMD_GO_TO_POS after an abort, homing, a switch-off or an error acknowledge, which get two.
 //
 // Watchdog: after a go-to-position command, the Arduino expects a valid frame at least every
 // WATCHDOG_MS. If none arrives it aborts the running motion command once and sets
@@ -46,6 +47,11 @@
 // drive switches on only after control word bit 0 has been cleared, so CMD_SWITCH_ON clears it
 // first unless the drive already reports operation enabled. CMD_ACK_ERROR acknowledges a drive
 // error with a rising edge of bit 7 and leaves the drive switched off.
+//
+// Sync watchdog: the drive can stop itself when SYNC frames stop (Legacy Sync Watchdog in
+// LinMot-Talk), but only in NMT state operational. CMD_OPERATIONAL starts it; CMD_PRE_OPERATIONAL
+// ends it, so a switched-off drive does not go into error while nothing is sending. In
+// pre-operational the drive ignores PDOs: no commands, no feedback, so no reply to that command.
 //
 // Removed from the UDP version: the drive's built-in sine command (old choice 8), which keeps
 // running when the computer stops sending, and the force-control commands (old choices 7, 10, 11).
@@ -69,6 +75,7 @@ const uint8_t CMD_SWITCH_ON = 4;
 const uint8_t CMD_SWITCH_OFF = 5;
 const uint8_t CMD_REQUEST_STATUS = 6;    // SYNC, so the drive sends position and status
 const uint8_t CMD_ACK_ERROR = 7;         // acknowledge a drive error (was force control in UDP)
+const uint8_t CMD_PRE_OPERATIONAL = 8;   // CANopen NMT: node to pre-operational; no reply
 
 // Replies
 const uint8_t REPLY_READY = 0x10;
@@ -101,6 +108,7 @@ uint8_t badFrames = 0;
 uint8_t flags = 0;
 uint16_t lastStatusWord = 0;             // from the drive's last feedback; 0 until the first one
 uint8_t motionCommandCount = 0;          // low 4 bits of the motion command header
+uint16_t lastControlWord = 0;            // last control word sent to the drive
 bool watchdogArmed = false;
 unsigned long lastValidFrameMs = 0;
 
@@ -158,6 +166,7 @@ void sendControlWord(uint8_t low, uint8_t high)
   uint8_t data[8] = {low, high, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   sendCan(0x200 + NODE_ID, 8, data);
   sendSync();
+  lastControlWord = (uint16_t)low | ((uint16_t)high << 8);
 }
 
 void operationalMode()
@@ -165,6 +174,13 @@ void operationalMode()
   uint8_t data[2] = {0x01, (uint8_t)NODE_ID};  // NMT start remote node
   sendCan(0x000, 2, data);
   sendSync();
+}
+
+// No SYNC: a pre-operational drive sends no PDOs, so there would be no feedback.
+void preOperationalMode()
+{
+  uint8_t data[2] = {0x80, (uint8_t)NODE_ID};  // NMT enter pre-operational
+  sendCan(0x000, 2, data);
 }
 
 void switchOn()
@@ -216,6 +232,13 @@ void requestStatus()
 void goToPosition(long position, unsigned long velocity, unsigned long acceleration,
                   unsigned long deceleration)
 {
+  // After an abort (or homing, a switch-off, an error acknowledge) the drive refuses a motion
+  // command that arrives together with the control word that ends that state ("Motion Cmd In
+  // Wrong State", then a quick stop). Send the switch-on control word on its own first; while
+  // streaming it is already 0x003F and this costs nothing.
+  if (lastControlWord != 0x003F) {
+    switchOn();
+  }
   motionCommandCount = (motionCommandCount + 1) & 0x0F;
 
   uint8_t pdo1[8] = {0x3F, 0x00, motionCommandCount, 0x01, 0, 0, 0, 0};
@@ -284,6 +307,10 @@ void handleCommand(const uint8_t * frame)
     case CMD_ACK_ERROR:
       watchdogArmed = false;
       acknowledgeError();
+      break;
+    case CMD_PRE_OPERATIONAL:
+      watchdogArmed = false;
+      preOperationalMode();
       break;
     default:
       flags |= FLAG_REJECTED;

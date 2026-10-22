@@ -28,7 +28,11 @@ no water depth: the water level changes between experiments but does not affect 
 ```
  web page / ros2 CLI ──▶ bridge_node ──▶ controller_node ──USB serial──▶ Arduino Uno ──CAN──▶ LinMot drive ──▶ slide
                                          (LinMotActuator)    115200 baud    + MCP2515     500 kbit/s
-                                                             22/14-byte     shield        CANopen node 12
+                                                             22/14-byte
+                                                             shield
+                                                             CANopen
+                                                             node
+                                                             12
                                                              frames, CRC
 ```
 
@@ -41,7 +45,8 @@ no water depth: the water level changes between experiments but does not affect 
 
 Three layers of limits, the tightest first: the controller (5–195 mm, 2 m/s, 9.81 m/s², 5 Hz;
 step D), the firmware (5–195 mm, 3 m/s, 20 m/s²) and the drive's own position limits in
-LinMot-Talk (3 / 197 mm). The hardware e-stop is the last.
+LinMot-Talk (3 / 197 mm). This rig has no hardware e-stop: beyond those, the drive can only be
+switched off from LinMot-Talk (take control, switch off, release control).
 
 ## Decisions
 
@@ -96,9 +101,9 @@ Commands below assume the environment in [How to run](#how-to-run). Close the Ar
 Serial Monitor first: only one program can have the port open.
 
 - [x] Commit step B.
-- [ ] Upload the firmware's command-count change (motion command count instead of an empty
-  header and an extra SYNC; PDO1 last). It is committed with step B (`d0cf237`) but has not run
-  on the rig yet. In the Arduino IDE: open the sketch, board "Arduino Uno", port
+- [x] Upload the firmware's command-count change (motion command count instead of an empty
+  header and an extra SYNC; PDO1 last). It is committed with step B (`d0cf237`) and ran on the rig
+  on 2026-10-22. In the Arduino IDE: open the sketch, board "Arduino Uno", port
   `/dev/ttyACM0`, Upload (needs the `mcp_can` library in `~/Arduino/libraries`). Or, with the
   IDE closed: (rig)
 
@@ -107,9 +112,10 @@ Serial Monitor first: only one program can have the port open.
     ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge/linmot_serial_bridge.ino
   ```
 
-- [ ] Run `link_test.py` with motion; expect "one feedback per command: about 300 of 300"
-  (before the change it was 600 of 300) and "All checks passed". The drive must be homed; e-stop
-  at hand. (rig)
+- [x] Run `link_test.py` with motion (2026-10-22: all checks passed, 301 of 300 feedbacks,
+  round trip median 7.6 ms, max 9.9 ms); expect "one feedback per command: about 300 of 300"
+  (before the change it was 600 of 300) and "All checks passed". The drive must be homed; keep
+  LinMot-Talk open and connected to switch the drive off (the rig has no e-stop). (rig)
 
   ```bash
   cd ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge
@@ -120,7 +126,9 @@ Serial Monitor first: only one program can have the port open.
   also switches on, moves to 100 mm, streams a 5 mm sine, checks that an out-of-range command is
   rejected and that the watchdog stops a move, and switches the drive off.
 
-- [ ] Run `linmot_probe` against the Uno and drive (no motion). (rig)
+- [x] Run `linmot_probe` against the Uno and drive (no motion). (rig) 2026-10-22: READY after
+  532 ms, 100 feedbacks for 100 frames, 0 bad CRCs, 71 bytes skipped. It also showed the drive in
+  error (0x0878) at 102.06 mm after `link_test.py --move`: see the open item below.
 
   ```bash
   ros2 run linmot_serial_driver linmot_probe /dev/ttyACM0      # 2 s; add a number for longer
@@ -130,7 +138,79 @@ Serial Monitor first: only one program can have the port open.
   frames, 0 bad CRCs and about 71 skipped bytes (the Arduino's start-up text). It sends NMT
   operational and status requests only.
 
-- [ ] First controller run, lifecycle by hand: configure, activate (homing), `return_to_upright`,
+- [x] Fix the drive error left after `link_test.py --move`: status 0x0878 at 102.06 mm, where the
+  watchdog had stopped the slide; LinMot-Talk: "Motion Cmd In Wrong State". The command-count
+  firmware sent the switch-on control word and the next motion command in one frame, so after
+  the watchdog's abort the drive got the motion command while still aborting. Fixed in the
+  firmware (2026-10-22): when the last control word was not 0x003F, it is sent on its own
+  first. `link_test.py` now checks the return to the centre after the watchdog and fails if the
+  drive ends in error. Acknowledge the error in LinMot-Talk, upload, then run: (rig)
+
+  ```bash
+  arduino --upload --board arduino:avr:uno --port /dev/ttyACM0 \
+    ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge/linmot_serial_bridge.ino
+  cd ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge
+  python3 link_test.py --move           # add --home if the drive is not homed
+  ```
+
+  Expect "back at the centre after the watchdog", "drive ends without an error" and still about
+  300 of 300 feedbacks during the sine.
+  2026-10-22: passed (back at 100.03 mm, final status 0x0830, 301 of 300, round trip median
+  7.5 ms, max 9.9 ms). Run right after an upload, the test once took a READY from before the
+  reset at port open and lost its bad-CRC frame in that reset; it now flushes the port and only
+  accepts a READY that answers its own ping.
+- [x] Drive's own sync watchdog (Legacy Sync Watchdog), so the drive stops itself when the link
+  goes (USB pulled, Uno or Pi hung): today it stays on and holds, and this rig has no e-stop.
+  The drive measures the time between SYNC frames and raises an error if it exceeds 1.5 ×
+  the monitored cycle time, only while it is NMT operational (LinMot CANopen manual for SG5).
+  The bridge sends a SYNC every 20 ms. (rig)
+  - [x] LinMot-Talk: `CANopen Interface → Legacy Sync Watchdog`: `LSW Enable` = Enable
+    (2026-10-22).
+  - [x] `LSW monitored Cycle Time` = 50000 µs (50 ms: error after 75 ms without a SYNC). The
+    default 5000 µs would stop the drive between every two frames. Save a new `.lmc` backup.
+    Done 2026-10-22.
+  - [x] Firmware: `CMD_PRE_OPERATIONAL` (8) puts the drive into NMT pre-operational, which turns
+    the sync watchdog off; `LinMotDrive::disable()` sends it after the switch-off is confirmed,
+    `link_test.py` and `linmot_probe` at the end. So the idle drive does not go into error.
+    `link_test.py` no longer pauses longer than 20 ms between frames (2026-10-22).
+  - [x] Upload the firmware and run the link test; in the watchdog check expect "the drive
+    stopped itself too (sync watchdog on)", then "operation enabled again", "still homed" and
+    the usual passes. 2026-10-22, first run: the drive stopped itself at 101.31 mm on its way
+    to 105 mm, LinMot-Talk showed "CanOpen Err. Ctrl Timeout" (CDh), and the test lost the
+    drive: after the error it is NMT pre-operational and sends no feedback until an NMT start.
+    The test now sends one after the pause and before the final switch-off. Second run: all
+    checks passed; no stop during the sine at 50 ms (so the "divided by 100" bug seems absent),
+    the drive stopped itself at 101.30 mm, recovered, back at 100.14 mm, ends without an error.
+    Commands:
+
+    ```bash
+    arduino --upload --board arduino:avr:uno --port /dev/ttyACM0 \
+      ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge/linmot_serial_bridge.ino
+    cd ~/ros_ws/src/ros2_wavemakers/firmware/linmot_serial_bridge
+    python3 link_test.py --move           # add --home if the drive is not homed
+    ```
+
+  - [x] Repeat the controller's USB test (below): the drive must now stop and switch off by
+    itself; LinMot-Talk shows the error (expected: CDh "Error Control Timeout"). 2026-10-22:
+    the controller faulted ("serial port down"), the drive stopped itself, and after plugging
+    back in `bring_up()` acknowledged its error (0x087A) and switched it on again.
+- [x] Stop ModemManager probing the Uno. Ubuntu's ModemManager treats a newly plugged-in
+  `/dev/ttyACM*` as a possible modem for a few seconds (AT commands, toggled control lines,
+  which reset the Uno); the Uno has `ID_MM_CANDIDATE=1`. The first activation right after
+  plugging back in failed with "the drive does not answer on CAN", 15 s later it worked.
+  Probably this, not proven. The udev rule `rpi/99-linmot-bridge.rules` excludes the Uno R3
+  (USB ID 2341:0043) from ModemManager and also gives it the fixed name `/dev/linmot_bridge`.
+  2026-10-22 on the PC, with the first version of the rule (ModemManager line only): the probe
+  right after plugging in answered at once (READY after 530 ms, 101 of 101 feedbacks).
+  Replace it with the file from the repo, so the PC has `/dev/linmot_bridge` too:
+
+  ```bash
+  sudo cp ~/ros_ws/src/ros2_wavemakers/rpi/99-linmot-bridge.rules /etc/udev/rules.d/
+  sudo udevadm control --reload-rules && sudo udevadm trigger
+  ls -l /dev/linmot_bridge                                   # → ttyACM0
+  udevadm info -q property -n /dev/linmot_bridge | grep ID_MM_DEVICE_IGNORE   # → 1
+  ```
+- [x] First controller run, lifecycle by hand: configure, activate (homing), `return_to_upright`,
   faults, deactivate. Until steps R and D it uses today's parameter names and
   `wavemaker_type: piston` as a placeholder: send no `height`/`period` goals, they would be
   turned into a stroke by wave theory. (rig)
@@ -184,8 +264,18 @@ Serial Monitor first: only one program can have the port open.
   ```
 
   Faults, one at a time while active, each followed by a new configure and activate: pull the
-  USB cable, press the e-stop, switch the drive off in LinMot-Talk. Each should end in a fault
+  USB cable, switch the drive off in LinMot-Talk. Each should end in a fault
   with a clear reason in terminal 1 and no further motion.
+
+  2026-10-22: configure, activate (0.8 s, drive already homed), `return_to_upright`
+  (`status=0`, final position 0.09969 m) and deactivate (drive switched off, 0x0830) work.
+  After every activation the controller logs the soft stop timeout once (TODO 36). Fault tests
+  (2026-10-22): USB pulled → "Driver fault: serial port down: serial port closed or unplugged",
+  and with the sync watchdog on the drive stops itself; switched off in LinMot-Talk → "Driver
+  fault: the drive switched off 0x0830 (homed)". Each ends with the controller unconfigured,
+  as for the wavemakers. With the USB cable pulled, the Uno and its watchdog lose power and the
+  controller cannot reach the drive; before the sync watchdog the drive stayed on and held, now
+  it stops itself.
 
 ### R: names that fit both rigs
 
@@ -235,7 +325,9 @@ Serial Monitor first: only one program can have the port open.
 - [ ] Package `oscillator_bringup`: `config/oscillator.yaml` under
   `/oscillators/sloshing/controller` and `launch/oscillator.launch.py` (controller, bridge,
   lifecycle manager, soft stop, web page with `rig:=oscillator`).
-- [ ] `serial_port` set to the Uno's `/dev/serial/by-id/...` path on the Pi.
+- [ ] `serial_port: /dev/linmot_bridge` in `oscillator.yaml`, the fixed name from
+  `rpi/99-linmot-bridge.rules` (step F). Unlike `/dev/ttyACM0` it does not change with other
+  USB devices, and unlike the `/dev/serial/by-id/...` path it survives replacing the Uno.
 
 ### F: service on the Pi
 
@@ -243,6 +335,16 @@ Serial Monitor first: only one program can have the port open.
   `[Install]` section, so it never starts (or homes) at boot.
 - [ ] Each service refuses to start while the other runs (`ExecStartPre`; `Conflicts=` would
   stop the running one instead).
+- [ ] The udev rule on the Pi: ModemManager off for the Uno, and `/dev/linmot_bridge`. Check
+  first whether ModemManager runs there (`systemctl status ModemManager`); the symlink is
+  needed either way.
+
+  ```bash
+  sudo cp ~/ros_ws/src/ros2_wavemakers/rpi/99-linmot-bridge.rules /etc/udev/rules.d/
+  sudo udevadm control --reload-rules && sudo udevadm trigger
+  ls -l /dev/linmot_bridge
+  ```
+
 - [ ] The service user in `dialout`; `rpi/README.md` updated.
 
 ### G: commissioning (rig)
@@ -250,7 +352,7 @@ Serial Monitor first: only one program can have the port open.
 - [ ] Without water: activation with homing, `return_to_upright`, small sines (for example 10 mm
   at 2 s), then steps towards 2 m/s, 9.81 m/s² and 5 Hz. Record setpoint and position, and
   check whether VAI at the sine's maxima runs without jitter.
-- [ ] Fault paths: soft stop button, e-stop, USB, LinMot-Talk.
+- [ ] Fault paths: soft stop button, USB, LinMot-Talk.
 - [ ] With water: the same steps; watch the tracking error and the drive's following-error
   limit (20 mm).
 - [ ] Pregenerated goals: check the peak acceleration taken from the samples.
@@ -295,14 +397,17 @@ What the bench and rig tests showed, 2026-10-21, Uno R3 with the MCP2515 shield 
 - `mcp_can` prints about 71 bytes of debug text at start-up (`DEBUG_MODE 1` in its
   `mcp_can_dfs.h`); the framing skips it. At port open the Uno resets and answers after about
   0.5 s.
-- Round trip Pi → drive → Pi: median 8.5 ms, maximum 10.6 ms. 50 Hz has margin; 100 Hz does not.
+- Round trip Pi → drive → Pi: median 8.5 ms, maximum 10.6 ms with 6 CAN frames per command;
+  median 7.6 ms, maximum 9.9 ms with 4 (command-count firmware, 2026-10-22). 50 Hz has margin;
+  100 Hz only just fits.
 - At standstill the slide stays a few 0.1 mm from its target because of friction (more with
   water); `link_test.py` accepts 0.5 mm.
 - The slide lags a streamed sine by up to about 2.3 mm at 16 mm/s.
 - Homing drives the slide into the 200 mm end stop (Home Position 200 mm), then to the Initial
   Position 100 mm. Positions are only meaningful after homing; the drive loses homing when it
   is powered off and after some errors.
-- LinMot-Talk drive configuration (E1200-GP-UC, firmware 6.10; backup `current.lmc`):
+- LinMot-Talk drive configuration (E1200-GP-UC, firmware 6.10). Backups, the seven changes and
+  how to restore and check them: `firmware/linmot_serial_bridge/drive_config/`:
   - Minimal / Maximal Position set to 3 / 197 mm, and both checks switched on in the Error
     Detection Mask (they were off, with limits at −57 / 273 mm, the whole motor stroke). The
     drive makes a quick stop if the slide passes them. Homing still works with them on.
@@ -315,5 +420,19 @@ What the bench and rig tests showed, 2026-10-21, Uno R3 with the MCP2515 shield 
     10 mm, error 20 mm) and the 32 A current limit are its only motion checks.
   - While LinMot-Talk's control panel has control, the drive ignores the control word from the
     bus. Release it before running from the Pi.
-- Save the drive configuration as a new `.lmc` after changes: the limits and the abort fix exist
-  only on the drive.
+  - Legacy Sync Watchdog was off (`LSW Enable` Disable, cycle 5000 µs). Without it the drive
+    notices nothing when the link goes and holds its last target, switched on (USB test,
+    2026-10-22). LinMot's release notes list a fix for this watchdog on the E1200 (the cycle
+    time was divided by 100 internally, so it tripped too early); whether firmware 6.10 has the
+    fix is not known.
+  - With `LSW Enable` on (2026-10-22) the drive stops itself when the SYNC frames stop: error
+    CDh, shown in LinMot-Talk as "CanOpen Err. Ctrl Timeout", quick stop, power stage off. It
+    also leaves NMT operational (CANopen's default reaction to a communication error), so it
+    sends no feedback until the next NMT start; `bring_up()` and `link_test.py` send one.
+  - A motion command that arrives in the same frame as the control word ending an abort is
+    refused with "Motion Cmd In Wrong State" and a quick stop: the control word has to come
+    first, on its own (2026-10-22).
+- The drive configuration in use is
+  `firmware/linmot_serial_bridge/drive_config/sloshing_2026-10-22.lmc`
+  (`FixedConfig.lmc` on the flash drive); the limits, the abort fix and the sync watchdog exist
+  only on the drive and in that file. After any change in LinMot-Talk, save a new backup there.

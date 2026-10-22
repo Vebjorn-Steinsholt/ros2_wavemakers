@@ -170,6 +170,10 @@ TEST_F(LinMotActuatorTest, StartHomesFreshDriveAndStreamsSetpoints)
   actuator.stop();
   EXPECT_FALSE(actuator.is_live());
   EXPECT_EQ(sim.count(Command::SwitchOff), 1);
+  // Then pre-operational, so the drive's sync watchdog does not fire while it is idle.
+  // stop() returns once the frame is written; the simulator handles it a moment later.
+  ASSERT_TRUE(wait_until([&] {return !sim.operational();}));
+  EXPECT_EQ(sim.count(Command::PreOperational), 1);
 }
 
 TEST_F(LinMotActuatorTest, HomedDriveDoesNotMove)

@@ -6,14 +6,20 @@ Without --move nothing moves: the test checks the serial link and the CAN path (
 a bad CRC, the drive's status after NMT operational). With --move it also switches the drive on,
 moves the slide slowly to the centre, streams a small slow sine, checks that an out-of-range
 command is rejected, and checks that the watchdog aborts a move when the computer stops sending.
-At the end the drive is switched off, unless --stay-on.
+At the end the drive is switched off and put into NMT pre-operational, unless --stay-on.
+
+Apart from the watchdog check, the test never pauses longer than 20 ms between frames, so it also
+passes with the drive's own sync watchdog (Legacy Sync Watchdog in LinMot-Talk) switched on. With
+it on, the watchdog check also shows the drive stopping itself, and --stay-on leaves the drive to
+do the same once the test has ended.
 
     python3 link_test.py                          # link only, no motion
     python3 link_test.py --move                   # also motion, drive must be homed
     python3 link_test.py --move --home            # home first (the slide moves to find home)
     python3 link_test.py --move --rate 100        # stream at 100 Hz instead of 50
 
-Have the e-stop at hand for --move. Ctrl-C stops sending; the watchdog then aborts the motion.
+For --move keep LinMot-Talk open to switch the drive off (the rig has no e-stop). Ctrl-C stops
+sending; the watchdog then aborts the motion.
 """
 
 import argparse
@@ -31,6 +37,8 @@ REPLY = struct.Struct('<2sBBiHBBH')    # sync, type, sequence, position, status,
 
 CMD_PING, CMD_OPERATIONAL, CMD_HOME, CMD_GO_TO_POS = 0, 1, 2, 3
 CMD_SWITCH_ON, CMD_SWITCH_OFF, CMD_REQUEST_STATUS, CMD_ACK_ERROR = 4, 5, 6, 7
+CMD_PRE_OPERATIONAL = 8         # NMT pre-operational: no PDOs, sync watchdog off; no reply
+KEEPALIVE_S = 0.02              # longest pause between frames outside the watchdog check
 REPLY_READY, REPLY_FEEDBACK = 0x10, 0x01
 FLAG_WATCHDOG, FLAG_CAN_ERROR, FLAG_REJECTED = 0x01, 0x02, 0x04
 
@@ -67,6 +75,8 @@ class Link:
 
     def __init__(self, port):
         self.serial = serial.Serial(port, 115200, timeout=0)
+        # Opening the port resets the Uno; anything still buffered is from before that reset.
+        self.serial.reset_input_buffer()
         self.buffer = b''
         self.sequence = 0
         self.sent = {}          # sequence -> send time, for the round trip
@@ -110,7 +120,15 @@ class Link:
             out.append({'type': kind, 'seq': seq, 'position_mm': position / POS_PER_MM,
                         'status': status, 'flags': flags, 'bad_frames': bad})
 
-    def wait_for(self, predicate, timeout_s, resend=None, period_s=0.05):
+    def idle(self, seconds):
+        """Wait without a gap in the frames: status requests every KEEPALIVE_S."""
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            self.send(CMD_REQUEST_STATUS)
+            self.replies()
+            time.sleep(KEEPALIVE_S)
+
+    def wait_for(self, predicate, timeout_s, resend=None, period_s=KEEPALIVE_S):
         """Read replies until one satisfies predicate; call resend every period_s if given."""
         deadline = time.monotonic() + timeout_s
         next_send = 0.0
@@ -140,8 +158,7 @@ def status_reply(link, timeout_s=1.0):
     """Feedback to one of our status requests; replies to earlier commands are skipped."""
     requests = set()
     return link.wait_for(lambda r: r['type'] == REPLY_FEEDBACK and r['seq'] in requests,
-                         timeout_s, resend=lambda: requests.add(link.send(CMD_REQUEST_STATUS)),
-                         period_s=0.1)
+                         timeout_s, resend=lambda: requests.add(link.send(CMD_REQUEST_STATUS)))
 
 
 def go_to(link, mm, velocity_mps, acceleration_mps2):
@@ -186,8 +203,11 @@ def wait_until_still(link, timeout_s=3.0, window_s=0.2, tolerance_mm=0.02):
 
 def link_checks(link, test):
     print('Link')
-    ready = link.wait_for(lambda r: r['type'] == REPLY_READY, 5.0,
-                          resend=lambda: link.send(CMD_PING), period_s=0.2)
+    # Only a READY that answers one of our pings: the Uno's own READY at start-up carries
+    # sequence 0 and may come from a start before the reset at port open (right after an upload).
+    pings = set()
+    ready = link.wait_for(lambda r: r['type'] == REPLY_READY and r['seq'] in pings, 5.0,
+                          resend=lambda: pings.add(link.send(CMD_PING)), period_s=0.2)
     if not test.check(ready is not None, 'ping answered with READY'):
         return False
 
@@ -228,7 +248,7 @@ def motion_checks(link, test, args):
     print('Switch on')
     # The firmware clears control word bit 0 first if needed (manual section 3.1).
     link.send(CMD_SWITCH_ON)
-    time.sleep(0.5)   # the drive's hardware test before power on takes about 300 ms
+    link.idle(0.5)   # the drive's hardware test before power on takes about 300 ms
     status = status_reply(link)
     test.check(status is not None and status['status'] & 1, 'operation enabled',
                describe_status(status['status']) if status else 'no reply')
@@ -238,7 +258,7 @@ def motion_checks(link, test, args):
         link.send(CMD_HOME)
         homed = link.wait_for(lambda r: r['type'] == REPLY_FEEDBACK and r['status'] & (1 << 11)
                               and not r['status'] & (1 << 13), 60.0,
-                              resend=lambda: link.send(CMD_REQUEST_STATUS), period_s=0.1)
+                              resend=lambda: link.send(CMD_REQUEST_STATUS))
         if not test.check(homed is not None, 'homed'):
             return
         link.send(CMD_SWITCH_ON)   # clears the home bit in the control word
@@ -313,7 +333,8 @@ def motion_checks(link, test, args):
     here = still['position_mm']
     seq = link.send(CMD_GO_TO_POS, here * POS_PER_MM, 3_100_000, APPROACH_MPS2 * ACC_PER_MPS2,
                     APPROACH_MPS2 * ACC_PER_MPS2)
-    reply = link.wait_for(lambda r: r['type'] == REPLY_FEEDBACK and r['seq'] == seq, 1.0)
+    reply = link.wait_for(lambda r: r['type'] == REPLY_FEEDBACK and r['seq'] == seq, 1.0,
+                          resend=lambda: link.send(CMD_REQUEST_STATUS))
     test.check(reply is not None and reply['flags'] & FLAG_REJECTED, 'rejected')
     after = status_reply(link)
     if reply and after:
@@ -329,23 +350,60 @@ def motion_checks(link, test, args):
         link.replies()
         time.sleep(period)
     stopped_sending = time.monotonic()
-    tripped = link.wait_for(lambda r: r['flags'] & FLAG_WATCHDOG, 1.0)
-    if test.check(tripped is not None, 'watchdog tripped'):
-        delay = (time.monotonic() - stopped_sending) * 1000
-        print(f'  trip reported about {delay:.0f} ms after the last command '
-              f'(watchdog {WATCHDOG_MS} ms)')
-    time.sleep(0.5)
+    # A second without sending, listening only. The bridge's watchdog aborts the move after
+    # 200 ms. With the drive's sync watchdog on, the drive stops itself after 1.5 x its cycle
+    # time (error CDh "Error Control Timeout") and, as CANopen does on a communication error,
+    # leaves NMT operational: it sends nothing more until the next NMT start.
+    tripped_at = None
+    while time.monotonic() < stopped_sending + 1.0:
+        for reply in link.replies():
+            if tripped_at is None and reply['flags'] & FLAG_WATCHDOG:
+                tripped_at = time.monotonic()
+        time.sleep(0.002)
+    link.send(CMD_OPERATIONAL)   # back to NMT operational in case the drive left it
     first = status_reply(link)
-    time.sleep(0.5)
+    if not test.check(first is not None, 'drive answers after the pause',
+                      '' if first else 'no reply'):
+        return
+    test.check(first['flags'] & FLAG_WATCHDOG, 'watchdog tripped')
+    if tripped_at is not None:
+        print(f'  trip reported about {(tripped_at - stopped_sending) * 1000:.0f} ms after the '
+              f'last command (watchdog {WATCHDOG_MS} ms)')
+    sync_watchdog = bool(first['status'] & (1 << 3))
+    if sync_watchdog:
+        print(f"  the drive stopped itself too (sync watchdog on): "
+              f"{describe_status(first['status'])}")
+    else:
+        print('  the drive kept its power stage on (sync watchdog off)')
+    link.idle(0.5)
     second = status_reply(link)
-    if first and second:
+    if second:
         moved = abs(second['position_mm'] - first['position_mm'])
         test.check(moved < 0.05, 'slide stopped after the trip', f'{moved:.3f} mm in 0.5 s')
         test.check(second['position_mm'] < target - 1.0, 'move aborted short of its target',
                    f"{second['position_mm']:.2f} mm, target {target:.1f} mm")
 
+    if sync_watchdog:
+        link.send(CMD_ACK_ERROR)
+        link.send(CMD_SWITCH_ON)
+        link.idle(0.5)
+        status = status_reply(link)
+        if not test.check(status is not None and status['status'] & 1,
+                          'operation enabled again after the sync watchdog',
+                          describe_status(status['status']) if status else 'no reply'):
+            return
+        # Some errors lose the homing; then 100 mm is not the centre any more.
+        if not test.check(status['status'] & (1 << 11), 'still homed after the sync watchdog',
+                          describe_status(status['status'])):
+            print('  Not moving back; home again with --home.')
+            return
+
     print('Back to the centre')
-    stream_to(link, CENTRE_MM, args.rate, 5.0)
+    back = stream_to(link, CENTRE_MM, args.rate, 5.0)
+    test.check(back is not None and abs(back['position_mm'] - CENTRE_MM) < ARRIVED_MM,
+               'back at the centre after the watchdog',
+               f"{back['position_mm']:.2f} mm, status {describe_status(back['status'])}"
+               if back else 'no feedback')
 
 
 def main():
@@ -373,9 +431,25 @@ def main():
         print('\nInterrupted: stopped sending; the watchdog aborts any motion.')
         time.sleep(2 * WATCHDOG_MS / 1000)
     finally:
+        if switched_on:
+            # After a stop by the drive's sync watchdog it is pre-operational and ignores PDOs.
+            link.send(CMD_OPERATIONAL)
         if switched_on and not args.stay_on:
             link.send(CMD_SWITCH_OFF)
             print('Drive switched off.')
+        if switched_on:
+            # A drive error during the motion tests would otherwise only show up in the next run.
+            final = status_reply(link)
+            if final:
+                print(f"Final status: {final['position_mm']:.3f} mm, "
+                      f"{describe_status(final['status'])}")
+            test.check(final is not None and not final['status'] & ((1 << 3) | (1 << 12)),
+                       'drive ends without an error',
+                       describe_status(final['status']) if final else 'no reply')
+        if not args.stay_on:
+            # Sync watchdog off until the next NMT start, so the idle drive does not go into error.
+            link.send(CMD_PRE_OPERATIONAL)
+            link.serial.flush()
         if link.bad_replies or link.dropped_bytes:
             print(f'Replies with a bad CRC: {link.bad_replies}, bytes skipped while '
                   f'resynchronising: {link.dropped_bytes}')
