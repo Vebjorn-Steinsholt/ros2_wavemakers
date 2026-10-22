@@ -8,11 +8,14 @@ namespace rig_controller
 
 // Peak of ds for the quintic blend: v_max = 1.875 * distance / duration.
 constexpr double kQuinticPeakVelocityFactor = 1.875;
+// Peak of dds for the quintic blend: a_max = 10 / sqrt(3) * distance / duration^2.
+constexpr double kQuinticPeakAccelerationFactor = 5.773502691896258;
 
 struct Blend
 {
   double s;   // blend factor, 0 -> 1
   double ds;  // d(s)/dt
+  double dds; // d^2(s)/dt^2
 };
 
 // Quintic smoothstep; duration must be > 0.

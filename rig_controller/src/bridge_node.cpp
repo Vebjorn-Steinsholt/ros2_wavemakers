@@ -46,18 +46,25 @@ public:
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
     declare_parameter<double>("bond_timeout", 4.0);
     declare_parameter<double>("heartbeat_timeout", 1.0);
+    // "wavemaker" or "oscillator": names the action and status topics, as in the controller.
+    declare_parameter<std::string>("rig", "wavemaker");
   }
 
   CallbackReturn on_configure(const rclcpp_lifecycle::State &) override
   {
     RCLCPP_INFO(get_logger(), "Configuring...");
+    const std::string rig = get_parameter("rig").as_string();
+    if (rig != "wavemaker" && rig != "oscillator") {
+      RCLCPP_ERROR(get_logger(), "rig must be 'wavemaker' or 'oscillator'");
+      return CallbackReturn::FAILURE;
+    }
     action_client_ = rclcpp_action::create_client<MoveWavemaker>(
-      shared_from_this(), "move_wavemaker");
+      shared_from_this(), "move_" + rig);
     const auto status_qos = rclcpp::QoS(1).reliable().transient_local();
     state_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
-        *this, "wavemaker_state", status_qos);
+        *this, rig + "_state", status_qos);
     message_publisher_ = rclcpp::create_publisher<std_msgs::msg::String>(
-        *this, "wavemaker_message", status_qos);
+        *this, rig + "_message", status_qos);
     publish_state(State::Inactive, "configured");
     return CallbackReturn::SUCCESS;
 

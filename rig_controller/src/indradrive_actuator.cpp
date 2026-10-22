@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cmath>
 #include <exception>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -58,7 +59,7 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
 
   lead_m_per_degree_ = node.get_parameter("actuator_lead_m_per_degree").as_double();
   actuator_upright_angle_deg_ = node.get_parameter("actuator_upright_angle_deg").as_double();
-  wavemaker_position_offset_m_ = node.get_parameter("wavemaker_upright_position_m").as_double();
+  wavemaker_position_offset_m_ = node.get_parameter("upright_position_m").as_double();
   poll_interval_ms_ = node.get_parameter("poll_interval_ms").as_int();
   actuator_drive_type_ = node.get_parameter("actuator_drive_type").as_string();
   if (actuator_drive_type_ != "linear" && actuator_drive_type_ != "angular") {
@@ -263,6 +264,10 @@ double IndraDriveActuator::max_velocity_mps() const
   return actuator_drive_type_ == "angular" ?
          actuator_units_per_s * lead_m_per_degree_ : actuator_units_per_s;
 }
+double IndraDriveActuator::max_acceleration_mps2() const
+{
+  return std::numeric_limits<double>::infinity();
+}
 
 bool IndraDriveActuator::is_live() const
 {
@@ -299,14 +304,15 @@ double IndraDriveActuator::actual_position_m() const
 }
 
 ActuatorSetpoint IndraDriveActuator::to_actuator_setpoint(
-  double position_m, double velocity_mps) const
+  double position_m, double velocity_mps, double acceleration_mps2) const
 {
   if (actuator_drive_type_ == "angular") {
     const double position_deg = actuator_upright_angle_deg_ +
       (position_m - wavemaker_position_offset_m_) / lead_m_per_degree_;
-    return {position_deg, velocity_mps / lead_m_per_degree_};
+    return {position_deg, velocity_mps / lead_m_per_degree_,
+      acceleration_mps2 / lead_m_per_degree_};
   }
-  return {position_m, velocity_mps};
+  return {position_m, velocity_mps, acceleration_mps2};
 }
 
 }  // namespace rig_controller

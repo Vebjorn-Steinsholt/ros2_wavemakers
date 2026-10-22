@@ -4,7 +4,7 @@ Launch one wavemaker controller, optionally with the bridge and the Nav2 lifecyc
 Terminal use (experienced users): the controller only, lifecycle stepped by hand.
     ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken
     ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
-      wavemaker_mode_pregenerated:=true      # for pregenerated goals (e.g. .dat files)
+      mode_pregenerated:=true      # for pregenerated goals (e.g. .dat files)
 
 Bridge use (normal users): use bridge.launch.py, which includes this file with
 with_bridge:=true and the lifecycle manager on.
@@ -30,7 +30,7 @@ def _launch_setup(context):
     bond_timeout = float(context.launch_configurations['bond_timeout'])
     water_depth = context.launch_configurations['water_depth']
     transfer_gain = context.launch_configurations['wavemaker_transfer_gain']
-    pregenerated = context.launch_configurations['wavemaker_mode_pregenerated']
+    pregenerated = context.launch_configurations['mode_pregenerated']
     # Values given at launch override the ones in wavemakers.yaml; empty keeps the yaml value.
     overrides = {}
     if water_depth:
@@ -38,7 +38,7 @@ def _launch_setup(context):
     if transfer_gain:
         overrides['wavemaker_transfer_gain'] = float(transfer_gain)
     if pregenerated:
-        overrides['wavemaker_mode_pregenerated'] = pregenerated == 'true'
+        overrides['mode_pregenerated'] = pregenerated == 'true'
     namespace = f'wavemakers/{wavemaker}'
 
     actions = [
@@ -126,7 +126,7 @@ def generate_launch_description():
                         'in wavemakers.yaml',
         ),
         DeclareLaunchArgument(
-            'wavemaker_mode_pregenerated',
+            'mode_pregenerated',
             default_value='',
             choices=['', 'true', 'false'],
             description='true: goals carry positions and sample_interval (terminal use only; '

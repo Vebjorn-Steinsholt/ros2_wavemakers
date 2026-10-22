@@ -88,7 +88,7 @@ TEST_F(LinMotActuatorTest, RejectsInvalidConfiguration)
     {rclcpp::Parameter("min_position_m", 0.0)},       // below the firmware's 5 mm
     {rclcpp::Parameter("max_velocity_mps", 0.0)},
     {rclcpp::Parameter("max_acceleration_mps2", 25.0)},
-    {rclcpp::Parameter("linmot_default_acceleration_mps2", 0.0)},
+    {rclcpp::Parameter("max_acceleration_mps2", 0.0)},
     {rclcpp::Parameter("serial_period_ms", 0)},
     {rclcpp::Parameter("actuator_drive_type", "angular")},
   };
@@ -106,11 +106,12 @@ TEST_F(LinMotActuatorTest, ConvertsNothingAndReportsLimits)
   auto node = make_node("linmot_convert", actuator_options("/dev/null"));
   rig_controller::LinMotActuator actuator(*node);
 
-  const auto setpoint = actuator.to_actuator_setpoint(0.1, 0.03);
+  const auto setpoint = actuator.to_actuator_setpoint(0.1, 0.03, 1.5);
   EXPECT_DOUBLE_EQ(setpoint.position, 0.1);
   EXPECT_DOUBLE_EQ(setpoint.velocity, 0.03);
-  EXPECT_DOUBLE_EQ(setpoint.acceleration, 0.0);
+  EXPECT_DOUBLE_EQ(setpoint.acceleration, 1.5);
   EXPECT_DOUBLE_EQ(actuator.max_velocity_mps(), 2.0);
+  EXPECT_DOUBLE_EQ(actuator.max_acceleration_mps2(), 20.0);
   EXPECT_EQ(actuator.update_period_ms(), 20);
 }
 
@@ -156,11 +157,12 @@ TEST_F(LinMotActuatorTest, StartHomesFreshDriveAndStreamsSetpoints)
   EXPECT_EQ(frames.back().velocity, 31400u);
   EXPECT_EQ(frames.back().acceleration, 9870u);
 
-  // Without an acceleration the configured default (1.0 m/s^2) is used.
-  ASSERT_TRUE(actuator.write_setpoint({0.104, 0.0314, 0.0}));
-  ASSERT_TRUE(wait_until([&] {return sim.position() == 1040000;}));
-  frames = sim.commands();
-  EXPECT_EQ(frames.back().acceleration, 100000u);
+  // No acceleration, or one above max_acceleration_mps2 (20): refused; the drive keeps the
+  // previous target.
+  EXPECT_FALSE(actuator.write_setpoint({0.104, 0.0314, 0.0}));
+  EXPECT_FALSE(actuator.write_setpoint({0.104, 0.0314, 25.0}));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_EQ(sim.position(), 1050000);
 
   // Outside the limits: refused, which the node treats as a fault.
   EXPECT_FALSE(actuator.write_setpoint({0.199, 0.0314, 1.0}));

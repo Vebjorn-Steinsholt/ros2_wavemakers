@@ -16,7 +16,8 @@ Blend quintic_blend(double elapsed, double duration)
   const double u5 = u4 * u;
   return {
     10.0 * u3 - 15.0 * u4 + 6.0 * u5,
-    (30.0 * u2 - 60.0 * u3 + 30.0 * u4) / duration};
+    (30.0 * u2 - 60.0 * u3 + 30.0 * u4) / duration,
+    (60.0 * u - 180.0 * u2 + 120.0 * u3) / (duration * duration)};
 }
 
 double solve_dispersion(double omega, double depth, double g)

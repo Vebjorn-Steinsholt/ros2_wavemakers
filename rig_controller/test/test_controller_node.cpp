@@ -1,4 +1,6 @@
 #include <chrono>
+#include <fstream>
+#include <cstdio>
 #include <atomic>
 #include <map>
 #include <memory>
@@ -70,17 +72,20 @@ public:
   std::string status() const override {return "fake";}
   double actual_position_m() const override {return actual_position;}
   double max_velocity_mps() const override {return max_velocity;}
+  double max_acceleration_mps2() const override {return max_acceleration;}
   int update_period_ms() const override {return update_period;}
 
   rig_controller::ActuatorSetpoint to_actuator_setpoint(
-    double position_m, double velocity_mps) const override
+    double position_m, double velocity_mps, double acceleration_mps2) const override
   {
-    return {position_m * units_per_m, velocity_mps * units_per_m};
+    return {position_m * units_per_m, velocity_mps * units_per_m,
+      acceleration_mps2 * units_per_m};
   }
 
   bool write_setpoint(const rig_controller::ActuatorSetpoint & setpoint) override
   {
     if (reject_writes.load() || std::abs(setpoint.velocity) / units_per_m > max_velocity ||
+      setpoint.acceleration / units_per_m > max_acceleration ||
       setpoint.position < min_position || setpoint.position > max_position)
     {
       return false;
@@ -89,12 +94,14 @@ public:
     if (write_count.load() == 0) {
       first_position = setpoint.position;
       first_velocity = setpoint.velocity;
+      first_acceleration = setpoint.acceleration;
     }
     if (write_count.load() > 0) {
       max_step = std::max(max_step, std::abs(setpoint.position - last_position));
     }
     last_position = setpoint.position;
     last_velocity = setpoint.velocity;
+    last_acceleration = setpoint.acceleration;
     if (follow_setpoints) {
       actual_position = setpoint.position / units_per_m;
     }
@@ -113,6 +120,8 @@ public:
   std::atomic<bool> reject_writes{false};  // write_setpoint returns false
   // Like IndraDrive::move_to(): writes above this speed fail. Unlimited by default.
   double max_velocity{std::numeric_limits<double>::infinity()};
+  // Like LinMotDrive::move_to(): writes above this acceleration fail. Unlimited by default.
+  double max_acceleration{std::numeric_limits<double>::infinity()};
   int update_period{10};  // ms; sets the controller's loop rate
   // Like IndraDrive::move_to(): writes outside these positions fail. Unlimited by default.
   double min_position{-std::numeric_limits<double>::infinity()};
@@ -127,8 +136,10 @@ public:
   double actual_position{0.25};
   double first_position{0.0};
   double first_velocity{0.0};
+  double first_acceleration{0.0};
   double last_position{0.0};
   double last_velocity{0.0};
+  double last_acceleration{0.0};
   double max_step{0.0};  // largest change between consecutive setpoints
   double minimum_position{std::numeric_limits<double>::infinity()};
   double maximum_position{-std::numeric_limits<double>::infinity()};
@@ -174,10 +185,10 @@ rclcpp::NodeOptions node_options(const std::string & ns, bool pregenerated)
            .arguments({"--ros-args", "-r", "__ns:=" + ns})
            .parameter_overrides({
       rclcpp::Parameter("wavemaker_type", "piston"),
-      rclcpp::Parameter("wavemaker_minimum", 0.0),
-      rclcpp::Parameter("wavemaker_maximum", 0.5),
-      rclcpp::Parameter("wavemaker_upright_position_m", 0.25),
-      rclcpp::Parameter("wavemaker_mode_pregenerated", pregenerated),
+      rclcpp::Parameter("travel_minimum_m", 0.0),
+      rclcpp::Parameter("travel_maximum_m", 0.5),
+      rclcpp::Parameter("upright_position_m", 0.25),
+      rclcpp::Parameter("mode_pregenerated", pregenerated),
       rclcpp::Parameter("water_depth", 1.0),
       rclcpp::Parameter("flap_attachment_height", 0.0),
       rclcpp::Parameter("actuator_upright_angle_deg", 0.0),
@@ -190,10 +201,10 @@ rclcpp::NodeOptions angular_node_options(const std::string & ns)
            .arguments({"--ros-args", "-r", "__ns:=" + ns})
            .parameter_overrides({
       rclcpp::Parameter("wavemaker_type", "piston"),
-      rclcpp::Parameter("wavemaker_minimum", 0.2),
-      rclcpp::Parameter("wavemaker_maximum", 0.3),
-      rclcpp::Parameter("wavemaker_upright_position_m", 0.25),
-      rclcpp::Parameter("wavemaker_mode_pregenerated", true),
+      rclcpp::Parameter("travel_minimum_m", 0.2),
+      rclcpp::Parameter("travel_maximum_m", 0.3),
+      rclcpp::Parameter("upright_position_m", 0.25),
+      rclcpp::Parameter("mode_pregenerated", true),
       rclcpp::Parameter("water_depth", 1.0),
       rclcpp::Parameter("flap_attachment_height", 0.0),
       rclcpp::Parameter("actuator_upright_angle_deg", 0.0),
@@ -210,11 +221,11 @@ rclcpp::NodeOptions one_sided_node_options(const std::string & ns)
            .arguments({"--ros-args", "-r", "__ns:=" + ns})
            .parameter_overrides({
       rclcpp::Parameter("wavemaker_type", "flap"),
-      rclcpp::Parameter("wavemaker_minimum", 0.25),
-      rclcpp::Parameter("wavemaker_maximum", 0.5),
-      rclcpp::Parameter("wavemaker_upright_position_m", 0.25),
-      rclcpp::Parameter("wavemaker_upright_is_minimum", true),
-      rclcpp::Parameter("wavemaker_mode_pregenerated", false),
+      rclcpp::Parameter("travel_minimum_m", 0.25),
+      rclcpp::Parameter("travel_maximum_m", 0.5),
+      rclcpp::Parameter("upright_position_m", 0.25),
+      rclcpp::Parameter("upright_is_minimum", true),
+      rclcpp::Parameter("mode_pregenerated", false),
       rclcpp::Parameter("water_depth", 1.0),
       rclcpp::Parameter("flap_attachment_height", 1.3),
       rclcpp::Parameter("actuator_upright_angle_deg", 0.0),
@@ -298,7 +309,7 @@ std::shared_ptr<ControllerNode> speed_limited_node(
 // and reports whether the controller accepted the goal.
 bool goal_accepted(
   const std::shared_ptr<ControllerNode> & node, const std::string & ns, bool pregenerated,
-  const MoveWavemaker::Goal & goal)
+  const MoveWavemaker::Goal & goal, const std::string & action = "move_wavemaker")
 {
   EXPECT_EQ(
     node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
@@ -309,7 +320,7 @@ bool goal_accepted(
 
   auto client_node = std::make_shared<rclcpp::Node>(
     "speed_limit_client", node_options(ns, pregenerated));
-  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_wavemaker");
+  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, action);
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(node->get_node_base_interface());
   executor.add_node(client_node);
@@ -1327,9 +1338,9 @@ TEST_F(ControllerNodeTest, LadertankenAcceptsEveryLabWave)
       .arguments({"--ros-args", "-r", "__ns:=" + ns})
       .parameter_overrides({
     rclcpp::Parameter("wavemaker_type", "flap"),
-    rclcpp::Parameter("wavemaker_upright_position_m", 0.0),
-    rclcpp::Parameter("wavemaker_upright_is_minimum", false),
-    rclcpp::Parameter("wavemaker_mode_pregenerated", false),
+    rclcpp::Parameter("upright_position_m", 0.0),
+    rclcpp::Parameter("upright_is_minimum", false),
+    rclcpp::Parameter("mode_pregenerated", false),
     rclcpp::Parameter("water_depth", 1.0),
     rclcpp::Parameter("flap_attachment_height", 1.3),
     rclcpp::Parameter("actuator_drive_type", "angular"),
@@ -1434,9 +1445,9 @@ TEST_F(ControllerNodeTest, ActuatorTypeSelectsTheActuator)
   const std::vector<rclcpp::Parameter> linmot{
     rclcpp::Parameter("actuator_type", "linmot"),
     rclcpp::Parameter("serial_port", "/dev/null"),
-    rclcpp::Parameter("wavemaker_minimum", 0.005),
-    rclcpp::Parameter("wavemaker_maximum", 0.195),
-    rclcpp::Parameter("wavemaker_upright_position_m", 0.1),
+    rclcpp::Parameter("travel_minimum_m", 0.005),
+    rclcpp::Parameter("travel_maximum_m", 0.195),
+    rclcpp::Parameter("upright_position_m", 0.1),
     rclcpp::Parameter("min_position_m", 0.005),
     rclcpp::Parameter("max_position_m", 0.195),
   };
@@ -1450,4 +1461,280 @@ TEST_F(ControllerNodeTest, ActuatorTypeSelectsTheActuator)
   auto forgotten = linmot;
   forgotten.pop_back();
   EXPECT_EQ(configured(forgotten), lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+}
+
+TEST_F(ControllerNodeTest, RigNamesTheActionAndTopics)
+{
+  const auto fake = [](rclcpp_lifecycle::LifecycleNode &) {
+      return std::make_unique<FakeActuator>();
+    };
+
+  auto options = node_options("/rig_name_test", false);
+  options.append_parameter_override("rig", "oscillator");
+  auto node = std::make_shared<ControllerNode>(options, fake);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+
+  // The graph lists the node's own publishers and the action's feedback topic.
+  std::map<std::string, std::vector<std::string>> topics;
+  for (int i = 0; i < 50 && topics.count("/rig_name_test/oscillator_setpoint") == 0; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    topics = node->get_topic_names_and_types();
+  }
+  for (const char * name : {"oscillator_setpoint", "oscillator_velocity", "oscillator_position",
+      "oscillator_actuator_setpoint", "move_oscillator/_action/feedback"})
+  {
+    EXPECT_EQ(topics.count(std::string("/rig_name_test/") + name), 1u) << name;
+  }
+  EXPECT_EQ(topics.count("/rig_name_test/wavemaker_setpoint"), 0u);
+  EXPECT_EQ(topics.count("/rig_name_test/move_wavemaker/_action/feedback"), 0u);
+
+  auto bogus_options = node_options("/rig_bogus_test", false);
+  bogus_options.append_parameter_override("rig", "bogus");
+  auto bogus = std::make_shared<ControllerNode>(bogus_options, fake);
+  EXPECT_EQ(
+    bogus->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+}
+
+TEST_F(ControllerNodeTest, OldParameterNamesFailConfigure)
+{
+  const auto fake = [](rclcpp_lifecycle::LifecycleNode &) {
+      return std::make_unique<FakeActuator>();
+    };
+  const auto configured = [&](rclcpp::NodeOptions options) {
+      auto node = std::make_shared<ControllerNode>(options, fake);
+      return node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id();
+    };
+
+  // As a parameter override.
+  for (const char * old_name : {"wavemaker_minimum", "wavemaker_id"}) {
+    auto options = node_options("/old_name_test", false);
+    options.append_parameter_override(old_name, old_name == std::string("wavemaker_id") ?
+      rclcpp::ParameterValue("ladertanken") : rclcpp::ParameterValue(-0.1));
+    EXPECT_EQ(configured(options), lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED) <<
+      old_name;
+  }
+
+  // In a parameter file, the way an old wavemakers.yaml would arrive.
+  const std::string path = "/tmp/rig_controller_old_name_test.yaml";
+  {
+    std::ofstream file(path);
+    file << "/**:\n  ros__parameters:\n    wavemaker_upright_position_m: 0.25\n";
+  }
+  auto options = node_options("/old_name_file_test", false);
+  options.arguments({"--ros-args", "-r", "__ns:=/old_name_file_test", "--params-file", path});
+  EXPECT_EQ(configured(options), lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+  std::remove(path.c_str());
+
+  // The new names configure.
+  EXPECT_EQ(
+    configured(node_options("/new_name_test", false)),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+}
+
+namespace
+{
+
+// A controller with rig: oscillator, travel 5-195 mm around 100 mm, and a fake actuator at
+// 100 mm. *fake is set when configure creates the actuator.
+std::shared_ptr<ControllerNode> oscillator_node(
+  const std::string & ns, FakeActuator ** fake,
+  const std::vector<rclcpp::Parameter> & overrides = {}, double max_acceleration_mps2 =
+  std::numeric_limits<double>::infinity())
+{
+  auto options = node_options(ns, false);
+  for (const auto & parameter : std::vector<rclcpp::Parameter>{
+      rclcpp::Parameter("rig", "oscillator"),
+      rclcpp::Parameter("travel_minimum_m", 0.005),
+      rclcpp::Parameter("travel_maximum_m", 0.195),
+      rclcpp::Parameter("upright_position_m", 0.1)})
+  {
+    options.append_parameter_override(parameter.get_name(), parameter.get_parameter_value());
+  }
+  for (const auto & parameter : overrides) {
+    options.append_parameter_override(parameter.get_name(), parameter.get_parameter_value());
+  }
+  return std::make_shared<ControllerNode>(
+    options, [fake, max_acceleration_mps2](rclcpp_lifecycle::LifecycleNode &) {
+      auto actuator = std::make_unique<FakeActuator>();
+      actuator->actual_position = 0.1;
+      actuator->max_acceleration = max_acceleration_mps2;
+      if (fake != nullptr) {
+        *fake = actuator.get();
+      }
+      return actuator;
+    });
+}
+
+MoveWavemaker::Goal regular_goal(double height, double period)
+{
+  MoveWavemaker::Goal goal;
+  goal.height = height;
+  goal.period = period;
+  return goal;
+}
+
+}  // namespace
+
+TEST_F(ControllerNodeTest, ReturnSendsPeakAccelerationWithMarginAsDriveAccelerationCap)
+{
+  // 0.05 m in the 1 s minimum duration: peak 5.7735 * 0.05 m/s^2, cap 1.2x that.
+  ReturnToUprightRig rig;
+  ASSERT_NO_FATAL_FAILURE(rig.setup("/return_acceleration_test", 0.30, true));
+  rig.fake->follow_setpoints = true;
+
+  const auto response = rig.call(0.001);
+  EXPECT_EQ(response.status, ReturnToUpright::Response::SUCCESS);
+  std::lock_guard<std::mutex> lock(rig.fake->setpoint_mutex);
+  EXPECT_NEAR(rig.fake->first_acceleration, 1.2 * 5.773502691896258 * 0.05, 1e-9);
+  EXPECT_NEAR(rig.fake->last_acceleration, 1.2 * 5.773502691896258 * 0.05, 1e-9);
+}
+
+TEST_F(ControllerNodeTest, DriveAccelerationCapNeverExceedsDriveMaximum)
+{
+  // Peak 0.289 m/s^2 * 1.2 = 0.346 m/s^2, above the drive's 0.3 m/s^2, so the cap is 0.3.
+  ReturnToUprightRig rig;
+  ASSERT_NO_FATAL_FAILURE(rig.setup("/return_acceleration_limit_test", 0.30, false));
+  rig.fake->max_acceleration = 0.3;
+  ASSERT_EQ(
+    rig.node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
+  rig.fake->follow_setpoints = true;
+
+  const auto response = rig.call(0.001);
+  EXPECT_EQ(response.status, ReturnToUpright::Response::SUCCESS);
+  std::lock_guard<std::mutex> lock(rig.fake->setpoint_mutex);
+  EXPECT_NEAR(rig.fake->first_acceleration, 0.3, 1e-9);
+}
+
+TEST_F(ControllerNodeTest, OscillatorConfiguresWithoutWavemakerParameters)
+{
+  // Settings a wavemaker would refuse (no water, an unknown type, a broken gain table) do not
+  // matter for the oscillator.
+  const std::vector<rclcpp::Parameter> wavemaker_only{
+    rclcpp::Parameter("water_depth", 0.0),
+    rclcpp::Parameter("wavemaker_type", "bogus"),
+    rclcpp::Parameter("wavemaker_transfer_gain_periods", std::vector<double>{1.0}),
+    rclcpp::Parameter("wavemaker_transfer_gain_values", std::vector<double>{0.8}),
+  };
+  auto oscillator = oscillator_node("/oscillator_config_test", nullptr, wavemaker_only);
+  EXPECT_EQ(
+    oscillator->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+
+  auto wavemaker_overrides = wavemaker_only;
+  wavemaker_overrides.push_back(rclcpp::Parameter("rig", "wavemaker"));
+  auto wavemaker = oscillator_node("/wavemaker_config_test", nullptr, wavemaker_overrides);
+  EXPECT_EQ(
+    wavemaker->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+
+  // An oscillator moves around upright, never from it to one side.
+  auto one_sided = oscillator_node(
+    "/oscillator_one_sided_test", nullptr,
+    {rclcpp::Parameter("upright_is_minimum", true),
+      rclcpp::Parameter("upright_position_m", 0.005)});
+  EXPECT_EQ(
+    one_sided->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+}
+
+TEST_F(ControllerNodeTest, OscillatorGoalMovesTheStrokeAndSendsAccelerationCap)
+{
+  // 20 mm stroke at 0.5 s around 100 mm: positions between 90 and 110 mm after the blend, and
+  // the drive gets 1.2 x the trajectory's peak acceleration with every setpoint.
+  FakeActuator * fake = nullptr;
+  auto node = oscillator_node("/oscillator_goal_test", &fake);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+  ASSERT_EQ(
+    node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE).id(),
+    lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
+  ASSERT_NE(fake, nullptr);
+  fake->follow_setpoints = true;
+
+  auto client_node = std::make_shared<rclcpp::Node>(
+    "oscillator_client", node_options("/oscillator_goal_test", false));
+  auto client = rclcpp_action::create_client<MoveWavemaker>(client_node, "move_oscillator");
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node->get_node_base_interface());
+  executor.add_node(client_node);
+  ASSERT_TRUE(client->wait_for_action_server(std::chrono::seconds(1)));
+  ASSERT_TRUE(wait_for_soft_stop_release(executor, *node));
+
+  auto goal_future = client->async_send_goal(regular_goal(0.02, 0.5));
+  ASSERT_TRUE(spin_until(executor, goal_future, std::chrono::seconds(1)));
+  auto goal_handle = goal_future.get();
+  ASSERT_NE(goal_handle, nullptr);
+  // The 0.5 s blend and three periods.
+  const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+  while (std::chrono::steady_clock::now() < until) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  auto cancel_future = client->async_cancel_goal(goal_handle);
+  spin_until(executor, cancel_future, std::chrono::seconds(1));
+  node->trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE);
+
+  rig_controller::WaveTrajectory expected;
+  expected.configure({"oscillator", 1.0, 0.0, 0.1, false, 1.0}, 0.02, 0.5, 0.1);
+  std::lock_guard<std::mutex> lock(fake->setpoint_mutex);
+  EXPECT_NEAR(fake->minimum_position, 0.09, 0.0005);
+  EXPECT_NEAR(fake->maximum_position, 0.11, 0.0005);
+  EXPECT_NEAR(fake->first_acceleration, 1.2 * expected.peak_acceleration(), 1e-9);
+  EXPECT_NEAR(fake->last_acceleration, 1.2 * expected.peak_acceleration(), 1e-9);
+}
+
+TEST_F(ControllerNodeTest, GoalAboveDriveAccelerationIsRejected)
+{
+  // 190 mm at 0.5 s needs about 15 m/s^2; the fake drive allows 1 m/s^2.
+  EXPECT_FALSE(
+    goal_accepted(
+      oscillator_node("/fast_oscillator_test", nullptr, {}, 1.0), "/fast_oscillator_test", false,
+      regular_goal(0.19, 0.5), "move_oscillator"));
+  // 10 mm at 2 s needs about 0.05 m/s^2.
+  EXPECT_TRUE(
+    goal_accepted(
+      oscillator_node("/slow_oscillator_test", nullptr, {}, 1.0), "/slow_oscillator_test", false,
+      regular_goal(0.01, 2.0), "move_oscillator"));
+}
+
+TEST_F(ControllerNodeTest, GoalAboveMaxGoalAccelerationIsRejected)
+{
+  const std::vector<rclcpp::Parameter> limit{rclcpp::Parameter("max_goal_acceleration_mps2", 9.81)};
+  // 190 mm at 0.5 s: about 15 m/s^2.
+  EXPECT_FALSE(
+    goal_accepted(
+      oscillator_node("/rig_limit_fast_test", nullptr, limit), "/rig_limit_fast_test", false,
+      regular_goal(0.19, 0.5), "move_oscillator"));
+  // 190 mm at 0.62 s: 9.76 m/s^2 in the steady sine, but 10.85 m/s^2 in the start blend.
+  EXPECT_FALSE(
+    goal_accepted(
+      oscillator_node("/rig_limit_blend_test", nullptr, limit), "/rig_limit_blend_test", false,
+      regular_goal(0.19, 0.62), "move_oscillator"));
+  EXPECT_TRUE(
+    goal_accepted(
+      oscillator_node("/rig_limit_slow_test", nullptr, limit), "/rig_limit_slow_test", false,
+      regular_goal(0.01, 2.0), "move_oscillator"));
+  // 0 (the default) switches the check off.
+  EXPECT_TRUE(
+    goal_accepted(
+      oscillator_node("/rig_limit_off_test", nullptr), "/rig_limit_off_test", false,
+      regular_goal(0.19, 0.5), "move_oscillator"));
+}
+
+TEST_F(ControllerNodeTest, GoalBelowMinPeriodIsRejected)
+{
+  const std::vector<rclcpp::Parameter> limit{rclcpp::Parameter("min_period_s", 0.2)};
+  EXPECT_FALSE(
+    goal_accepted(
+      oscillator_node("/short_period_test", nullptr, limit), "/short_period_test", false,
+      regular_goal(0.002, 0.15), "move_oscillator"));
+  EXPECT_TRUE(
+    goal_accepted(
+      oscillator_node("/long_period_test", nullptr, limit), "/long_period_test", false,
+      regular_goal(0.002, 0.25), "move_oscillator"));
 }

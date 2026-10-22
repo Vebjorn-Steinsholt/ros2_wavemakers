@@ -32,10 +32,13 @@ public:
   virtual std::string fault_reason() const = 0;
   virtual std::string status() const = 0;
   virtual double actual_position_m() const = 0;
-  virtual ActuatorSetpoint to_actuator_setpoint(double position_m, double velocity_mps) const = 0;
+  virtual ActuatorSetpoint to_actuator_setpoint(
+    double position_m, double velocity_mps, double acceleration_mps2) const = 0;
   virtual bool write_setpoint(const ActuatorSetpoint & setpoint) = 0;
   // Fastest paddle speed the drive accepts, in m/s; write_setpoint() fails above it.
   virtual double max_velocity_mps() const = 0;
+  // Largest acceleration the drive accepts, in m/s^2; write_setpoint() fails above it.
+  virtual double max_acceleration_mps2() const = 0;
   // How often new setpoints actually reach the drive, in ms. The control loops run at this
   // period, because writing faster only overwrites setpoints before they are sent.
   virtual int update_period_ms() const = 0;

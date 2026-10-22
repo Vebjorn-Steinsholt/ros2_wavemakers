@@ -35,7 +35,7 @@ the items kept there.
   Comment: It was decided that cancel should not return to upright. 
 
 - [ ] **19. Linear drives (lilletanken, mclab).** (`rig_controller/src/indradrive_actuator.cpp`)
-  The drive's position tag (scaled as degrees) is used as metres unchanged, and velocity is converted with `/ 6` as if it were deg/s → rpm; the limits exist twice (`wavemaker_minimum/maximum` and `min_position_m/max_position_m`). Once the drive scaling is confirmed on the rig (item 19 in [COMMISSIONING.md](COMMISSIONING.md)), add a proper linear conversion and derive the drive limits from the node limits.
+  The drive's position tag (scaled as degrees) is used as metres unchanged, and velocity is converted with `/ 6` as if it were deg/s → rpm; the limits exist twice (`travel_minimum_m/maximum` and `min_position_m/max_position_m`). Once the drive scaling is confirmed on the rig (item 19 in [COMMISSIONING.md](COMMISSIONING.md)), add a proper linear conversion and derive the drive limits from the node limits.
 
 - [ ] **20. Data race on `IndraDrive::last_error_`.** (`drivers/mgate5101_driver/src/indradrive.cpp`)
   Written by `fail()` from the worker thread, read by `fault_reason()` / `last_error()` from executor threads. Guard it with a mutex and return a copy.
@@ -76,14 +76,14 @@ This is fine
 - [ ] **29. `IndraDrive::disable()` can block a lifecycle callback for up to 20 s.** (`drivers/mgate5101_driver/src/indradrive.cpp`)
   Accept, or use a shorter timeout for `disable()`.
 
-- [ ] **30. `wavemaker_minimum` / `wavemaker_maximum` are declared only for linear drives at construction.** (`controller_node.cpp`)
+- [ ] **30. `travel_minimum_m` / `travel_maximum_m` are declared only for linear drives at construction.** (`controller_node.cpp`)
   Always declare both.
 
 - [ ] **31. Bridge interface details.** (`bridge_node.cpp`)
   `height`, `period` and `stop` use depth 10 instead of `command_qos`; the `stop` topic and `stop` service share a name (consider renaming the service, e.g. `stop_wave`).
 
 - [ ] **32. Clean-up.**
-  Remove the unused `driver_address_` / `wavemaker_id_` members and the commented-out members at the end of `ControllerNode`; set the license in `rig_controller/package.xml`. (Formatting and CMake lint fixed 2026-10-07.)
+  Remove the unused `driver_address_` member and the commented-out members at the end of `ControllerNode`; set the license in `rig_controller/package.xml`. (Formatting and CMake lint fixed 2026-10-07.)
 
 - [ ] **36. Soft stop timeout logged once at startup.** (`controller_node.cpp`, `soft_stop.py`; rig)
   On the Pi, about 1 s after `Managed nodes are active`, the controller logs `No Soft stop message received for over 200 ms; treating as stopped` once (2026-10-16), then works normally. Most likely load while all nodes start; harmless before the first wave, but it is logged as an error on every normal start. If it ever appears mid-session, `soft_stop_timeout_s` (0.2 s) is too tight for the Pi. Decide: raise the timeout, or skip the check until the soft stop has published steadily for a moment. 2026-10-22, on the PC with the LinMot actuator: logged 13 ms after an activation that blocked for about 0.8 s, with `ros2 topic pub` publishing at 20 Hz throughout. Both times it follows a blocking `on_activate`, so the soft stop subscription is probably not served during activation (the liveness check runs in `fault_timer_`, in the default callback group with the lifecycle services); check that before changing the timeout.

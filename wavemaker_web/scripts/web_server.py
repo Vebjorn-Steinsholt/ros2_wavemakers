@@ -141,12 +141,13 @@ class WebNode(Node):
         self._stop_pub = self.create_publisher(Bool, 'stop', command_qos)
         self._heartbeat_pub = self.create_publisher(Bool, 'heartbeat', qos_profile_sensor_data)
 
-        self.create_subscription(String, 'wavemaker_state', self._on_state, status_qos)
-        self.create_subscription(String, 'wavemaker_message', self._on_message, status_qos)
+        # The bridge and controller name these after the rig: wavemaker_state, oscillator_state...
+        self.create_subscription(String, f'{rig}_state', self._on_state, status_qos)
+        self.create_subscription(String, f'{rig}_message', self._on_message, status_qos)
         self.create_subscription(
-            Float64, 'wavemaker_setpoint', lambda msg: self._on_sample('setpoint', msg), 10)
+            Float64, f'{rig}_setpoint', lambda msg: self._on_sample('setpoint', msg), 10)
         self.create_subscription(
-            Float64, 'wavemaker_position', lambda msg: self._on_sample('position', msg), 10)
+            Float64, f'{rig}_position', lambda msg: self._on_sample('position', msg), 10)
         # Matches the /rosout publishers (reliable, transient local), so a page opened just after
         # the controller starts still gets its configure and activate lines.
         rosout_qos = QoSProfile(

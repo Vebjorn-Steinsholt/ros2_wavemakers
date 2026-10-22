@@ -40,7 +40,6 @@ LinMotActuator::LinMotActuator(rclcpp_lifecycle::LifecycleNode & node)
   declare_parameter_if_missing(node, "max_position_m", 0.195);
   declare_parameter_if_missing(node, "max_velocity_mps", 2.0);
   declare_parameter_if_missing(node, "max_acceleration_mps2", 20.0);
-  declare_parameter_if_missing(node, "linmot_default_acceleration_mps2", 1.0);
   declare_parameter_if_missing(node, "home_if_needed", true);
   declare_parameter_if_missing(node, "step_timeout_ms", 2000);
   declare_parameter_if_missing(node, "home_timeout_ms", 60000);
@@ -59,7 +58,6 @@ LinMotActuator::LinMotActuator(rclcpp_lifecycle::LifecycleNode & node)
   drive_config.max_position_m = node.get_parameter("max_position_m").as_double();
   drive_config.max_velocity_mps = node.get_parameter("max_velocity_mps").as_double();
   drive_config.max_acceleration_mps2 = node.get_parameter("max_acceleration_mps2").as_double();
-  default_acceleration_mps2_ = node.get_parameter("linmot_default_acceleration_mps2").as_double();
   drive_config.home_if_needed = node.get_parameter("home_if_needed").as_bool();
   drive_config.step_timeout_ms = static_cast<int>(node.get_parameter("step_timeout_ms").as_int());
   drive_config.home_timeout_ms = static_cast<int>(node.get_parameter("home_timeout_ms").as_int());
@@ -74,8 +72,6 @@ LinMotActuator::LinMotActuator(rclcpp_lifecycle::LifecycleNode & node)
   if (bridge_config.period_ms <= 0 ||
     drive_config.min_position_m >= drive_config.max_position_m ||
     drive_config.max_velocity_mps <= 0.0 || drive_config.max_acceleration_mps2 <= 0.0 ||
-    default_acceleration_mps2_ <= 0.0 ||
-    default_acceleration_mps2_ > drive_config.max_acceleration_mps2 ||
     drive_config.step_timeout_ms <= 0 || drive_config.home_timeout_ms <= 0 ||
     drive_config.ready_timeout_ms <= 0 || drive_config.feedback_timeout_ms <= 0)
   {
@@ -94,6 +90,7 @@ LinMotActuator::LinMotActuator(rclcpp_lifecycle::LifecycleNode & node)
 
   period_ms_ = bridge_config.period_ms;
   max_velocity_mps_ = drive_config.max_velocity_mps;
+  max_acceleration_mps2_ = drive_config.max_acceleration_mps2;
 
   bridge_ = std::make_unique<linmot::SerialBridge>(bridge_config);
   drive_ = std::make_unique<linmot::LinMotDrive>(*bridge_, drive_config);
@@ -142,9 +139,7 @@ bool LinMotActuator::write_setpoint(const ActuatorSetpoint & setpoint)
   // the VAI command needs a positive limit. Until step C passes setpoint.acceleration, use the
   // configured default.
   const double velocity = std::max(std::abs(setpoint.velocity), 1e-3);
-  const double acceleration =
-    setpoint.acceleration > 0.0 ? setpoint.acceleration : default_acceleration_mps2_;
-  return drive_->move_to(setpoint.position, velocity, acceleration);
+  return drive_->move_to(setpoint.position, velocity, setpoint.acceleration);
 }
 
 int LinMotActuator::update_period_ms() const
@@ -156,7 +151,10 @@ double LinMotActuator::max_velocity_mps() const
 {
   return max_velocity_mps_;
 }
-
+double LinMotActuator::max_acceleration_mps2() const
+{
+  return max_acceleration_mps2_;
+}
 bool LinMotActuator::is_live() const
 {
   return bridge_->port_ok() && bridge_->ready() && drive_->enabled() && !drive_->faulted();
@@ -189,9 +187,9 @@ double LinMotActuator::actual_position_m() const
 }
 
 ActuatorSetpoint LinMotActuator::to_actuator_setpoint(
-  double position_m, double velocity_mps) const
+  double position_m, double velocity_mps, double acceleration_mps2) const
 {
-  return {position_m, velocity_mps, 0.0};
+  return {position_m, velocity_mps, acceleration_mps2};
 }
 
 }  // namespace rig_controller

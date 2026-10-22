@@ -8,7 +8,7 @@ namespace rig_controller
 
 struct WavemakerGeometry
 {
-  std::string type;  // "piston" or "flap"
+  std::string type;  // "piston", "flap" or "oscillator"
   double water_depth{0.0};
   double flap_attachment_height{0.0};  // above the tank floor
   double upright_position{0.0};
@@ -32,10 +32,16 @@ public:
   // Largest |velocity| over the whole trajectory, start blend included, with a 0.01 % margin
   // so it never falls below a sample.
   double peak_velocity() const;
+  // Largest |acceleration| over the whole trajectory, start blend included, with the same
+  // 0.01 % margin. The blend can accelerate harder than the wave itself.
+  double peak_acceleration() const;
 
   void sample(double elapsed, double & position, double & velocity) const;
 
 private:
+  // The wave without the blend at time t: position, velocity, acceleration.
+  void wave(double t, double & x, double & v, double & a) const;
+
   double upright_position_{0.0};
   bool upright_is_minimum_{false};
   double amplitude_{0.0};
@@ -58,6 +64,9 @@ public:
 
   // Largest |velocity| of the blend and of the samples.
   double peak_velocity() const;
+  // Largest |acceleration| of the blend and of the samples (their second differences). Noisy
+  // samples give high values; play_dat.py is meant to smooth them before sending.
+  double peak_acceleration() const;
 
   // Returns true once elapsed reaches duration().
   bool sample(double elapsed, double & position, double & velocity) const;

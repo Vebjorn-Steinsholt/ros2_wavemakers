@@ -8,6 +8,7 @@
 #include <exception>
 #include <functional>
 #include <limits>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -38,6 +39,7 @@ using ReturnToUpright = wavemaker_interfaces::srv::ReturnToUpright;
 
 using rig_controller::Blend;
 using rig_controller::interpolate_gain;
+using rig_controller::kQuinticPeakAccelerationFactor;
 using rig_controller::kQuinticPeakVelocityFactor;
 using rig_controller::quintic_blend;
 
@@ -78,11 +80,12 @@ public:
     declare_parameter<double>("bond_timeout", 4.0);
     declare_parameter<double>("soft_stop_timeout_s", 0.2);
     declare_parameter<std::string>("actuator_type", "indradrive");
+    // "wavemaker" or "oscillator": names the action and topics (move_<rig>, <rig>_setpoint, ...).
+    declare_parameter<std::string>("rig", "wavemaker");
     declare_parameter<std::string>("wavemaker_type", "piston");
     declare_parameter<std::string>("driver_address", "");
-    declare_parameter<std::string>("wavemaker_id", "");
-    declare_parameter<double>("wavemaker_upright_position_m", 0.0);
-    declare_parameter<bool>("wavemaker_upright_is_minimum", false);
+    declare_parameter<double>("upright_position_m", 0.0);
+    declare_parameter<bool>("upright_is_minimum", false);
     declare_parameter<double>("water_depth", 0.6);
     declare_parameter<double>("wavemaker_transfer_gain", 1.0);
     // Transfer gain per wave period, interpolated; replaces wavemaker_transfer_gain when set.
@@ -90,14 +93,14 @@ public:
       std::vector<double>{});
     declare_parameter<std::vector<double>>("wavemaker_transfer_gain_values", std::vector<double>{});
 
-    declare_parameter<bool>("wavemaker_mode_pregenerated", false);
+    declare_parameter<bool>("mode_pregenerated", false);
     declare_parameter<double>("flap_attachment_height", 0.0);
     declare_parameter<double>("hinge_height", 0.0);
     declare_parameter<double>("actuator_upright_angle_deg", 0.0);
     declare_parameter<std::string>("actuator_drive_type", "linear");
     if (get_parameter("actuator_drive_type").as_string() == "linear") {
-      declare_parameter<double>("wavemaker_minimum", 0.0);
-      declare_parameter<double>("wavemaker_maximum", 1.0);
+      declare_parameter<double>("travel_minimum_m", 0.0);
+      declare_parameter<double>("travel_maximum_m", 1.0);
     }
     declare_parameter<double>("actuator_lead_m_per_degree", 0.0);
     declare_parameter<double>("min_position_deg", -550.0);
@@ -110,6 +113,9 @@ public:
     declare_parameter<double>("return_to_upright_timeout_margin_s", 2.0);
     // The drive gets the motion's peak speed times this as its positioning-speed limit.
     declare_parameter<double>("positioning_velocity_margin", 1.2);
+    declare_parameter<double>("positioning_acceleration_margin", 1.2);
+    declare_parameter<double>("max_goal_acceleration_mps2", 0.0);
+    declare_parameter<double>("min_period_s", 0.0);
 
     // Ctrl-C shuts the context down before the destructor runs. Stop the drive and drop the
     // bond while the context is still valid: a bond left alive tries to create a timer once the
@@ -142,12 +148,39 @@ public:
 
   CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
   {
+    rig_ = get_parameter("rig").as_string();
+    if (rig_ != "wavemaker" && rig_ != "oscillator") {
+      RCLCPP_ERROR(get_logger(), "rig must be 'wavemaker' or 'oscillator'");
+      return CallbackReturn::FAILURE;
+    }
+    // Renamed on 2026-10-22. ROS 2 ignores parameters a node does not declare, so an old name in a
+    // yaml file or on the command line would silently leave the default (a 0-1 m travel limit).
+    const std::map<std::string, std::string> renamed{
+      {"wavemaker_upright_position_m", "upright_position_m"},
+      {"wavemaker_upright_is_minimum", "upright_is_minimum"},
+      {"wavemaker_minimum", "travel_minimum_m"},
+      {"wavemaker_maximum", "travel_maximum_m"},
+      {"wavemaker_mode_pregenerated", "mode_pregenerated"},
+      {"wavemaker_id", ""},  // removed, it was not used
+    };
+    const auto & overrides = get_node_parameters_interface()->get_parameter_overrides();
+    for (const auto & [old_name, new_name] : renamed) {
+      if (overrides.count(old_name) == 0) {
+        continue;
+      }
+      if (new_name.empty()) {
+        RCLCPP_ERROR(get_logger(), "Parameter %s was removed; delete it", old_name.c_str());
+      } else {
+        RCLCPP_ERROR(
+          get_logger(), "Parameter %s was renamed to %s", old_name.c_str(), new_name.c_str());
+      }
+      return CallbackReturn::FAILURE;
+    }
     wavemaker_type_ = get_parameter("wavemaker_type").as_string();
     driver_address_ = get_parameter("driver_address").as_string();
-    wavemaker_id_ = get_parameter("wavemaker_id").as_string();
-    wavemaker_position_offset_ = get_parameter("wavemaker_upright_position_m").as_double();
-    upright_is_minimum_ = get_parameter("wavemaker_upright_is_minimum").as_bool();
-    wavemaker_mode_pregenerated_ = get_parameter("wavemaker_mode_pregenerated").as_bool();
+    wavemaker_position_offset_ = get_parameter("upright_position_m").as_double();
+    upright_is_minimum_ = get_parameter("upright_is_minimum").as_bool();
+    mode_pregenerated_ = get_parameter("mode_pregenerated").as_bool();
     water_depth_ = get_parameter("water_depth").as_double();
     wavemaker_transfer_gain_ = get_parameter("wavemaker_transfer_gain").as_double();
     gain_periods_ = get_parameter("wavemaker_transfer_gain_periods").as_double_array();
@@ -187,91 +220,98 @@ public:
       goal_position_maximum_ = wavemaker_position_offset_ +
         (maximum_deg - actuator_upright_angle_deg_) * lead_m_per_degree;
     } else {
-      wavemaker_minimum_ = get_parameter("wavemaker_minimum").as_double();
-      wavemaker_maximum_ = get_parameter("wavemaker_maximum").as_double();
-      if (!std::isfinite(wavemaker_minimum_) || !std::isfinite(wavemaker_maximum_) ||
-        wavemaker_minimum_ >= wavemaker_maximum_)
+      travel_minimum_ = get_parameter("travel_minimum_m").as_double();
+      travel_maximum_ = get_parameter("travel_maximum_m").as_double();
+      if (!std::isfinite(travel_minimum_) || !std::isfinite(travel_maximum_) ||
+        travel_minimum_ >= travel_maximum_)
       {
         RCLCPP_ERROR(
-          get_logger(), "wavemaker_minimum must be less than wavemaker_maximum");
+          get_logger(), "travel_minimum_m must be less than travel_maximum_m");
         return CallbackReturn::FAILURE;
       }
-      if (wavemaker_position_offset_ < wavemaker_minimum_ ||
-        wavemaker_position_offset_ > wavemaker_maximum_)
+      if (wavemaker_position_offset_ < travel_minimum_ ||
+        wavemaker_position_offset_ > travel_maximum_)
       {
         RCLCPP_ERROR(
           get_logger(),
-          "wavemaker_upright_position_m must be within wavemaker_minimum and wavemaker_maximum");
+          "upright_position_m must be within travel_minimum_m and travel_maximum_m");
         return CallbackReturn::FAILURE;
       }
-      goal_position_minimum_ = wavemaker_minimum_;
-      goal_position_maximum_ = wavemaker_maximum_;
+      goal_position_minimum_ = travel_minimum_;
+      goal_position_maximum_ = travel_maximum_;
+    }
+
+    if (rig_ == "wavemaker") {
+      if (wavemaker_type_ == "flap" &&
+        (flap_attachment_height_ <= 0.0 || flap_attachment_height_ < water_depth_))
+      {
+        RCLCPP_ERROR(get_logger(),
+          "flap_attachment_height must be set (> 0) and greater than water_depth "
+          "for flap-type wavemakers");
+        return CallbackReturn::FAILURE;
+      }
+      if (wavemaker_type_ == "flap" &&
+        !(hinge_height_ >= 0.0 && hinge_height_ < water_depth_))
+      {
+        RCLCPP_ERROR(get_logger(), "hinge_height must be >= 0 and below water_depth");
+        return CallbackReturn::FAILURE;
+      }
+      if (wavemaker_type_ != "flap" && wavemaker_type_ != "piston") {
+        RCLCPP_ERROR(
+          get_logger(), "wavemaker_type must be either 'flap' or 'piston'");
+        return CallbackReturn::FAILURE;
+      }
+      if (gain_periods_.size() != gain_values_.size()) {
+        RCLCPP_ERROR(
+          get_logger(),
+          "wavemaker_transfer_gain_periods and wavemaker_transfer_gain_values must have the same "
+          "length");
+        return CallbackReturn::FAILURE;
+      }
+      if (gain_periods_.size() == 1) {
+        RCLCPP_ERROR(
+          get_logger(), "wavemaker_transfer_gain_periods/values need at least 2 points when set");
+        return CallbackReturn::FAILURE;
+      }
+      const auto not_finite_positive = [](double v) {return !std::isfinite(v) || v <= 0.0;};
+      if (std::any_of(gain_periods_.begin(), gain_periods_.end(), not_finite_positive)) {
+        RCLCPP_ERROR(get_logger(), "All wavemaker_transfer_gain_periods must be finite and > 0");
+        return CallbackReturn::FAILURE;
+      }
+      if (std::any_of(gain_values_.begin(), gain_values_.end(), not_finite_positive)) {
+        RCLCPP_ERROR(get_logger(), "All wavemaker_transfer_gain_values must be finite and > 0");
+        return CallbackReturn::FAILURE;
+      }
+      if (std::adjacent_find(
+          gain_periods_.begin(), gain_periods_.end(),
+          [](double a, double b) {return a >= b;}) != gain_periods_.end())
+      {
+        RCLCPP_ERROR(get_logger(), "wavemaker_transfer_gain_periods must be strictly ascending");
+        return CallbackReturn::FAILURE;
+      }
+
+      if (water_depth_ <= 0.0) {
+        RCLCPP_ERROR(get_logger(), "water_depth must be set (> 0)");
+        return CallbackReturn::FAILURE;
+      }
+      if (wavemaker_transfer_gain_ <= 0.0 || !std::isfinite(wavemaker_transfer_gain_)) {
+        RCLCPP_ERROR(get_logger(), "wavemaker_transfer_gain must be finite and > 0");
+        return CallbackReturn::FAILURE;
+      }
+    } else if (upright_is_minimum_) {
+      RCLCPP_ERROR(
+        get_logger(), "An oscillator moves around upright: upright_is_minimum must be false");
+      return CallbackReturn::FAILURE;
     }
     if (upright_is_minimum_ &&
       std::abs(wavemaker_position_offset_ - goal_position_minimum_) > 1e-9)
     {
       RCLCPP_ERROR(
-        get_logger(), "wavemaker_upright_position_m must equal the minimum when "
-        "wavemaker_upright_is_minimum is true");
+        get_logger(), "upright_position_m must equal the minimum when "
+        "upright_is_minimum is true");
       return CallbackReturn::FAILURE;
     }
 
-    if (wavemaker_type_ == "flap" &&
-      (flap_attachment_height_ <= 0.0 || flap_attachment_height_ < water_depth_))
-    {
-      RCLCPP_ERROR(get_logger(),
-        "flap_attachment_height must be set (> 0) and greater than water_depth "
-        "for flap-type wavemakers");
-      return CallbackReturn::FAILURE;
-    }
-    if (wavemaker_type_ == "flap" &&
-      !(hinge_height_ >= 0.0 && hinge_height_ < water_depth_))
-    {
-      RCLCPP_ERROR(get_logger(), "hinge_height must be >= 0 and below water_depth");
-      return CallbackReturn::FAILURE;
-    }
-    if (wavemaker_type_ != "flap" && wavemaker_type_ != "piston") {
-      RCLCPP_ERROR(
-        get_logger(), "wavemaker_type must be either 'flap' or 'piston'");
-      return CallbackReturn::FAILURE;
-    }
-    if (gain_periods_.size() != gain_values_.size()) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "wavemaker_transfer_gain_periods and wavemaker_transfer_gain_values must have the same "
-        "length");
-      return CallbackReturn::FAILURE;
-    }
-    if (gain_periods_.size() == 1) {
-      RCLCPP_ERROR(
-        get_logger(), "wavemaker_transfer_gain_periods/values need at least 2 points when set");
-      return CallbackReturn::FAILURE;
-    }
-    const auto not_finite_positive = [](double v) {return !std::isfinite(v) || v <= 0.0;};
-    if (std::any_of(gain_periods_.begin(), gain_periods_.end(), not_finite_positive)) {
-      RCLCPP_ERROR(get_logger(), "All wavemaker_transfer_gain_periods must be finite and > 0");
-      return CallbackReturn::FAILURE;
-    }
-    if (std::any_of(gain_values_.begin(), gain_values_.end(), not_finite_positive)) {
-      RCLCPP_ERROR(get_logger(), "All wavemaker_transfer_gain_values must be finite and > 0");
-      return CallbackReturn::FAILURE;
-    }
-    if (std::adjacent_find(
-        gain_periods_.begin(), gain_periods_.end(),
-        [](double a, double b) {return a >= b;}) != gain_periods_.end())
-    {
-      RCLCPP_ERROR(get_logger(), "wavemaker_transfer_gain_periods must be strictly ascending");
-      return CallbackReturn::FAILURE;
-    }
-
-    if (water_depth_ <= 0.0) {
-      RCLCPP_ERROR(get_logger(), "water_depth must be set (> 0)");
-      return CallbackReturn::FAILURE;
-    }
-    if (wavemaker_transfer_gain_ <= 0.0 || !std::isfinite(wavemaker_transfer_gain_)) {
-      RCLCPP_ERROR(get_logger(), "wavemaker_transfer_gain must be finite and > 0");
-      return CallbackReturn::FAILURE;
-    }
     return_max_velocity_mps_ = get_parameter("return_to_upright_max_velocity_mps").as_double();
     return_min_duration_s_ = get_parameter("return_to_upright_min_duration_s").as_double();
     return_default_tolerance_m_ =
@@ -280,6 +320,23 @@ public:
     positioning_velocity_margin_ = get_parameter("positioning_velocity_margin").as_double();
     if (!std::isfinite(positioning_velocity_margin_) || positioning_velocity_margin_ < 1.0) {
       RCLCPP_ERROR(get_logger(), "positioning_velocity_margin must be finite and >= 1");
+      return CallbackReturn::FAILURE;
+    }
+    positioning_acceleration_margin_ =
+      get_parameter("positioning_acceleration_margin").as_double();
+    if (!std::isfinite(positioning_acceleration_margin_) ||
+      positioning_acceleration_margin_ < 1.0)
+    {
+      RCLCPP_ERROR(get_logger(), "positioning_acceleration_margin must be finite and >= 1");
+      return CallbackReturn::FAILURE;
+    }
+    max_goal_acceleration_mps2_ = get_parameter("max_goal_acceleration_mps2").as_double();
+    min_period_s_ = get_parameter("min_period_s").as_double();
+    if (!std::isfinite(max_goal_acceleration_mps2_) || max_goal_acceleration_mps2_ < 0.0 ||
+      !std::isfinite(min_period_s_) || min_period_s_ < 0.0)
+    {
+      RCLCPP_ERROR(get_logger(),
+        "max_goal_acceleration_mps2 and min_period_s must be finite and >= 0");
       return CallbackReturn::FAILURE;
     }
     for (const double value : {
@@ -316,7 +373,7 @@ public:
     action_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     action_server_ = rclcpp_action::create_server<MoveWavemaker>(
       shared_from_this(),
-      "move_wavemaker",
+      "move_" + rig_,
       std::bind(&ControllerNode::goal_callback, this, std::placeholders::_1, std::placeholders::_2),
       std::bind(&ControllerNode::cancel_callback, this, std::placeholders::_1),
       std::bind(&ControllerNode::handle_accepted_callback, this, std::placeholders::_1),
@@ -331,7 +388,7 @@ public:
       create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
     cancel_client_ = rclcpp_action::create_client<MoveWavemaker>(
-      shared_from_this(), "move_wavemaker", cancel_client_callback_group_);
+      shared_from_this(), "move_" + rig_, cancel_client_callback_group_);
 
     cancel_service_ = create_service<CancelAllGoals>(
       "cancel_all_goals",
@@ -517,13 +574,13 @@ public:
 
     // Paddle setpoint sent to the drive (m), its velocity (m/s) and the measured position (m),
     // published every control cycle during goals and returns.
-    setpoint_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_setpoint", 10);
-    velocity_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_velocity", 10);
-    position_publisher_ = create_publisher<std_msgs::msg::Float64>("wavemaker_position", 10);
+    setpoint_publisher_ = create_publisher<std_msgs::msg::Float64>(rig_name("setpoint"), 10);
+    velocity_publisher_ = create_publisher<std_msgs::msg::Float64>(rig_name("velocity"), 10);
+    position_publisher_ = create_publisher<std_msgs::msg::Float64>(rig_name("position"), 10);
     // Debug: the setpoint position as sent to the drive, in actuator units (degrees for an
     // angular drive), published with the others.
     actuator_setpoint_publisher_ =
-      create_publisher<std_msgs::msg::Float64>("wavemaker_actuator_setpoint", 10);
+      create_publisher<std_msgs::msg::Float64>(rig_name("actuator_setpoint"), 10);
     soft_stop_timeout_ns_ = static_cast<int64_t>(
       get_parameter("soft_stop_timeout_s").as_double() * 1e9
     );
@@ -560,9 +617,12 @@ public:
         check_soft_stop_liveness();
       });
 
+    const std::string what =
+      rig_ == "oscillator" ? std::string("an oscillator") : "a " + wavemaker_type_ + " wavemaker";
+
     RCLCPP_INFO(
-      get_logger(), "Configuring from state '%s' as a %s wavemaker, control loop at %.1f Hz",
-      previous_state.label().c_str(), wavemaker_type_.c_str(), control_rate_hz_);
+      get_logger(), "Configuring from state '%s' as %s, control loop at %.1f Hz",
+      previous_state.label().c_str(), what.c_str(), control_rate_hz_);
 
     return CallbackReturn::SUCCESS;
   }
@@ -665,6 +725,12 @@ private:
     soft_stop_silent_logged_ = silent;
   }
 
+  // A topic name for this rig: "<rig>_<suffix>", e.g. wavemaker_setpoint or oscillator_setpoint.
+  std::string rig_name(const std::string & suffix) const
+  {
+    return rig_ + "_" + suffix;
+  }
+
   static int64_t steady_now_ns()
   {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -729,7 +795,7 @@ private:
         start_position, goal_position_minimum_, goal_position_maximum_);
       return false;
     }
-    if (wavemaker_mode_pregenerated_) {
+    if (mode_pregenerated_) {
       if (goal.positions.empty() || !std::isfinite(goal.sample_interval) ||
         goal.sample_interval <= 0.0)
       {
@@ -759,13 +825,13 @@ private:
         RCLCPP_WARN(get_logger(), "Pregenerated trajectory duration is not finite");
         return false;
       }
-      return accept_peak_velocity(pregenerated_.peak_velocity());
+      return accept_peak(pregenerated_.peak_velocity(), pregenerated_.peak_acceleration());
     }
-    if (!wavemaker_mode_pregenerated_ && !goal.positions.empty()) {
+    if (!mode_pregenerated_ && !goal.positions.empty()) {
       RCLCPP_WARN(
         get_logger(),
-        "Received a pregenerated goal (positions), but wavemaker_mode_pregenerated is false; "
-        "relaunch with wavemaker_mode_pregenerated:=true, rejecting");
+        "Received a pregenerated goal (positions), but mode_pregenerated is false; "
+        "relaunch with mode_pregenerated:=true, rejecting");
       return false;
     }
     if (!std::isfinite(goal.height) || !std::isfinite(goal.period) ||
@@ -774,8 +840,13 @@ private:
       RCLCPP_WARN(get_logger(), "Received goal with non-positive height or period, rejecting");
       return false;
     }
+    if (min_period_s_ > 0.0 && goal.period < min_period_s_) {
+      RCLCPP_WARN(get_logger(), "Received goal with period %.2f below minimum %.2f, rejecting",
+        goal.period, min_period_s_);
+      return false;
+    }
     double gain = wavemaker_transfer_gain_;
-    if (!gain_periods_.empty()) {
+    if (rig_ == "wavemaker" && !gain_periods_.empty()) {
       const auto lookup = interpolate_gain(gain_periods_, gain_values_, goal.period);
       gain = lookup.gain;
       if (lookup.clamped) {
@@ -787,7 +858,8 @@ private:
     }
 
     trajectory_.configure(
-      {wavemaker_type_, water_depth_, flap_attachment_height_, wavemaker_position_offset_,
+      {rig_ == "oscillator" ? "oscillator" : wavemaker_type_, water_depth_,
+        flap_attachment_height_, wavemaker_position_offset_,
         upright_is_minimum_, gain, hinge_height_},
       goal.height, goal.period, start_position);
 
@@ -803,16 +875,19 @@ private:
         required_minimum, required_maximum, goal_position_minimum_, goal_position_maximum_);
       return false;
     }
-    return accept_peak_velocity(trajectory_.peak_velocity());
+    return accept_peak(trajectory_.peak_velocity(), trajectory_.peak_acceleration());
   }
 
   // Checks the goal's peak speed against the drive and stores its positioning-speed cap.
-  bool accept_peak_velocity(double peak_velocity_mps)
+  bool accept_peak(double peak_velocity_mps, double peak_acceleration_mps2)
   {
-    if (!within_speed_limit(peak_velocity_mps)) {
+    if (!within_speed_limit(peak_velocity_mps) ||
+      !within_acceleration_limit(peak_acceleration_mps2))
+    {
       return false;
     }
     goal_velocity_cap_mps_ = velocity_cap(peak_velocity_mps);
+    goal_acceleration_cap_mps2_ = acceleration_cap(peak_acceleration_mps2);
     return true;
   }
 
@@ -823,6 +898,16 @@ private:
   {
     return std::min(
       peak_velocity_mps * positioning_velocity_margin_, actuator_->max_velocity_mps());
+  }
+
+   // Like velocity_cap(): a limit for the drive's profile, the motion's peak with a margin. At
+  // least 1 mm/s^2: a goal that never accelerates still needs a positive limit, and the LinMot
+  // drive refuses 0.
+  double acceleration_cap(double peak_acceleration_mps2) const
+  {
+    return std::clamp(
+      peak_acceleration_mps2 * positioning_acceleration_margin_, 1e-3,
+      actuator_->max_acceleration_mps2());
   }
 
   // Rejects a trajectory the drive would refuse part-way through (write_setpoint fails
@@ -840,9 +925,29 @@ private:
     return true;
   }
 
+  bool within_acceleration_limit(double peak_acceleration_mps2) const
+  {
+    if (max_goal_acceleration_mps2_ > 0.0 && peak_acceleration_mps2 > max_goal_acceleration_mps2_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Received goal needing up to %f m/s^2, above the configured maximum of %f m/s^2, rejecting",
+        peak_acceleration_mps2, max_goal_acceleration_mps2_);
+      return false;
+    }
+    const double limit = actuator_->max_acceleration_mps2();
+    if (!std::isfinite(peak_acceleration_mps2) || peak_acceleration_mps2 > limit) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Received goal needing up to %f m/s^2, above the drive's maximum of %f m/s^2, rejecting",
+        peak_acceleration_mps2, limit);
+      return false;
+    }
+    return true;
+  }
+
   bool sample_goal(double elapsed, double & position, double & velocity) const
   {
-    if (wavemaker_mode_pregenerated_) {
+    if (mode_pregenerated_) {
       return pregenerated_.sample(elapsed, position, velocity);
     }
     trajectory_.sample(elapsed, position, velocity);
@@ -1056,7 +1161,8 @@ private:
     const double deadline = duration + return_timeout_margin_s_;
     const double velocity_cap_mps =
       velocity_cap(kQuinticPeakVelocityFactor * std::abs(delta) / duration);
-
+    const double acceleration_cap_mps2 =
+      acceleration_cap(kQuinticPeakAccelerationFactor * std::abs(delta) / (duration * duration));
     const auto t0 = std::chrono::steady_clock::now();
     const auto elapsed = [&t0] {
         return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
@@ -1077,7 +1183,9 @@ private:
 
       const double t = elapsed();
       const Blend b = quintic_blend(t, duration);
-      if (!publish_and_write_setpoint(start + b.s * delta, b.ds * delta, velocity_cap_mps)) {
+      if (!publish_and_write_setpoint(
+        start + b.s * delta, b.ds * delta, velocity_cap_mps, acceleration_cap_mps2))
+      {
         actuator_->halt();
         return ReturnStatus::Fault;
       }
@@ -1145,7 +1253,7 @@ private:
       double x, v;
       const bool trajectory_complete = sample_goal(t, x, v);
 
-      if (!publish_and_write_setpoint(x, v, goal_velocity_cap_mps_)) {
+      if (!publish_and_write_setpoint(x, v, goal_velocity_cap_mps_, goal_acceleration_cap_mps2_)) {
         RCLCPP_ERROR(get_logger(), "Failed to write actuator setpoint");
         auto failure = std::make_shared<MoveWavemaker::Result>();
         failure->success = false;
@@ -1204,8 +1312,10 @@ private:
   // limits. Publishes the setpoint and its trajectory velocity (m, m/s), the measured
   // position, and the setpoint in actuator units. The drive gets velocity_cap_mps as its
   // positioning-speed limit.
-  bool publish_and_write_setpoint(double position_m, double velocity_mps, double velocity_cap_mps)
+  bool publish_and_write_setpoint(
+    double position_m, double velocity_mps, double velocity_cap_mps, double acceleration_cap_mps2)
   {
+
     const double clamped_position =
       std::clamp(position_m, goal_position_minimum_, goal_position_maximum_);
 
@@ -1220,7 +1330,7 @@ private:
     position_publisher_->publish(position_msg);
 
     const auto actuator_setpoint =
-      actuator_->to_actuator_setpoint(clamped_position, velocity_cap_mps);
+      actuator_->to_actuator_setpoint(clamped_position, velocity_cap_mps, acceleration_cap_mps2);
     std_msgs::msg::Float64 actuator_setpoint_msg;
     actuator_setpoint_msg.data = actuator_setpoint.position;
     actuator_setpoint_publisher_->publish(actuator_setpoint_msg);
@@ -1266,18 +1376,18 @@ private:
     trigger_transition(lifecycle_msgs::msg::Transition::TRANSITION_DEACTIVATE);
   }
 
+  std::string rig_{"wavemaker"};
   std::string wavemaker_type_;
   std::string driver_address_;
-  std::string wavemaker_id_;
-  double wavemaker_minimum_{0.0};
-  double wavemaker_maximum_{0.0};
+  double travel_minimum_{0.0};
+  double travel_maximum_{0.0};
   double goal_position_minimum_{0.0};
   double goal_position_maximum_{0.0};
   bool upright_is_minimum_{false};
   rig_controller::WaveTrajectory trajectory_;
   rig_controller::PregeneratedWaveTrajectory pregenerated_;
   double wavemaker_position_offset_{0.0};
-  bool wavemaker_mode_pregenerated_{false};
+  bool mode_pregenerated_{false};
   double flap_attachment_height_{0.0};
   double hinge_height_{0.0};
   double water_depth_{0.0};
@@ -1290,7 +1400,11 @@ private:
   double return_max_velocity_mps_{0.1};
   double control_rate_hz_{100.0};  // from actuator_->update_period_ms(), set in on_configure
   double positioning_velocity_margin_{1.2};
+  double positioning_acceleration_margin_{1.2};
   double goal_velocity_cap_mps_{0.0};  // set in prepare_goal, used by execute_goal
+  double goal_acceleration_cap_mps2_{0.0};  // set in prepare_goal, used by execute_goal
+  double max_goal_acceleration_mps2_{0.0};
+  double min_period_s_{0.0};
   double return_min_duration_s_{1.0};
   double return_default_tolerance_m_{0.002};
   double return_timeout_margin_s_{2.0};

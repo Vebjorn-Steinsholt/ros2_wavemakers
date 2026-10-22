@@ -24,7 +24,7 @@ about 26 min) and has no heartbeat: Ctrl-C, the soft stop and the e-stop stop it
 
 The controller must run in pregenerated mode (terminal mode; the bridge only sends regular waves):
     ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
-      wavemaker_mode_pregenerated:=true
+      mode_pregenerated:=true
 Without hardware:
     ros2 run rig_controller fake_controller --pregenerated \
       --ros-args -r __ns:=/wavemakers/ladertanken
@@ -186,7 +186,8 @@ def print_table(runs: list[Run], sample_interval: float, units: str,
 def play(runs: list[Run], sample_interval: float, ros_args: list[str]) -> int:
     """Send each run as a move_wavemaker goal, in order; return an exit code."""
     # TODO 1: rclpy.init(args=ros_args); node 'play_dat';
-    #         ActionClient(node, MoveWavemaker, 'move_wavemaker') (namespace via --ros-args).
+    #         ActionClient(node, MoveWavemaker, f'move_{rig}') (namespace via --ros-args;
+    #         add --rig wavemaker|oscillator, default wavemaker, as in fake_controller).
     # TODO 2: wait_for_server(SERVER_TIMEOUT_S); fail clearly if the controller is not up.
     # TODO 3: for each run:
     #           - pause gap_before_s (interruptible by Ctrl-C)
@@ -218,7 +219,7 @@ def main(argv=None):
     parser.add_argument('--units', choices=UNIT_SCALE, default='mm',
                         help='units of the values in the file (default mm)')
     parser.add_argument('--upright', type=float, default=0.0,
-                        help='wavemaker_upright_position_m of the target wavemaker [m]')
+                        help='upright_position_m of the target wavemaker [m]')
     parser.add_argument('--runs', default='', help="e.g. '3', '3-5', '3,7'; default all")
     parser.add_argument('--gap-threshold', type=float, default=0.0,
                         help='|value| at or below this (file units) counts as rest; '

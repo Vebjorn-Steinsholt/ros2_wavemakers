@@ -28,10 +28,9 @@
     step_timeout_ms: 10000
 
     wavemaker_type: "flap"
-    wavemaker_id: "ladertanken"
-    wavemaker_upright_position_m: 0.0  # Upright oscillation center [m]
-    wavemaker_upright_is_minimum: false
-    wavemaker_mode_pregenerated: false
+    upright_position_m: 0.0  # Upright oscillation center [m]
+    upright_is_minimum: false
+    mode_pregenerated: false
     water_depth: 1.0         
     flap_attachment_height: 1.30
     hinge_height: 0.09  # pivot above the floor, wall below closed (2026-10-20)
@@ -56,10 +55,9 @@
 /wavemakers/lilletanken/controller:
   ros__parameters:
     wavemaker_type: "piston"
-    wavemaker_id: "lilletanken"
-    wavemaker_minimum: 0.0
-    wavemaker_maximum: 0.5
-    wavemaker_mode_pregenerated: false
+    travel_minimum_m: 0.0
+    travel_maximum_m: 0.5
+    mode_pregenerated: false
     water_depth: 1.0
     # flap_attachment_height omitted — fine, piston never checks it
     actuator_drive_type: "linear"
@@ -70,12 +68,11 @@
 /wavemakers/mclab/controller:
   ros__parameters:
     wavemaker_type: "flap"
-    wavemaker_id: "mclab"
-    wavemaker_minimum: 0.0
-    wavemaker_maximum: 0.5
-    wavemaker_upright_position_m: 0.0
-    wavemaker_upright_is_minimum: false
-    wavemaker_mode_pregenerated: false
+    travel_minimum_m: 0.0
+    travel_maximum_m: 0.5
+    upright_position_m: 0.0
+    upright_is_minimum: false
+    mode_pregenerated: false
     water_depth: 1.5
     flap_attachment_height: 1.95   # must be > water_depth (1.5)
     hinge_height: 0.5

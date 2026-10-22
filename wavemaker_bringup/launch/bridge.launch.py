@@ -54,7 +54,7 @@ def generate_launch_description():
                 'water_depth': LaunchConfiguration('water_depth'),
                 'wavemaker_transfer_gain': LaunchConfiguration('wavemaker_transfer_gain'),
                 # The bridge only sends regular waves (height, period).
-                'wavemaker_mode_pregenerated': 'false',
+                'mode_pregenerated': 'false',
             }.items(),
         ),
     ])

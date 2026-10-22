@@ -8,7 +8,9 @@
 #include "wave_math.hpp"
 #include "wave_trajectory.hpp"
 
+using rig_controller::kQuinticPeakAccelerationFactor;
 using rig_controller::PregeneratedWaveTrajectory;
+using rig_controller::quintic_blend;
 using rig_controller::WavemakerGeometry;
 using rig_controller::WaveTrajectory;
 
@@ -309,4 +311,118 @@ TEST(WaveTrajectoryTest, PistonIgnoresHingeHeight)
   EXPECT_NEAR(
     paddle_amplitude({"piston", 1.0, 0.0, 0.0, false, 1.0, 0.5}, 0.05, 1.5),
     paddle_amplitude({"piston", 1.0, 0.0, 0.0, false, 1.0, 0.0}, 0.05, 1.5), 1e-15);
+}
+
+TEST(WaveTrajectoryTest, OscillatorAmplitudeIsHalfTheStroke)
+{
+  // An oscillator moves H peak to peak around upright, whatever the water depth or gain.
+  for (const double depth : {0.5, 1.0}) {
+    for (const double gain : {1.0, 0.7}) {
+      WaveTrajectory trajectory;
+      trajectory.configure({"oscillator", depth, 0.0, 0.1, false, gain}, 0.02, 1.0, 0.1);
+      EXPECT_NEAR(trajectory.required_minimum(), 0.09, 1e-12);
+      EXPECT_NEAR(trajectory.required_maximum(), 0.11, 1e-12);
+
+      double low = 1.0;
+      double high = 0.0;
+      for (double t = 1.0; t < 3.0; t += 0.001) {  // after the one-period blend
+        double position = 0.0;
+        double velocity = 0.0;
+        trajectory.sample(t, position, velocity);
+        low = std::min(low, position);
+        high = std::max(high, position);
+      }
+      EXPECT_NEAR(low, 0.09, 1e-6) << "depth " << depth << " gain " << gain;
+      EXPECT_NEAR(high, 0.11, 1e-6) << "depth " << depth << " gain " << gain;
+    }
+  }
+}
+
+TEST(WaveMathTest, QuinticBlendAccelerationPeaksAtTheFactor)
+{
+  // Over a 1 s blend the largest |dds| is 10 / sqrt(3), and dds is the derivative of ds.
+  double largest = 0.0;
+  for (double t = 0.0; t <= 1.0; t += 1e-5) {
+    largest = std::max(largest, std::abs(quintic_blend(t, 1.0).dds));
+  }
+  EXPECT_NEAR(largest, kQuinticPeakAccelerationFactor, 1e-6);
+  for (const double t : {0.1, 0.3, 0.5, 0.8}) {
+    const double h = 1e-6;
+    const double numeric = (quintic_blend(t + h, 1.0).ds - quintic_blend(t - h, 1.0).ds) / (2 * h);
+    EXPECT_NEAR(quintic_blend(t, 1.0).dds, numeric, 1e-6) << "t " << t;
+  }
+  // Duration scales it by 1 / duration^2.
+  EXPECT_NEAR(quintic_blend(0.5, 2.0).dds, quintic_blend(0.25, 1.0).dds / 4.0, 1e-12);
+}
+
+TEST(WaveTrajectoryTest, PeakAccelerationOfASteadySine)
+{
+  // 10 mm stroke at 2 s: A * omega^2 = 0.005 * pi^2. Starting at upright the blend reaches
+  // about 11 % more; starting where it ends below the sine adds nothing.
+  const double steady = 0.005 * M_PI * M_PI;
+  WaveTrajectory centre;
+  centre.configure({"oscillator", 1.0, 0.0, 0.1, false, 1.0}, 0.01, 2.0, 0.1);
+  EXPECT_NEAR(centre.peak_acceleration() / steady, 1.1123, 1e-3);
+
+  WaveTrajectory below;
+  below.configure({"oscillator", 1.0, 0.0, 0.1, false, 1.0}, 0.01, 2.0, 0.08);
+  EXPECT_NEAR(below.peak_acceleration() / steady, 1.0001, 1e-4);
+
+  WaveTrajectory off_centre;
+  off_centre.configure({"oscillator", 1.0, 0.0, 0.1, false, 1.0}, 0.01, 2.0, 0.12);
+  EXPECT_NEAR(off_centre.peak_acceleration() / steady, 1.697, 1e-3);
+}
+
+TEST(WaveTrajectoryTest, PeakAccelerationIsTheTruePeak)
+{
+  // The numerical derivative of the sampled velocity never exceeds peak_acceleration(), and
+  // its largest value is within 0.1 % of it, for both wave shapes and starts across the stroke.
+  for (const bool upright_is_minimum : {false, true}) {
+    const double upright = 0.1;
+    for (const double start : {0.1, 0.07, 0.13}) {
+      if (upright_is_minimum && start < upright) {
+        continue;
+      }
+      WaveTrajectory trajectory;
+      trajectory.configure(
+        {"oscillator", 1.0, 0.0, upright, upright_is_minimum, 1.0}, 0.04, 1.0, start);
+      double largest = 0.0;
+      const double h = 1e-5;
+      for (double t = h; t < 3.0; t += 1e-4) {
+        double x = 0.0;
+        double v_before = 0.0;
+        double v_after = 0.0;
+        trajectory.sample(t - h, x, v_before);
+        trajectory.sample(t + h, x, v_after);
+        largest = std::max(largest, std::abs(v_after - v_before) / (2 * h));
+      }
+      EXPECT_LE(largest, trajectory.peak_acceleration() + 1e-6) << "start " << start;
+      EXPECT_GE(largest * 1.001, trajectory.peak_acceleration()) << "start " << start;
+    }
+  }
+}
+
+TEST(PregeneratedWaveTrajectoryTest, PeakAccelerationFromSecondDifferences)
+{
+  // x = t^2 sampled every 10 ms: second differences give exactly 2 m/s^2.
+  std::vector<double> parabola;
+  for (int i = 0; i <= 100; ++i) {
+    parabola.push_back(0.1 + std::pow(i * 0.01, 2));
+  }
+  PregeneratedWaveTrajectory trajectory;
+  trajectory.configure(parabola, 0.01, parabola.front(), 0.0);
+  EXPECT_NEAR(trajectory.peak_acceleration(), 2.0, 1e-9);
+
+  // A 0.05 m blend over 0.1 s peaks at 5.7735 * 0.05 / 0.1^2 = 28.9 m/s^2, above the samples.
+  PregeneratedWaveTrajectory blended;
+  blended.configure(parabola, 0.01, parabola.front() + 0.05, 0.1);
+  EXPECT_NEAR(blended.peak_acceleration(), kQuinticPeakAccelerationFactor * 0.05 / 0.01, 1e-9);
+
+  // One or two samples: no second difference, and nothing read past the end.
+  PregeneratedWaveTrajectory one;
+  one.configure({0.25}, 0.1, 0.25, 0.0);
+  EXPECT_DOUBLE_EQ(one.peak_acceleration(), 0.0);
+  PregeneratedWaveTrajectory two;
+  two.configure({0.25, 0.26}, 0.1, 0.25, 0.0);
+  EXPECT_DOUBLE_EQ(two.peak_acceleration(), 0.0);
 }

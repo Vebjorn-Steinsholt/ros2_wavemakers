@@ -43,15 +43,20 @@ void WaveTrajectory::configure(
   double start_position)
 {
   omega_ = 2.0 * M_PI / period;
-  const double mu = solve_dispersion(omega_, geometry.water_depth);
-  const bool flap = geometry.type == "flap";
-  const double hinge = flap ? geometry.hinge_height : 0.0;
-  const double stroke = compute_stroke(
-    mu, wave_height, geometry.type, hinge / geometry.water_depth) / geometry.transfer_gain;
-  amplitude_ = stroke / 2.0;
-  if (flap) {
-    // The stroke is at the still-water level; scale it up to the attachment point.
-    amplitude_ *= (geometry.flap_attachment_height - hinge) / (geometry.water_depth - hinge);
+  if (geometry.type == "oscillator") {
+    // H is the stroke itself: no dispersion relation, transfer gain or flap scaling.
+    amplitude_ = wave_height / 2.0;
+  } else {
+    const double mu = solve_dispersion(omega_, geometry.water_depth);
+    const bool flap = geometry.type == "flap";
+    const double hinge = flap ? geometry.hinge_height : 0.0;
+    const double stroke = compute_stroke(
+      mu, wave_height, geometry.type, hinge / geometry.water_depth) / geometry.transfer_gain;
+    amplitude_ = stroke / 2.0;
+    if (flap) {
+      // The stroke is at the still-water level; scale it up to the attachment point.
+      amplitude_ *= (geometry.flap_attachment_height - hinge) / (geometry.water_depth - hinge);
+    }
   }
   upright_position_ = geometry.upright_position;
   upright_is_minimum_ = geometry.upright_is_minimum;
@@ -87,6 +92,37 @@ double WaveTrajectory::peak_velocity() const
   return peak * (1.0 + kSamplingMargin);
 }
 
+void WaveTrajectory::wave(double t, double & x, double & v, double & a) const
+{
+  const double phase = omega_ * t;
+  if (upright_is_minimum_) {
+    x = upright_position_ + amplitude_ * (1.0 - std::cos(phase));
+    v = amplitude_ * omega_ * std::sin(phase);
+    a = amplitude_ * omega_ * omega_ * std::cos(phase);
+  } else {
+    x = upright_position_ + amplitude_ * std::sin(phase);
+    v = amplitude_ * omega_ * std::cos(phase);
+    a = -amplitude_ * omega_ * omega_ * std::sin(phase);
+  }
+}
+double WaveTrajectory::peak_acceleration() const
+{
+  // After the blend the acceleration peaks at amplitude * omega^2. In the blend the product rule
+  // gives a = dds * (w - x0) + 2 * ds * w' + s * w'', which can exceed that; sample it like
+  // peak_velocity() does.
+  constexpr int kBlendSamples = 10000;
+  constexpr double kSamplingMargin = 1e-4;
+  double peak = amplitude_ * omega_ * omega_;
+  for (int i = 0; i <= kBlendSamples; ++i) {
+    const double t = startup_duration_ * i / kBlendSamples;
+    double x, v, a;
+    wave(upright_is_minimum_ ? t : t - startup_duration_, x, v, a);   // same phase as sample()
+    const Blend b = quintic_blend(t, startup_duration_);
+    peak = std::max(peak, std::abs(b.dds * (x - start_position_) + 2.0 * b.ds * v + b.s * a));
+  }
+  return peak * (1.0 + kSamplingMargin);
+}
+
 void WaveTrajectory::sample(double elapsed, double & position, double & velocity) const
 {
   // Phase is continuous across the blend only because startup_duration_ equals the period.
@@ -95,13 +131,9 @@ void WaveTrajectory::sample(double elapsed, double & position, double & velocity
 
   double wave_position;
   double wave_velocity;
-  if (upright_is_minimum_) {
-    wave_position = upright_position_ + amplitude_ * (1.0 - std::cos(omega_ * wave_time));
-    wave_velocity = amplitude_ * omega_ * std::sin(omega_ * wave_time);
-  } else {
-    wave_position = upright_position_ + amplitude_ * std::sin(omega_ * wave_time);
-    wave_velocity = amplitude_ * omega_ * std::cos(omega_ * wave_time);
-  }
+  double wave_acceleration;
+
+  wave(wave_time, wave_position, wave_velocity, wave_acceleration);
 
   if (elapsed < startup_duration_) {
     const Blend b = quintic_blend(elapsed, startup_duration_);
@@ -137,6 +169,21 @@ double PregeneratedWaveTrajectory::peak_velocity() const
   }
   for (std::size_t i = 1; i < positions_.size(); ++i) {
     peak = std::max(peak, std::abs(positions_[i] - positions_[i - 1]) / sample_interval_);
+  }
+  return peak;
+}
+double PregeneratedWaveTrajectory::peak_acceleration() const
+{
+  double peak = 0.0;
+  if (blend_duration_ > 0.0) {
+    peak = kQuinticPeakAccelerationFactor * std::abs(positions_.front() - start_position_) /
+      (blend_duration_ * blend_duration_);
+  }
+  // Second differences need a sample on each side; i + 1 < size also holds for 0 or 1 samples.
+  const double dt2 = sample_interval_ * sample_interval_;
+  for (std::size_t i = 1; i + 1 < positions_.size(); ++i) {
+    peak = std::max(peak,
+        std::abs(positions_[i + 1] - 2.0 * positions_[i] + positions_[i - 1]) / dt2);
   }
   return peak;
 }

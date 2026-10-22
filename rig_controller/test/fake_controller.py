@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Fake wavemaker controller for testing bridge_node without hardware.
+Fake controller for testing bridge_node and the web page without hardware.
 
-Serves the move_wavemaker action like the real controller, without a drive:
+Serves the move_<rig> action like the real controller, without a drive (--rig wavemaker, the
+default, or oscillator; the topics are named after the rig the same way):
   - accepts one goal at a time and rejects goals while one is running ("busy"),
   - runs a regular wave until it is cancelled, sending feedback at 10 Hz and the setpoint and
-    a slightly lagging "measured" position on wavemaker_setpoint / wavemaker_position at 50 Hz,
-  - with --pregenerated, as wavemaker_mode_pregenerated: true, plays goals with positions and
+    a slightly lagging "measured" position on <rig>_setpoint / <rig>_position at 50 Hz,
+  - with --pregenerated, as mode_pregenerated: true, plays goals with positions and
     sample_interval instead: blends from the held position to the first sample, interpolates
     linearly and succeeds at the last sample,
   - holds its position after a cancel, and serves return_to_upright (back to 0 in 1.5 s),
@@ -20,6 +21,8 @@ Do not run it next to the real controller: both would serve the same action.
       --ros-args -r __ns:=/wavemakers/ladertanken
     ros2 run rig_controller fake_controller --pregenerated \
       --ros-args -r __ns:=/wavemakers/ladertanken
+    ros2 run rig_controller fake_controller --rig oscillator \
+      --ros-args -r __ns:=/oscillators/sloshing
 """
 
 import argparse
@@ -56,7 +59,7 @@ def quintic(u):
 
 class FakeController(Node):
 
-    def __init__(self, reject, abort_after, pregenerated):
+    def __init__(self, reject, abort_after, pregenerated, rig='wavemaker'):
         super().__init__('controller')
         self._reject = reject
         self._abort_after = abort_after
@@ -64,19 +67,20 @@ class FakeController(Node):
         self._busy = False
         self._position = 0.0     # last setpoint, held after a stop
         self._lock = threading.Lock()
-        self._setpoint_pub = self.create_publisher(Float64, 'wavemaker_setpoint', 10)
-        self._measured_pub = self.create_publisher(Float64, 'wavemaker_position', 10)
+        # Named after the rig, as in the real controller (oscillator_setpoint, ...).
+        self._setpoint_pub = self.create_publisher(Float64, f'{rig}_setpoint', 10)
+        self._measured_pub = self.create_publisher(Float64, f'{rig}_position', 10)
         self.create_service(
             ReturnToUpright, 'return_to_upright', self._return_to_upright,
             callback_group=ReentrantCallbackGroup())
         self._server = ActionServer(
-            self, MoveWavemaker, 'move_wavemaker',
+            self, MoveWavemaker, f'move_{rig}',
             execute_callback=self._execute,
             goal_callback=self._on_goal,
             cancel_callback=self._on_cancel,
             callback_group=ReentrantCallbackGroup())
         self.get_logger().info(
-            f'Fake controller ready (reject={reject}, abort_after={abort_after}, '
+            f'Fake controller ready (rig={rig}, reject={reject}, abort_after={abort_after}, '
             f'pregenerated={pregenerated})')
 
     def _on_goal(self, goal):
@@ -242,11 +246,14 @@ def main():
     parser.add_argument(
         '--pregenerated', action='store_true',
         help='serve pregenerated goals (positions, sample_interval), as '
-             'wavemaker_mode_pregenerated: true')
+             'mode_pregenerated: true')
+    parser.add_argument(
+        '--rig', choices=['wavemaker', 'oscillator'], default='wavemaker',
+        help='names the action and topics (move_<rig>, <rig>_setpoint, <rig>_position)')
     args = parser.parse_args(remove_ros_args(sys.argv)[1:])
 
     rclpy.init(args=sys.argv)
-    node = FakeController(args.reject, args.abort_after, args.pregenerated)
+    node = FakeController(args.reject, args.abort_after, args.pregenerated, args.rig)
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     try:

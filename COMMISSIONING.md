@@ -95,7 +95,7 @@ Kept as a record of physical checks already done.
 - Wavemaker type, flap attachment height and water depth match `wavemakers.yaml`.
 - Drive limits −550° / 500° are configured in IndraWorks and are kept there by decision (2026-10-07); the controller's ±275° is the travel limit (±200° until 2026-10-20).
 - No mechanical end stops. The lab waves above have been run on this hardware at 1 m depth (Pål Lader, 2026-10-08), which by linear theory needs about ±9.3 cm at the flap top; the earlier ±5 cm figure (2026-10-07) was too low.
-- `wavemaker_upright_position_m` matches the physical upright: 0.0 m for ladertanken.
+- `upright_position_m` matches the physical upright: 0.0 m for ladertanken.
 - Activation caused no physical motion.
 - Small position oscillation at standstill (the servo holding position) is accepted; it shows as larger velocity oscillation, but the controller only uses position. Measured below ±0.5° (≈ ±0.27 mm on ladertanken), well inside the 2 mm return-to-upright tolerance (≈ 3.8°).
 - The flap was disconnected for the first motor tests (2026-10-07) and reconnected for the lab waves (2026-10-08).

@@ -86,13 +86,15 @@ before connecting to hardware. Changes take effect at the next `configure`.
 
 | Parameter | Meaning |
 |---|---|
+| `rig` | `wavemaker` (default) or `oscillator`. Names the action and topics: `move_<rig>`, `<rig>_setpoint`, `<rig>_position`, `<rig>_velocity`, `<rig>_actuator_setpoint`, and the bridge's `<rig>_state` / `<rig>_message`. Set the same value on the controller, bridge and web page. See [OSCILLATOR.md](OSCILLATOR.md). |
+| `actuator_type` | `indradrive` (default; MGate gateway, the wavemakers) or `linmot` (Arduino serial-to-CAN bridge, the oscillator). |
 | `wavemaker_type` | `piston` or `flap`. Selects the wave transfer function. |
 | `water_depth` | Water depth in m. Can be overridden for one run with the `water_depth` launch argument (see [Water depth](#water-depth)). |
 | `flap_attachment_height` | Flap only: height of the actuator attachment above the tank floor, m. Must be greater than `water_depth`. |
 | `hinge_height` | Flap only: height of the flap's hinge above the tank floor, m (default 0.0). Must be below `water_depth`. Used in the wave transfer function (Dean & Dalrymple) and to scale the stroke from the waterline to the attachment point. |
-| `wavemaker_upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
-| `wavemaker_upright_is_minimum` | `true`: the wave runs from upright to one side only. `false`: symmetric around upright. |
-| `wavemaker_mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `height` and `period`. Can be overridden with the launch argument of the same name (terminal mode only). |
+| `upright_position_m` | Paddle position at upright (the mean position), m. Returns go here; waves oscillate around it. |
+| `upright_is_minimum` | `true`: the wave runs from upright to one side only. `false`: symmetric around upright. |
+| `mode_pregenerated` | `true`: goals carry sampled `positions`. `false`: goals carry `height` and `period`. Can be overridden with the launch argument of the same name (terminal mode only). |
 | `wavemaker_transfer_gain` | Measured / target wave height for regular waves (default 1.0 = linear theory). The stroke is divided by it; to correct from wave-probe data, new gain = old gain × measured / target. Not applied to pregenerated waves. Can be overridden for one run with the launch argument of the same name. |
 
 ### Actuator and limits
@@ -103,7 +105,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | `actuator_lead_m_per_degree` | Angular only: paddle travel per drive degree. |
 | `actuator_upright_angle_deg` | Angular only: drive angle at upright. |
 | `min_position_deg` / `max_position_deg` | Angular travel limits in drive degrees. Goals that leave them are rejected; the drive also refuses targets outside them. |
-| `wavemaker_minimum` / `wavemaker_maximum`, `min_position_m` / `max_position_m` | Linear travel limits in m (node and drive side; keep them equal). |
+| `travel_minimum_m` / `travel_maximum_m`, `min_position_m` / `max_position_m` | Linear travel limits in m (node and drive side; keep them equal). |
 | `max_velocity_rpm` | Drive speed limit. Goals whose peak speed exceeds it are rejected. |
 | `hold_velocity_rpm` | Speed cap used when stopping and holding position (default 10, ≤ `max_velocity_rpm`). |
 
@@ -183,16 +185,16 @@ busy PC.
 Launch arguments of `wavemakers.launch.py`: `wavemaker`, `with_bridge` (default `false`),
 `enable_lifecycle_manager` (default `false`) and `bond_timeout` (default `4.0`, passed to the
 lifecycle manager and to both nodes), `water_depth` (see below), `wavemaker_transfer_gain` and
-`wavemaker_mode_pregenerated`. The last three override the values in `wavemakers.yaml` for that
+`mode_pregenerated`. The last three override the values in `wavemakers.yaml` for that
 run; empty (the default) keeps the yaml value.
 `bridge.launch.py` sets the first three for you, defaults `bond_timeout` to `1.0`, and
-always sets `wavemaker_mode_pregenerated` to `false`, because the bridge only sends regular waves.
+always sets `mode_pregenerated` to `false`, because the bridge only sends regular waves.
 `lab.launch.py` passes on `water_depth` and `wavemaker_transfer_gain`.
 
 ```bash
 # terminal mode, pregenerated goals (e.g. .dat files), with a measured gain
 ros2 launch wavemaker_bringup wavemakers.launch.py wavemaker:=ladertanken \
-  wavemaker_mode_pregenerated:=true wavemaker_transfer_gain:=0.92
+  mode_pregenerated:=true wavemaker_transfer_gain:=0.92
 ```
 
 ### Water depth
@@ -293,7 +295,7 @@ All names are under `/wavemakers/<wavemaker>/`.
 
 ### Action `move_wavemaker` (`wavemaker_interfaces/action/MoveWavemaker`)
 
-Regular wave (`wavemaker_mode_pregenerated: false`). `height` is the wave height H (crest to
+Regular wave (`mode_pregenerated: false`). `height` is the wave height H (crest to
 trough) in m and `period` is in s; the controller converts it to a paddle stroke with the
 wave transfer function. The wave runs until it is cancelled.
 
@@ -305,7 +307,7 @@ ros2 action send_goal --feedback /wavemakers/ladertanken/move_wavemaker \
 For ladertanken (flap, 1.0 m depth, 1.30 m attachment, 0.00053 m/deg) this is about ±1.2° at the
 drive. Recalculate if those values change.
 
-Pregenerated (`wavemaker_mode_pregenerated: true`): absolute paddle positions in m at a fixed
+Pregenerated (`mode_pregenerated: true`): absolute paddle positions in m at a fixed
 `sample_interval` in s. The goal succeeds after the last sample.
 
 ```bash
@@ -326,7 +328,7 @@ A cancelled wave stops and holds position; call `return_to_upright` to go back t
 
 ### Service `return_to_upright` (`wavemaker_interfaces/srv/ReturnToUpright`)
 
-Moves the paddle to `wavemaker_upright_position_m` with a smooth (quintic) profile and replies when
+Moves the paddle to `upright_position_m` with a smooth (quintic) profile and replies when
 it is there. `tolerance` 0 uses the default.
 
 ```bash
