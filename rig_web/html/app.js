@@ -147,26 +147,34 @@ function drawPlot() {
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
-  let extent = 0.01;
+  // Scale around the middle of the data, not around 0: the oscillator moves around 0.1 m.
+  let low = Infinity, high = -Infinity;
   for (const points of Object.values(series)) {
-    for (const [, value] of points) extent = Math.max(extent, Math.abs(value));
+    for (const [, value] of points) {
+      low = Math.min(low, value);
+      high = Math.max(high, value);
+    }
   }
-  extent *= 1.1;
+  if (low > high) low = high = 0;
+  const middle = (low + high) / 2;
+  const half = Math.max(0.01, (high - low) / 2);
+  const extent = half * 1.1;
   const x = (t) => left + (t - (serverTime - PLOT_SECONDS)) / PLOT_SECONDS * plotWidth;
-  const y = (v) => top + (1 - (v + extent) / (2 * extent)) * plotHeight;
+  const y = (v) => top + (1 - (v - middle + extent) / (2 * extent)) * plotHeight;
 
   ctx.font = '11px system-ui, sans-serif';
   ctx.fillStyle = color('--muted');
   ctx.strokeStyle = color('--grid');
   ctx.lineWidth = 1;
   for (const fraction of [-1, -0.5, 0, 0.5, 1]) {
-    const value = fraction * extent / 1.1;
+    const value = middle + fraction * half;
     ctx.beginPath();
     ctx.moveTo(left, y(value));
     ctx.lineTo(width - right, y(value));
     ctx.stroke();
     ctx.textAlign = 'right';
-    ctx.fillText(value.toFixed(3), left - 6, y(value) + 4);
+    // A middle a hair below 0 would print as -0.000.
+    ctx.fillText((value + 0).toFixed(3).replace(/^-(0\.0+)$/, '$1'), left - 6, y(value) + 4);
   }
   for (let s = 0; s <= PLOT_SECONDS; s += 5) {
     ctx.textAlign = s === 0 ? 'left' : s === PLOT_SECONDS ? 'right' : 'center';
