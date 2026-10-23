@@ -286,11 +286,13 @@ public:
       }
     }
     if (!action_client_ || !action_client_->action_server_is_ready()) {
+      const std::string unavailable =
+        "move_" + get_parameter("rig").as_string() + " action is not available";
       if (ours) {
-        abandon_goal("Move Wavemaker action is not available");   // fixes A
+        abandon_goal(unavailable);   // fixes A
       } else {
-        report("Stop: Move Wavemaker action is not available");
-        if (done) {done(false, "Move Wavemaker action is not available");}
+        report("Stop: " + unavailable);
+        if (done) {done(false, unavailable);}
       }
       return;
     }

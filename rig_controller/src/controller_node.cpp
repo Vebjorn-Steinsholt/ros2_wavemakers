@@ -49,7 +49,7 @@ using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface
 namespace
 {
 
-// The actuator for actuator_type: "indradrive" (MGate gateway, the wavemakers) or "linmot"
+// The actuator for drive_name: "indradrive" (MGate gateway, the wavemakers) or "linmot"
 // (Arduino serial-to-CAN bridge, the oscillator). Throws on anything else, which fails configure.
 std::unique_ptr<rig_controller::Actuator> make_actuator(rclcpp_lifecycle::LifecycleNode & node)
 {
@@ -82,10 +82,10 @@ public:
   : LifecycleNode("controller", options), actuator_factory_(std::move(actuator_factory))
   {
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
-    declare_parameter<std::string>("drive_name", "");
     declare_parameter<double>("bond_timeout", 4.0);
     declare_parameter<double>("soft_stop_timeout_s", 0.2);
-    declare_parameter<std::string>("actuator_type", "indradrive");
+    // Required, no default: every rig's config names its drive (make_actuator()).
+    declare_parameter<std::string>("drive_name", "");
     // "wavemaker" or "oscillator": names the action and topics (move_<rig>, <rig>_setpoint, ...).
     declare_parameter<std::string>("rig", "wavemaker");
     declare_parameter<std::string>("wavemaker_type", "piston");
@@ -200,7 +200,7 @@ public:
     if (!std::isfinite(wavemaker_position_offset_) || !std::isfinite(water_depth_) ||
       !std::isfinite(flap_attachment_height_))
     {
-      RCLCPP_ERROR(get_logger(), "All wavemaker numeric parameters must be finite");
+      RCLCPP_ERROR(get_logger(), "All numeric parameters must be finite");
       return CallbackReturn::FAILURE;
     }
 
@@ -605,10 +605,10 @@ public:
         const bool was_stopped = soft_stopped_.exchange(msg.data);
         if (msg.data && !was_stopped) {
           RCLCPP_WARN(
-                get_logger(), "Soft stop engaged: Stopping the wavemaker");
+                get_logger(), "Soft stop engaged: stopping the motion");
         } else if (!msg.data && was_stopped) {
           RCLCPP_WARN(
-                get_logger(), "Soft stop released: New waves can be generated");
+                get_logger(), "Soft stop released: new motion can start");
         }
         });
     soft_stop_silent_logged_ = false;
@@ -1048,14 +1048,14 @@ private:
       return rclcpp_action::GoalResponse::REJECT;
     }
     if (soft_stop_active()) {
-      RCLCPP_WARN(get_logger(), "Rejecting goal because the wavemaker is soft stopped");
+      RCLCPP_WARN(get_logger(), "Rejecting goal because the soft stop is engaged");
       return rclcpp_action::GoalResponse::REJECT;
     }
 
     if (goal_pending_ || returning_to_upright_ || (goal_handle_ && goal_handle_->is_active())) {
       RCLCPP_WARN(
         get_logger(),
-        "Rejecting goal because another goal is active or the wavemaker is returning to upright");
+        "Rejecting goal because another goal is active or a return to upright is running");
       return rclcpp_action::GoalResponse::REJECT;
     }
 

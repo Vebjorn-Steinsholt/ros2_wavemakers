@@ -435,7 +435,7 @@ belongs in `play_dat.py` (item at the end).
 
 ### E: bringup
 
-- [ ] Package `oscillator_bringup`: `config/oscillator.yaml` under
+- [x] Package `oscillator_bringup`: `config/oscillator.yaml` under
   `/oscillators/sloshing/controller` and `launch/oscillator.launch.py` (controller, bridge,
   lifecycle manager, soft stop, web page with `rig:=oscillator`). Start the yaml from the C + D
   rig test file, with `positioning_velocity_margin: 1.2` and
@@ -445,16 +445,35 @@ belongs in `play_dat.py` (item at the end).
   `rig:=oscillator` (`web.launch.py` now picks `oscillators/sloshing` itself). Check on the rig
   that the lifecycle manager's bond (`bond_timeout` 4 s) survives an activation that blocks
   about 20 s while the drive homes.
-- [ ] `serial_port: /dev/linmot_bridge` in `oscillator.yaml`, the fixed name from
+- [x] `serial_port: /dev/linmot_bridge` in `oscillator.yaml`, the fixed name from
   `rpi/99-linmot-bridge.rules` (step F). Unlike `/dev/ttyACM0` it does not change with other
   USB devices, and unlike the `/dev/serial/by-id/...` path it survives replacing the Uno.
+- [x] On the rig (2026-10-23, the ladertanken Pi, which the oscillator shares with the
+  ladertanken wavemaker): (rig)
+
+  ```bash
+  cd ~ && source /opt/ros/jazzy/setup.bash && source ~/ros_ws/install/setup.bash
+  export ROS_DOMAIN_ID=1
+  ros2 launch oscillator_bringup oscillator.launch.py
+  ```
+
+  Homing 21 s, then `Managed nodes are active`. The bond is no problem: the lifecycle manager
+  creates it only after the activation has finished ("Server controller connected with bond"
+  right after `LinMot: homed`), so the default 4 s stays. From the web page
+  (`http://ladertanken-rpi.local:8080/`): height 0.01 m / period 2 s runs, the soft stop button
+  stops it, Go to centre works, Ctrl-C stops the motion. Found and fixed on the way: the plot was
+  scaled around 0, so the slide's motion around 0.1 m filled 5 % of it (`app.js` now centres the
+  scale on the data); `web.launch.py` takes `rig:=oscillator` alone. The Pi needed the udev rule
+  and a full `colcon build`: `wavemaker_bringup` was missing from `install/`, so the wavemaker
+  service would not have started either.
 
 ### F: service on the Pi
 
 - [ ] `rpi/oscillator@.service`, copied from `wavemaker@.service` and, like it, without an
   `[Install]` section, so it never starts (or homes) at boot.
 - [ ] Each service refuses to start while the other runs (`ExecStartPre`; `Conflicts=` would
-  stop the running one instead).
+  stop the running one instead). Needed: the oscillator runs on the ladertanken Pi, and both use
+  port 8080, GPIO17 for the soft stop and the same ROS domain.
 - [ ] The udev rule on the Pi: ModemManager off for the Uno, and `/dev/linmot_bridge`. Check
   first whether ModemManager runs there (`systemctl status ModemManager`); the symlink is
   needed either way.

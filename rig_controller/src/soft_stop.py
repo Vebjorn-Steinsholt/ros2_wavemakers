@@ -60,7 +60,7 @@ class SoftStop(Node):
                 self.high_since = now
             if not self.stopped and now - self.high_since >= TRIP_FILTR_S:
                 self.stopped = True
-                self.get_logger().warn('Soft stop triggered: stopping waves')
+                self.get_logger().warn('Soft stop triggered: stopping the motion')
         else:
             if self.high_since is not None and not self.stopped:
                 self.get_logger().info(
@@ -70,7 +70,7 @@ class SoftStop(Node):
                 self.low_since = now
             if self.stopped and now - self.low_since >= RELEASE_HOLD_S:
                 self.stopped = False
-                self.get_logger().info('Soft stop released: waves can start again')
+                self.get_logger().info('Soft stop released: motion can start again')
 
         self.publisher.publish(Bool(data=self.stopped))
 
