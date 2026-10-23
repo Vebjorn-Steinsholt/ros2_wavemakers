@@ -87,7 +87,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 | Parameter | Meaning |
 |---|---|
 | `rig` | `wavemaker` (default) or `oscillator`. Names the action and topics: `move_<rig>`, `<rig>_setpoint`, `<rig>_position`, `<rig>_velocity`, `<rig>_actuator_setpoint`, and the bridge's `<rig>_state` / `<rig>_message`. Set the same value on the controller, bridge and web page. `oscillator` also selects the trajectory: `height` is the stroke (amplitude = height / 2 around `upright_position_m`), with no wave theory, water depth or transfer gain, and the wavemaker-only checks (`wavemaker_type`, `water_depth`, flap, gain table) are skipped. See [OSCILLATOR.md](OSCILLATOR.md). |
-| `actuator_type` | `indradrive` (default; MGate gateway, the wavemakers) or `linmot` (Arduino serial-to-CAN bridge, the oscillator). |
+| `drive_name` | Required, no default. `indradrive` (MGate gateway, the wavemakers) or `linmot` (Arduino serial-to-CAN bridge, the oscillator). Configure fails when it is missing or unknown. A new drive is an `Actuator` subclass plus one branch in `make_actuator()` (`rig_controller/src/controller_node.cpp`). |
 | `wavemaker_type` | `piston` or `flap`. Selects the wave transfer function. |
 | `water_depth` | Water depth in m. Can be overridden for one run with the `water_depth` launch argument (see [Water depth](#water-depth)). |
 | `flap_attachment_height` | Flap only: height of the actuator attachment above the tank floor, m. Must be greater than `water_depth`. |
@@ -101,7 +101,7 @@ before connecting to hardware. Changes take effect at the next `configure`.
 
 | Parameter | Meaning |
 |---|---|
-| `actuator_drive_type` | `angular` (drive position in degrees, converted with the lead) or `linear`. Linear units are not verified yet (TODO 19). |
+| `drive_motion` | `angular` (drive position in degrees, converted with the lead) or `linear`. The conversion is `DriveScale` (`rig_controller/src/drive_scale.hpp`), shared by the controller's limits and the actuators. Linear units are not verified yet (TODO 19). |
 | `actuator_lead_m_per_degree` | Angular only: paddle travel per drive degree. |
 | `actuator_upright_angle_deg` | Angular only: drive angle at upright. |
 | `min_position_deg` / `max_position_deg` | Angular travel limits in drive degrees. Goals that leave them are rejected; the drive also refuses targets outside them. |

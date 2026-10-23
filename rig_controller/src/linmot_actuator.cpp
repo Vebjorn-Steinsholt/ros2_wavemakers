@@ -45,11 +45,12 @@ LinMotActuator::LinMotActuator(rclcpp_lifecycle::LifecycleNode & node)
   declare_parameter_if_missing(node, "home_timeout_ms", 60000);
   declare_parameter_if_missing(node, "ready_timeout_ms", 3000);
   declare_parameter_if_missing(node, "feedback_timeout_ms", 100);
-  declare_parameter_if_missing(node, "actuator_drive_type", std::string("linear"));
+  declare_parameter_if_missing(node, "drive_motion", std::string("linear"));
 
-  if (node.get_parameter("actuator_drive_type").as_string() != "linear") {
-    throw std::invalid_argument("actuator_drive_type must be 'linear' for LinMotActuator");
+  if (node.get_parameter("drive_motion").as_string() != "linear") {
+    throw std::invalid_argument("LinMotActuator is linear: drive_motion must be 'linear'");
   }
+
   linmot::BridgeConfig bridge_config;
   bridge_config.device = node.get_parameter("serial_port").as_string();
   bridge_config.period_ms = static_cast<int>(node.get_parameter("serial_period_ms").as_int());

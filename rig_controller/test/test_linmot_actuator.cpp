@@ -90,7 +90,7 @@ TEST_F(LinMotActuatorTest, RejectsInvalidConfiguration)
     {rclcpp::Parameter("max_acceleration_mps2", 25.0)},
     {rclcpp::Parameter("max_acceleration_mps2", 0.0)},
     {rclcpp::Parameter("serial_period_ms", 0)},
-    {rclcpp::Parameter("actuator_drive_type", "angular")},
+    {rclcpp::Parameter("drive_motion", "angular")},
   };
   int index = 0;
   for (const auto & parameters : invalid) {

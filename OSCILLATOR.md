@@ -40,7 +40,7 @@ no water depth: the water level changes between experiments but does not affect 
 | --- | --- | --- |
 | Firmware | `firmware/linmot_serial_bridge/` | Serial frames to CAN and back; rejects commands outside 5–195 mm, 3 m/s, 20 m/s²; aborts the motion when no frame arrives for 200 ms (watchdog). `link_test.py` tests it without ROS. |
 | Driver | `drivers/linmot_serial_driver/` | `SerialBridge` sends one frame every 20 ms (a command, the streamed target or a status request), so the watchdog only trips if the Pi stops. `LinMotDrive` brings the drive up from its status word, streams VAI go-to-position commands and latches faults. No ROS. |
-| Actuator | `rig_controller/src/linmot_actuator.*` | Implements `Actuator` for the controller, selected with `actuator_type: linmot`. |
+| Actuator | `rig_controller/src/linmot_actuator.*` | Implements `Actuator` for the controller, selected with `drive_name: linmot`. |
 | Controller | `rig_controller/src/controller_node.cpp` | Lifecycle node, trajectories, limits, goals; shared with the wavemakers. |
 
 Three layers of limits, the tightest first: the controller (5–195 mm, 2 m/s, 9.81 m/s², 5 Hz;
@@ -94,6 +94,10 @@ switched off from LinMot-Talk (take control, switch off, release control).
 - [x] Renames to `rig_controller`, `controller_node`, `bridge_node`, `Actuator` (2026-10-21).
 - [x] Step B code: `LinMotActuator`, `actuator_type` in the controller, tests (2026-10-21,
   `d0cf237`; tested against the simulator only).
+- [x] Drive selection for future drives (2026-10-23): `actuator_type` renamed to `drive_name`
+  (required, no default) and `actuator_drive_type` to `drive_motion`; old names fail configure.
+  The degrees-to-metres mapping moved into `DriveScale` (`rig_controller/src/drive_scale.hpp`),
+  used by the controller's limits and `IndraDriveActuator`. Tests pass (130, 0 failures).
 
 ### Now: step B on the rig
 
@@ -220,9 +224,9 @@ Serial Monitor first: only one program can have the port open.
   ```yaml
   /**:
     ros__parameters:
-      actuator_type: linmot
+      drive_name: linmot
       serial_port: /dev/ttyACM0
-      actuator_drive_type: linear
+      drive_motion: linear
       wavemaker_type: piston          # placeholder until step D
       water_depth: 1.0                # required > 0 for piston, not used otherwise
       rig: oscillator                 # names: move_oscillator, oscillator_position, ...
@@ -446,8 +450,8 @@ belongs in `play_dat.py` (item at the end).
 
 - [ ] Merge `feat/oscillator` into master once G is far enough along.
 - [ ] On the lab Pi, remove `build/` and `install/` of `wavemaker_controller` and rebuild. The
-  wavemaker runs with its topic names unchanged (`actuator_type` defaults to `indradrive`,
-  `rig` to `wavemaker`); its parameters have the new names from step R, so any parameter file
+  wavemaker runs with its topic names unchanged (`rig` defaults to `wavemaker`); its parameters
+  have the new names from step R and `drive_name: indradrive` is required, so any parameter file
   or command kept outside the repository has to be updated.
 
 ## How to run

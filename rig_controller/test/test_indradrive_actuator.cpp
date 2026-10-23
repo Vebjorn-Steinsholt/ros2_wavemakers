@@ -38,7 +38,7 @@ rclcpp::NodeOptions actuator_options()
       rclcpp::Parameter("max_velocity_rpm", 50.0),
       rclcpp::Parameter("in_position_tol_deg", 0.1),
       rclcpp::Parameter("step_timeout_ms", 10000),
-      rclcpp::Parameter("actuator_drive_type", "angular"),
+      rclcpp::Parameter("drive_motion", "angular"),
       rclcpp::Parameter("actuator_lead_m_per_degree", 0.00053),
       rclcpp::Parameter("actuator_upright_angle_deg", 12.0),
       rclcpp::Parameter("upright_position_m", 0.25),

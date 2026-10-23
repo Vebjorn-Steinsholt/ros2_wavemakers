@@ -6,6 +6,7 @@
 #include <string>
 
 #include "actuator.hpp"
+#include "drive_scale.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "mgate/indradrive.h"
 #include "mgate/mgate_driver.h"
@@ -37,10 +38,7 @@ public:
 private:
   std::unique_ptr<mgate::MGateDriver> mgate_driver_;
   std::unique_ptr<mgate::IndraDrive> indradrive_;
-  std::string actuator_drive_type_;
-  double lead_m_per_degree_;
-  double actuator_upright_angle_deg_;
-  double wavemaker_position_offset_m_;
+  DriveScale scale_;
   int poll_interval_ms_;
   // Drive limits in actuator units, and the speed cap used when holding position.
   double min_position_{0.0};

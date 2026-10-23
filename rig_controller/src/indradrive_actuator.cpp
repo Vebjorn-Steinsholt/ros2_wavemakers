@@ -28,8 +28,7 @@ void declare_parameter_if_missing(
 }  // namespace
 
 IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
-: lead_m_per_degree_(0.0), actuator_upright_angle_deg_(0.0),
-  wavemaker_position_offset_m_(0.0), poll_interval_ms_(50)
+: poll_interval_ms_(50)
 {
   declare_parameter_if_missing(node, "driver_port", 502);
   declare_parameter_if_missing(node, "driver_unit_id", 1);
@@ -54,21 +53,11 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
   declare_parameter_if_missing(node, "hold_velocity_rpm", 10.0);
   declare_parameter_if_missing(node, "in_position_tol_deg", 0.1);
   declare_parameter_if_missing(node, "step_timeout_ms", 10000);
-  declare_parameter_if_missing(node, "actuator_drive_type", std::string("linear"));
+  declare_parameter_if_missing(node, "drive_motion", std::string("linear"));
   declare_parameter_if_missing(node, "actuator_lead_m_per_degree", 0.0);
 
-  lead_m_per_degree_ = node.get_parameter("actuator_lead_m_per_degree").as_double();
-  actuator_upright_angle_deg_ = node.get_parameter("actuator_upright_angle_deg").as_double();
-  wavemaker_position_offset_m_ = node.get_parameter("upright_position_m").as_double();
+  scale_ = DriveScale::from_parameters(node);
   poll_interval_ms_ = node.get_parameter("poll_interval_ms").as_int();
-  actuator_drive_type_ = node.get_parameter("actuator_drive_type").as_string();
-  if (actuator_drive_type_ != "linear" && actuator_drive_type_ != "angular") {
-    throw std::invalid_argument("actuator_drive_type must be 'linear' or 'angular'");
-  }
-  if (actuator_drive_type_ == "angular" && lead_m_per_degree_ <= 0.0) {
-    throw std::invalid_argument(
-      "actuator_lead_m_per_degree must be positive for an angular actuator");
-  }
 
   const std::string host = node.get_parameter("driver_address").as_string();
   const int port = node.get_parameter("driver_port").as_int();
@@ -121,7 +110,7 @@ IndraDriveActuator::IndraDriveActuator(rclcpp_lifecycle::LifecycleNode & node)
 
   mgate::IndraDriveConfig drive_config;
   drive_config.profibus_address = profibus_address;
-  if (actuator_drive_type_ == "angular") {
+  if (scale_.angular) {
     drive_config.min_position = node.get_parameter("min_position_deg").as_double();
     drive_config.max_position = node.get_parameter("max_position_deg").as_double();
   } else {
@@ -260,9 +249,7 @@ int IndraDriveActuator::update_period_ms() const
 double IndraDriveActuator::max_velocity_mps() const
 {
   // Inverse of write_setpoint(): rpm = |velocity in actuator units per second| / 6.
-  const double actuator_units_per_s = max_velocity_rpm_ * 6.0;
-  return actuator_drive_type_ == "angular" ?
-         actuator_units_per_s * lead_m_per_degree_ : actuator_units_per_s;
+  return scale_.rate_to_m(max_velocity_rpm_ * 6.0);
 }
 double IndraDriveActuator::max_acceleration_mps2() const
 {
@@ -297,22 +284,14 @@ std::string IndraDriveActuator::status() const
 
 double IndraDriveActuator::actual_position_m() const
 {
-  const double position_deg = indradrive_->position_deg();
-  return actuator_drive_type_ == "angular" ?
-         wavemaker_position_offset_m_ +
-         (position_deg - actuator_upright_angle_deg_) * lead_m_per_degree_ : position_deg;
+  return scale_.to_m(indradrive_->position_deg());
 }
 
 ActuatorSetpoint IndraDriveActuator::to_actuator_setpoint(
   double position_m, double velocity_mps, double acceleration_mps2) const
 {
-  if (actuator_drive_type_ == "angular") {
-    const double position_deg = actuator_upright_angle_deg_ +
-      (position_m - wavemaker_position_offset_m_) / lead_m_per_degree_;
-    return {position_deg, velocity_mps / lead_m_per_degree_,
-      acceleration_mps2 / lead_m_per_degree_};
-  }
-  return {position_m, velocity_mps, acceleration_mps2};
+  return {scale_.to_drive(position_m), scale_.rate_to_drive(velocity_mps),
+    scale_.rate_to_drive(acceleration_mps2)};
 }
 
 }  // namespace rig_controller

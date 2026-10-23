@@ -30,6 +30,7 @@
 #include "linmot_actuator.hpp"
 #include "wave_math.hpp"
 #include "wave_trajectory.hpp"
+#include "drive_scale.hpp"
 
 using MoveRig = rig_interfaces::action::MoveRig;
 using MoveRigGoalHandle = rclcpp_action::ServerGoalHandle<MoveRig>;
@@ -52,15 +53,19 @@ namespace
 // (Arduino serial-to-CAN bridge, the oscillator). Throws on anything else, which fails configure.
 std::unique_ptr<rig_controller::Actuator> make_actuator(rclcpp_lifecycle::LifecycleNode & node)
 {
-  const std::string type = node.get_parameter("actuator_type").as_string();
-  if (type == "indradrive") {
+  const std::string name = node.get_parameter("drive_name").as_string();
+  if (name == "indradrive") {
     return std::make_unique<rig_controller::IndraDriveActuator>(node);
   }
-  if (type == "linmot") {
+  if (name == "linmot") {
     return std::make_unique<rig_controller::LinMotActuator>(node);
   }
+  if (name.empty()) {
+    throw std::invalid_argument(
+        "drive_name must be set to 'indradrive' or 'linmot, or implemented as new drives in the future.");
+  }
   throw std::invalid_argument(
-          "actuator_type must be 'indradrive' or 'linmot', not '" + type + "'");
+          "drive_name must be 'indradrive' or 'linmot', not '" + name + "'");
 }
 
 }  // namespace
@@ -77,6 +82,7 @@ public:
   : LifecycleNode("controller", options), actuator_factory_(std::move(actuator_factory))
   {
     // Must match the lifecycle manager's bond_timeout; set by the launch file.
+    declare_parameter<std::string>("drive_name", "");
     declare_parameter<double>("bond_timeout", 4.0);
     declare_parameter<double>("soft_stop_timeout_s", 0.2);
     declare_parameter<std::string>("actuator_type", "indradrive");
@@ -97,8 +103,8 @@ public:
     declare_parameter<double>("flap_attachment_height", 0.0);
     declare_parameter<double>("hinge_height", 0.0);
     declare_parameter<double>("actuator_upright_angle_deg", 0.0);
-    declare_parameter<std::string>("actuator_drive_type", "linear");
-    if (get_parameter("actuator_drive_type").as_string() == "linear") {
+    declare_parameter<std::string>("drive_motion", "linear");
+    if (get_parameter("drive_motion").as_string() == "linear") {
       declare_parameter<double>("travel_minimum_m", 0.0);
       declare_parameter<double>("travel_maximum_m", 1.0);
     }
@@ -156,6 +162,8 @@ public:
     // Renamed on 2026-10-22. ROS 2 ignores parameters a node does not declare, so an old name in a
     // yaml file or on the command line would silently leave the default (a 0-1 m travel limit).
     const std::map<std::string, std::string> renamed{
+      {"actuator_type", "drive_name"},
+      {"actuator_drive_type", "drive_motion"},
       {"wavemaker_upright_position_m", "upright_position_m"},
       {"wavemaker_upright_is_minimum", "upright_is_minimum"},
       {"wavemaker_minimum", "travel_minimum_m"},
@@ -187,38 +195,34 @@ public:
     gain_values_ = get_parameter("wavemaker_transfer_gain_values").as_double_array();
     flap_attachment_height_ = get_parameter("flap_attachment_height").as_double();
     hinge_height_ = get_parameter("hinge_height").as_double();
-    actuator_upright_angle_deg_ = get_parameter("actuator_upright_angle_deg").as_double();
-    actuator_drive_type_ = get_parameter("actuator_drive_type").as_string();
+
 
     if (!std::isfinite(wavemaker_position_offset_) || !std::isfinite(water_depth_) ||
-      !std::isfinite(flap_attachment_height_) || !std::isfinite(actuator_upright_angle_deg_))
+      !std::isfinite(flap_attachment_height_))
     {
       RCLCPP_ERROR(get_logger(), "All wavemaker numeric parameters must be finite");
       return CallbackReturn::FAILURE;
     }
 
-    if (actuator_drive_type_ != "angular" && actuator_drive_type_ != "linear") {
-      RCLCPP_ERROR(get_logger(), "actuator_drive_type must be 'linear' or 'angular'");
+    try {
+      drive_scale_ = rig_controller::DriveScale::from_parameters(*this);
+    } catch (const std::invalid_argument & error) {
+      RCLCPP_ERROR(get_logger(), "%s", error.what());
       return CallbackReturn::FAILURE;
     }
 
-    if (actuator_drive_type_ == "angular") {
-      const double lead_m_per_degree =
-        get_parameter("actuator_lead_m_per_degree").as_double();
+    if (drive_scale_.angular) {
       const double minimum_deg = get_parameter("min_position_deg").as_double();
       const double maximum_deg = get_parameter("max_position_deg").as_double();
-      if (!std::isfinite(lead_m_per_degree) || lead_m_per_degree <= 0.0 ||
-        !std::isfinite(minimum_deg) || !std::isfinite(maximum_deg) ||
-        minimum_deg >= maximum_deg || actuator_upright_angle_deg_ < minimum_deg ||
-        actuator_upright_angle_deg_ > maximum_deg)
+      if (!std::isfinite(minimum_deg) || !std::isfinite(maximum_deg) ||
+        minimum_deg >= maximum_deg || drive_scale_.upright_drive < minimum_deg ||
+        drive_scale_.upright_drive > maximum_deg)
       {
-        RCLCPP_ERROR(get_logger(), "Invalid angular actuator scale, reference, or limits");
+        RCLCPP_ERROR(get_logger(), "Invalid angular actuator limits");
         return CallbackReturn::FAILURE;
       }
-      goal_position_minimum_ = wavemaker_position_offset_ +
-        (minimum_deg - actuator_upright_angle_deg_) * lead_m_per_degree;
-      goal_position_maximum_ = wavemaker_position_offset_ +
-        (maximum_deg - actuator_upright_angle_deg_) * lead_m_per_degree;
+      goal_position_minimum_ = drive_scale_.to_m(minimum_deg);
+      goal_position_maximum_ = drive_scale_.to_m(maximum_deg);
     } else {
       travel_minimum_ = get_parameter("travel_minimum_m").as_double();
       travel_maximum_ = get_parameter("travel_maximum_m").as_double();
@@ -1391,8 +1395,7 @@ private:
   double flap_attachment_height_{0.0};
   double hinge_height_{0.0};
   double water_depth_{0.0};
-  double actuator_upright_angle_deg_{0.0};
-  std::string actuator_drive_type_;
+  rig_controller::DriveScale drive_scale_;
   std::mutex goal_mutex_;
   std::shared_ptr<MoveRigGoalHandle> goal_handle_;
   bool goal_pending_{false};
