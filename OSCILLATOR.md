@@ -439,7 +439,8 @@ belongs in `play_dat.py` (item at the end).
   `/oscillators/sloshing/controller` and `launch/oscillator.launch.py` (controller, bridge,
   lifecycle manager, soft stop, web page with `rig:=oscillator`). Start the yaml from the C + D
   rig test file, with `positioning_velocity_margin: 1.2` and
-  `positioning_acceleration_margin: 5.0` (see the 2026-10-23 result).
+  `positioning_acceleration_margin: 5.0` (see the 2026-10-23 result). Changed to 1.0 / 1.0 in
+  step G: 1.2 / 5.0 made the rig hum.
   Decided 2026-10-23: `return_to_upright_max_velocity_mps: 0.1`; the soft stop node (GPIO) is
   tested on the Pi only, so the launch file starts it unconditionally; the web page needs only
   `rig:=oscillator` (`web.launch.py` now picks `oscillators/sloshing` itself). Check on the rig
@@ -469,12 +470,12 @@ belongs in `play_dat.py` (item at the end).
 
 ### F: service on the Pi
 
-- [ ] `rpi/oscillator@.service`, copied from `wavemaker@.service` and, like it, without an
+- [x] `rpi/oscillator@.service`, copied from `wavemaker@.service` and, like it, without an
   `[Install]` section, so it never starts (or homes) at boot.
-- [ ] Each service refuses to start while the other runs (`ExecStartPre`; `Conflicts=` would
+- [x] Each service refuses to start while the other runs (`ExecStartPre`; `Conflicts=` would
   stop the running one instead). Needed: the oscillator runs on the ladertanken Pi, and both use
   port 8080, GPIO17 for the soft stop and the same ROS domain.
-- [ ] The udev rule on the Pi: ModemManager off for the Uno, and `/dev/linmot_bridge`. Check
+- [x] The udev rule on the Pi: ModemManager off for the Uno, and `/dev/linmot_bridge`. Check
   first whether ModemManager runs there (`systemctl status ModemManager`); the symlink is
   needed either way.
 
@@ -484,29 +485,67 @@ belongs in `play_dat.py` (item at the end).
   ls -l /dev/linmot_bridge
   ```
 
-- [ ] The service user in `dialout`; `rpi/README.md` updated.
+- [x] The service user in `dialout`; `rpi/README.md` updated.
+- [x] Done 2026-10-23 on the ladertanken Pi (commit `95f9d24`, install and use in
+  `rpi/README.md`, *Oscillator*). `run.sh` and `stop.sh` take `RIG=oscillator` from the unit;
+  `refuse_if_busy.sh` (`ExecStartPre` of both units) refuses a start while the other rig's
+  service runs or the web port is taken, which also catches a launch by hand. Rig test: start
+  (homing, `Managed nodes are active`), `systemctl stop` mid-wave (ordered shutdown through the
+  lifecycle manager, then SIGINT, every process finished cleanly), start refused in both
+  directions ("… is running; stop it first"), both refused during a launch by hand, both
+  `inactive (dead)` after a reboot. (rig)
 
 ### G: commissioning (rig)
 
-- [ ] Without water: activation with homing, `return_to_upright`, small sines (for example 10 mm
+- [x] Without water: activation with homing, `return_to_upright`, small sines (for example 10 mm
   at 2 s), then steps towards 2 m/s, 9.81 m/s² and 5 Hz. Record setpoint and position, and
   check whether VAI at the sine's maxima runs without jitter.
-- [ ] Fault paths: soft stop button, USB, LinMot-Talk.
+
+  2026-10-23, through `oscillator@ladertanken`, one bag for the session (`/tmp/osc_G_dry`,
+  topics `oscillator_setpoint`, `_position`, `_velocity`, `height`, `period`,
+  `oscillator_message`):
+
+  - **Envelope.** A sine has v = √(a·A), so with 9.81 m/s² and at most 90 mm amplitude the
+    fastest goal is ≈ 0.94 m/s; 2 m/s cannot be reached. The start blend raises the peak
+    acceleration: ~9 % at full stroke, ~65 % at 5 Hz (TODO 25), so the largest 5 Hz goal is
+    H ≈ 0.017 m. **Press Go to centre before every goal**: after Stop the slide holds where it
+    is, and the blend from there can need much more (14.6 m/s² for 0.018 m / 0.2 s, rejected).
+  - **Overshoot at the ends** with margins 1.2 / 5.0: from 50 mm strokes the slide passed the
+    setpoint by 2.3-3.0 mm at each end; full stroke (0.18 m / 0.9 s) reached 7.2 and 192.9 mm.
+    The LinMot sits in a steel box with hard stops at 0 and 200 mm, so the goal travel is now
+    `travel_minimum_m: 0.015`, `travel_maximum_m: 0.185` (H ≤ 0.17 m).
+  - **Hum.** With 1.2 / 5.0 every run hummed mechanically, worst at 0.10 m / 0.7 s; with
+    1.0 / 1.0, 10 mm / 2 s is quiet, 0.10 m / 2 s has a very weak hum and 0.10 m / 0.7 s is
+    better but not gone. The high acceleration margin turns every 20 ms setpoint into a hard
+    VAI move; what is left at fast large strokes is probably the 50 Hz stepping itself (a
+    streaming mode would remove it, not worth it for a demo rig). Margins are now 1.0 / 1.0
+    (~200 ms lag, strokes slightly short, accepted). Still to do: check the mechanics once
+    (stator and box bolts, play of the slider, the slider-to-tank coupling) and confirm in a
+    bag that full stroke at 1.0 / 1.0 stays inside ~15-185 mm.
+  - Goals accepted from the centre with today's `oscillator.yaml` (largest H per period):
+    0.17 m up to 0.7 s (travel), 0.16 m at 0.6 s, 0.11 m at 0.5 s, 0.07 m at 0.4 s, 0.04 m at
+    0.3 s, 0.027 m at 0.25 s, 0.017 m at 0.2 s (acceleration).
+- [ ] Fault paths: soft stop button, USB, LinMot-Talk. Soft stop button done (Pi,
+  2026-10-23); USB and LinMot-Talk done on the PC (2026-10-22), still to repeat through the
+  service.
 - [ ] With water: the same steps; watch the tracking error and the drive's following-error
-  limit (20 mm).
+  limit (20 mm), and the ends first (slosh forces act at the turnarounds). In practice the
+  splashing (free surface rising at the walls) will limit the stroke before the travel does;
+  find the largest stroke that does not spill at resonance and consider setting the travel
+  to it.
 - [ ] Pregenerated goals: check the peak acceleration taken from the samples.
 
 ### Merge
 
 - [ ] Merge `feat/oscillator` into master once G is far enough along.
-- [ ] On the lab Pi, remove `build/` and `install/` of `wavemaker_controller` and rebuild. The
+- [x] On the lab Pi, remove `build/` and `install/` of `wavemaker_controller` and rebuild. The
   wavemaker runs with its topic names unchanged (`rig` defaults to `wavemaker`); its parameters
   have the new names from step R and `drive_name: indradrive` is required, so any parameter file
   or command kept outside the repository has to be updated.
   2026-10-23, ladertanken Pi: already on `feat/oscillator`, old packages gone; after a full
   `colcon build` the ladertanken wavemaker and the oscillator both run on the branch code
-  (step R names, `drive_name`/`DriveScale`, the rig-neutral log texts). The other Pis
-  (lilletanken, mclab) still need this step.
+  (step R names, `drive_name`/`DriveScale`, the rig-neutral log texts). lilletanken and mclab
+  are not deployed (future, they need gateways), so ladertanken is the only lab Pi.
 
 ## How to run
 

@@ -1,7 +1,8 @@
 # Running a lab Pi as a service
 
 `wavemaker@.service` runs `lab.launch.py` (controller, bridge, lifecycle manager, soft stop and
-web page) under systemd. Unlike a launch in an SSH session, it keeps running when the connection
+web page) under systemd; on the ladertanken Pi, `oscillator@.service` runs the sloshing
+oscillator's `oscillator.launch.py` the same way (see [Oscillator](#oscillator)). Unlike a launch in an SSH session, it keeps running when the connection
 drops, logs to the journal, and is started and stopped the same way on every Pi.
 
 It is a template unit: the part after `@` is the wavemaker, which is also the Pi's user
@@ -10,8 +11,11 @@ It is a template unit: the part after `@` is the wavemaker, which is also the Pi
 | File | Purpose |
 |---|---|
 | `wavemaker@.service` | The unit. Installed as `/etc/systemd/system/wavemaker@.service`. |
-| `run.sh` | `ExecStart`: sources ROS and the workspace, then `exec`s `lab.launch.py`. |
+| `oscillator@.service` | The oscillator's unit (ladertanken Pi only). Installed next to the wavemaker's. |
+| `run.sh` | `ExecStart`: sources ROS and the workspace, then `exec`s `lab.launch.py`, or `oscillator.launch.py` when the unit sets `RIG=oscillator`. |
 | `stop.sh` | `ExecStop`: asks the lifecycle manager to shut the nodes down before the launch is stopped. |
+| `refuse_if_busy.sh` | `ExecStartPre` of both units: refuses to start while the other rig's service runs or the web port is in use (for example a launch by hand). |
+| `99-linmot-bridge.rules` | udev rule for the oscillator's Arduino: `/dev/linmot_bridge`, and ModemManager kept off it. |
 
 > **The service never starts at boot.** The unit has no `[Install]` section, so it cannot be
 > enabled: the drive is enabled as soon as `lab.launch.py` runs, and a power cut or reboot must
@@ -123,6 +127,8 @@ journalctl -u wavemaker@ladertanken -b --no-pager -o cat | grep -E "ERROR|WARN|d
 | `Soft stop released` never appears, and the button changes nothing | `soft_stop` could not open GPIO17 (`Cannot open GPIO17` in the journal): check `WorkingDirectory=` in the installed unit and the `gpio` group. If GPIO is fine, the button is pressed in. |
 | `ros2` commands on another computer do not see the wavemaker | That computer uses another ROS domain or another DDS (`RMW_IMPLEMENTATION`). The Pi uses the default, Fast DDS. |
 | `status` shows `failed` after a stop | Check the journal around the stop for `ERROR` lines. |
+| Start fails with `… is running; stop it first` | The other rig on this Pi (wavemaker or oscillator) runs. Stop it with the command shown. |
+| Start fails with `port 8080 is in use` | Something else serves the web port, usually a `ros2 launch` started by hand. Stop it first. |
 
 ## Rig test
 
@@ -137,3 +143,73 @@ journalctl -u wavemaker@ladertanken -b --no-pager -o cat | grep -E "ERROR|WARN|d
    warning appears after 5 min, Keep running restarts the count, and at the timeout everything
    stops and the launch exits.
 5. Reboot the Pi. `systemctl status wavemaker@ladertanken` reports `inactive (dead)`.
+
+## Oscillator
+
+The sloshing oscillator (LinMot drive behind an Arduino Uno, see `OSCILLATOR.md`) runs on the
+ladertanken Pi as `oscillator@ladertanken`, user `ladertanken`. It shares the web port, the soft
+stop button on GPIO17 and the ROS domain with the ladertanken wavemaker, so only one of the two
+can run: each unit's `ExecStartPre` (`refuse_if_busy.sh`) refuses to start while the other runs.
+
+> Like the wavemaker's, this unit never starts at boot. Starting it switches the drive on, and the
+> slide homes (moves to its home stop, about 20 s) if the drive was powered off.
+
+### Install (once)
+
+In addition to the wavemaker install above, as user `ladertanken` with the Uno plugged in:
+
+```bash
+# Uno: fixed name /dev/linmot_bridge, ModemManager kept off it
+sudo cp ~/ros_ws/src/ros2_wavemakers/rpi/99-linmot-bridge.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger && sudo udevadm settle
+ls -l /dev/linmot_bridge                # → /dev/linmot_bridge -> ttyACM0
+id | grep -o dialout                    # → dialout (else: sudo usermod -aG dialout ladertanken, log in again)
+
+# Both units (the wavemaker's has the ExecStartPre check too)
+sudo cp ~/ros_ws/src/ros2_wavemakers/rpi/oscillator@.service \
+        ~/ros_ws/src/ros2_wavemakers/rpi/wavemaker@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+systemd-analyze verify oscillator@ladertanken.service wavemaker@ladertanken.service   # no output = OK
+```
+
+Create `/etc/default/oscillator` with `sudoedit /etc/default/oscillator`, with the same domain as
+`/etc/default/wavemaker`:
+
+```bash
+# The lab's ROS domain. Required, and not 0.
+ROS_DOMAIN_ID=1
+PORT=8080
+```
+
+Extend the sudoers rule (`sudo visudo -f /etc/sudoers.d/wavemaker`) to one line:
+
+```
+ladertanken ALL=(root) NOPASSWD: /usr/bin/systemctl start wavemaker@ladertanken, /usr/bin/systemctl stop wavemaker@ladertanken, /usr/bin/systemctl start oscillator@ladertanken, /usr/bin/systemctl stop oscillator@ladertanken
+```
+
+`sudo -l` should list all four.
+
+### Use
+
+```bash
+sudo systemctl start oscillator@ladertanken     # switches the drive on, homes if needed
+sudo systemctl stop oscillator@ladertanken      # stops the motion and switches the drive off
+journalctl -u oscillator@ladertanken -f -o cat
+```
+
+The page is at `http://ladertanken-rpi.local:8080/`. The height field is the stroke, peak to
+peak, in metres: `0.01` moves the slide between 95 and 105 mm.
+
+### Rig test
+
+1. Start; the journal shows `LinMot: homed` (if it homed), `Managed nodes are active` and
+   `Soft stop released`. Run a wave from the page.
+2. `sudo systemctl stop oscillator@ladertanken` mid-wave: the slide stops, the journal shows
+   `Managed nodes have been shut down` and every process `finished cleanly`.
+3. With the oscillator running, `sudo systemctl start wavemaker@ladertanken` fails, and its
+   journal says `oscillator@ladertanken is running; stop it first`. The same the other way round.
+4. With `ros2 launch oscillator_bringup oscillator.launch.py` running by hand, both starts fail
+   with `port 8080 is in use`.
+5. After a reboot, both units are `inactive (dead)`.
+
+Passed 2026-10-23.
