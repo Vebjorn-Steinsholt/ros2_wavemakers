@@ -279,8 +279,9 @@ messages, a live plot of setpoint and measured position, Return to upright, and 
   page's texts and the server's messages, for example "Paddle" and "Return to upright" or "Slide"
   and "Go to centre". The controls are the same.
 - The `namespace` launch argument of `web.launch.py` sets where the page runs and which bridge it
-  talks to; the default is `wavemakers/<wavemaker>`. The oscillator uses
-  `namespace:=oscillators/sloshing rig:=oscillator`.
+  talks to. Empty (the default) gives `wavemakers/<wavemaker>` for `rig:=wavemaker`, where
+  `wavemaker` is then required, and `oscillators/sloshing` for `rig:=oscillator`, so the
+  oscillator needs only `rig:=oscillator`.
 
 To try the page without hardware, `demo.launch.py` starts a fake controller, the bridge, the
 lifecycle manager and the page on their own ROS domain (77), reachable only from this computer,

@@ -384,7 +384,7 @@ belongs in `play_dat.py` (item at the end).
   colcon test-result --verbose
   ```
 
-- [ ] On the rig, with `/tmp/oscillator_test.yaml` switched to the oscillator (drop
+- [x] On the rig, with `/tmp/oscillator_test.yaml` switched to the oscillator (drop
   `wavemaker_type` and `water_depth`; add the two margins at 1.0,
   `max_goal_acceleration_mps2: 9.81`, `min_period_s: 0.2`, `max_acceleration_mps2: 20.0`), the
   first regular goal, small and slow: 10 mm stroke at 2 s, around 100 mm. Terminals 1 and 2 as
@@ -402,6 +402,30 @@ belongs in `play_dat.py` (item at the end).
   terminal 1, for example `"{height: 0.19, period: 0.5}"` (about 15 m/s²) and
   `"{height: 0.01, period: 0.15}"`.
 
+  2026-10-23: passed. Activation homed the drive (21 s), `return_to_upright` ended at
+  100.22 mm (`status=0`), the 10 mm / 2 s goal ran and both bad goals were rejected. Recorded
+  with `ros2 bag record` of `oscillator_setpoint`, `oscillator_position` and `oscillator_velocity`
+  (about 20 s each), compared after the 3 s blend:
+
+  | Margins (velocity / acceleration) | 1.0 / 1.0 | 1.2 / 5.0 |
+  | --- | --- | --- |
+  | Lag, best match | ≈ 200 ms | ≈ 100 ms |
+  | Tracking error rms / max | 2.09 / 2.96 mm | 0.98 / 1.53 mm |
+  | Mid-stroke speed dips | 85 of 410 steps | 4 of 409 |
+  | Position range | 95.251-104.647 mm | 95.251-104.661 mm |
+  | Repeated position samples | 1.8 % | 2.5 % |
+
+  Control cycle 20.0 ms (19.3-20.6 ms) in both. The lag comes from VAI: every setpoint is a
+  move that has to stop at its target, so with deceleration = the sine's own peak (A·ω² ≈
+  49 mm/s²) the slide runs v²/(2a) ≈ 2.5 mm behind, and with velocity margin 1.0 it cannot
+  catch up. Margins 1.2 / 5.0 halve the lag; use them in `oscillator.yaml` (step E). The stroke
+  stays 0.59 mm short (0.25 mm at the bottom, 0.34 mm at the top) in both runs, with a stall of
+  about 150 ms at each turnaround, so it is not the braking limit; accepted, the rig is for
+  demonstrating sloshing. If it ever matters: LinMot-Talk oscilloscope, Demand vs Actual
+  Position at a turnaround (demand flat → VAI planning, streaming mode; actual behind demand →
+  friction or the drive's gains). On the PC this also needed the current
+  `rpi/99-linmot-bridge.rules` for `/dev/linmot_bridge`.
+
 **Later, low priority: `play_dat.py` for pregenerated goals**
 
 - [ ] Its ROS part (the TODOs in `play()`), with `--rig`.
@@ -413,7 +437,14 @@ belongs in `play_dat.py` (item at the end).
 
 - [ ] Package `oscillator_bringup`: `config/oscillator.yaml` under
   `/oscillators/sloshing/controller` and `launch/oscillator.launch.py` (controller, bridge,
-  lifecycle manager, soft stop, web page with `rig:=oscillator`).
+  lifecycle manager, soft stop, web page with `rig:=oscillator`). Start the yaml from the C + D
+  rig test file, with `positioning_velocity_margin: 1.2` and
+  `positioning_acceleration_margin: 5.0` (see the 2026-10-23 result).
+  Decided 2026-10-23: `return_to_upright_max_velocity_mps: 0.1`; the soft stop node (GPIO) is
+  tested on the Pi only, so the launch file starts it unconditionally; the web page needs only
+  `rig:=oscillator` (`web.launch.py` now picks `oscillators/sloshing` itself). Check on the rig
+  that the lifecycle manager's bond (`bond_timeout` 4 s) survives an activation that blocks
+  about 20 s while the drive homes.
 - [ ] `serial_port: /dev/linmot_bridge` in `oscillator.yaml`, the fixed name from
   `rpi/99-linmot-bridge.rules` (step F). Unlike `/dev/ttyACM0` it does not change with other
   USB devices, and unlike the `/dev/serial/by-id/...` path it survives replacing the Uno.

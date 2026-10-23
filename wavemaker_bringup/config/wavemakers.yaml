@@ -69,7 +69,7 @@
 
 /wavemakers/mclab/controller:
   ros__parameters:
-    drive_name: "IndraDrive"
+    drive_name: "indradrive"
     wavemaker_type: "flap"
     travel_minimum_m: 0.0
     travel_maximum_m: 0.5
