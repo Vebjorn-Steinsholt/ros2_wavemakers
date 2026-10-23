@@ -503,6 +503,10 @@ belongs in `play_dat.py` (item at the end).
   wavemaker runs with its topic names unchanged (`rig` defaults to `wavemaker`); its parameters
   have the new names from step R and `drive_name: indradrive` is required, so any parameter file
   or command kept outside the repository has to be updated.
+  2026-10-23, ladertanken Pi: already on `feat/oscillator`, old packages gone; after a full
+  `colcon build` the ladertanken wavemaker and the oscillator both run on the branch code
+  (step R names, `drive_name`/`DriveScale`, the rig-neutral log texts). The other Pis
+  (lilletanken, mclab) still need this step.
 
 ## How to run
 
