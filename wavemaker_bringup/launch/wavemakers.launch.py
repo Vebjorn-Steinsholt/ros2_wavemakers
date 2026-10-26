@@ -81,6 +81,10 @@ def _launch_setup(context):
                     'autostart': True,
                     'node_names': managed_nodes,
                     'bond_timeout': bond_timeout,
+                    # After a fault the nodes stay down. Nav2 would otherwise bring them back up
+                    # within seconds (respawn reconnection), switching the drive on again without
+                    # anyone asking. Restart the service instead.
+                    'attempt_respawn_reconnection': False,
                 }],
             )
         )

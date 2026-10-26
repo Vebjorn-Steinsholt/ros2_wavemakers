@@ -112,6 +112,13 @@ The service is never restarted automatically (`Restart=no`): a restart would re-
 If a node dies, `ros2 launch` keeps running with the rest. Check the journal, then stop and start
 the service.
 
+**After a drive fault** (USB pulled, drive switched off, no feedback) the controller switches the
+drive off and drops its bond; the lifecycle manager logs `CRITICAL FAILURE … Shutting down related
+nodes` and `Managed nodes have been reset`, and the nodes stay down while the service keeps
+running. Nothing switches the drive on again by itself: the launch files set
+`attempt_respawn_reconnection: False` (Nav2's default `True` brought the nodes back up within
+seconds, found 2026-10-26). Check the journal, fix the cause, then stop and start the service.
+
 ## Troubleshooting
 
 `journalctl -f` shows only the last lines, so earlier errors are easy to miss. Search the whole
