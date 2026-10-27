@@ -258,6 +258,7 @@ async function loadTexts() {
   for (const [id, key] of [
     ['title', 'title'], ['waveCard', 'wave_card'], ['motionCard', 'motion_card'],
     ['plotNote', 'plot_note'], ['return', 'return_button'],
+    ['heightLabel', 'height_label'],
   ]) {
     $(id).textContent = texts[key];
   }

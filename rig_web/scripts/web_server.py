@@ -64,6 +64,7 @@ RIG_TEXTS = {
         'a_motion': 'a wave',
         'title': 'Wavemaker Control',
         'wave_card': 'Regular wave',
+        'height_label': 'Height H [m]',
         'motion_card': 'Paddle',
         'plot_note': 'metres at the flap top, last 20 s',
         'return_button': 'Return to upright',
@@ -75,6 +76,8 @@ RIG_TEXTS = {
         'a_motion': 'an oscillation',
         'title': 'Sloshing Oscillator',
         'wave_card': 'Regular oscillation',
+        # The controller uses the height as the slide's stroke, peak to peak.
+        'height_label': 'Stroke H [m], peak to peak',
         'motion_card': 'Slide',
         'plot_note': 'slide position in metres, last 20 s',
         'return_button': 'Go to centre',

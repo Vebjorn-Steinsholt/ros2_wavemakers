@@ -82,6 +82,9 @@ switched off from LinMot-Talk (take control, switch off, release control).
 
 ## Plan
 
+Work for all rigs that comes after this plan, such as a go-to-position action for CLI users, is
+in [TODO.md](TODO.md#planned-features-all-rigs).
+
 ### Done
 
 - [x] Firmware: framing, CRC, READY, watchdog (2026-10-19); switch-on after power-up and error
@@ -519,20 +522,58 @@ belongs in `play_dat.py` (item at the end).
     better but not gone. The high acceleration margin turns every 20 ms setpoint into a hard
     VAI move; what is left at fast large strokes is probably the 50 Hz stepping itself (a
     streaming mode would remove it, not worth it for a demo rig). Margins are now 1.0 / 1.0
-    (~200 ms lag, strokes slightly short, accepted). Still to do: check the mechanics once
-    (stator and box bolts, play of the slider, the slider-to-tank coupling) and confirm in a
-    bag that full stroke at 1.0 / 1.0 stays inside ~15-185 mm.
+    (~200 ms lag, strokes slightly short, accepted). Mechanics checked 2026-10-26 (stator and
+    box bolts, play of the slider, the slider-to-tank coupling); nothing reported.
   - Goals accepted from the centre with today's `oscillator.yaml` (largest H per period):
     0.17 m up to 0.7 s (travel), 0.16 m at 0.6 s, 0.11 m at 0.5 s, 0.07 m at 0.4 s, 0.04 m at
     0.3 s, 0.027 m at 0.25 s, 0.017 m at 0.2 s (acceleration).
-- [ ] Fault paths: soft stop button, USB, LinMot-Talk. Soft stop button done (Pi,
-  2026-10-23); USB and LinMot-Talk done on the PC (2026-10-22), still to repeat through the
-  service.
-- [ ] With water: the same steps; watch the tracking error and the drive's following-error
-  limit (20 mm), and the ends first (slosh forces act at the turnarounds). In practice the
-  splashing (free surface rising at the walls) will limit the stroke before the travel does;
-  find the largest stroke that does not spill at resonance and consider setting the travel
-  to it.
+- [x] Fault paths: soft stop button, USB, LinMot-Talk. Soft stop button done (Pi,
+  2026-10-23); USB and LinMot-Talk done on the PC (2026-10-22) and through the service with
+  water (2026-10-26):
+
+  - USB pulled during 0.10 m / 2 s: `Driver fault: serial port down: serial write: No such
+    device` within 40 ms, then `CRITICAL FAILURE … Shutting down related nodes`.
+  - Drive switched off in LinMot-Talk: `Driver fault: no feedback from the drive for 100 ms`
+    (not "the drive switched off" as on 2026-10-22: the switch-off also stopped the drive's
+    feedback).
+  - **Found: the nodes came back up by themselves.** Nav2's lifecycle manager defaults to
+    `attempt_respawn_reconnection: true`: after a bond failure it resets the nodes, waits for
+    them to answer (ours never died, so at once) and runs the whole start-up again, 1-3 s after
+    the fault. Activating the controller switches the drive on (LinMot: acknowledges errors,
+    homes if needed; IndraDrive: a new actuator clears the latched fault). Both retries failed
+    only by chance (port gone; drive not answering on CAN). Fixed in `oscillator.launch.py`
+    and `wavemakers.launch.py` (`attempt_respawn_reconnection: False`, commit `d192733`);
+    checked locally with `bridge_node` under the lifecycle manager (True: active again after
+    10 s; False: stays unconfigured), then on the rig: oscillator, drive switched off in
+    LinMot-Talk, and the ladertanken wavemaker, e-stop (`Driver fault: drive error F2026`,
+    undervoltage in the power section). Both end with `Managed nodes have been reset` and
+    nothing after it; the service keeps running with the nodes down until it is restarted.
+  - Unexplained, once: `Stopped: client heartbeat (LabVIEW or web page) lost` during a
+    0.10 m / 2 s run. The bridge stopped and held as designed; the page had stopped
+    acknowledging (tab hidden or closed, laptop asleep, or Wi-Fi). Watch for it in
+    demonstrations.
+- [x] With water: the same steps; watch the tracking error and the drive's following-error
+  limit (20 mm), and the ends first (slosh forces act at the turnarounds).
+
+  2026-10-26, filled tank with a lid, margins 1.0 / 1.0, bags `/tmp/osc_G_water*` and
+  `/tmp/osc_G_full`. No drive errors or following-error warnings in any run.
+
+  - 10 mm / 2 s: as dry (stroke −4.4 %, lag ~180 ms); the water makes no difference there.
+  - **Resonance about 1.0 s** (sweep at H 0.005 m from 1.6 to 0.4 s: biggest waves at 1.0 s,
+    seen; on the slide the largest push, 0.45 mm rms after removing the lag, against
+    0.18-0.26 mm at the neighbouring periods).
+  - At 1.0 s: the water **hits the lid from H 0.02 m**; no leaks. The push on the slide grows
+    up to H 0.05 m (1.8 mm rms) and then levels off (1.5-1.6 mm at 0.075 and 0.10 m): the lid
+    limits the sloshing. From 0.05 m the water carries the slide **beyond the setpoint**, up to
+    2.2 mm at 0.10 m. With the lid, spilling does not limit the stroke.
+  - Off resonance (2.0 s): 0.05 and 0.10 m, push 0.6 and 1.1 mm, stroke within +1 %.
+  - **Full stroke wet**, H 0.17 m / 0.9 s (near resonance): the slide reached **9.0 and
+    190.7 mm**, 5-6 mm beyond the setpoint (dry it was ~3 mm), steady from the first cycle
+    (9.0-11.5 / 188.0-190.7 mm per cycle). 9 mm of the box are left: the 15 mm travel margin
+    is enough, keep `0.015 / 0.185` (or `0.020 / 0.180`, H ≤ 0.16 m, for at least 10 mm).
+  - Correction: the "repeated position samples" are not a feedback problem. They are highest
+    on small slow runs (14 % at 5 mm) and zero on large ones: the slide stands still for a
+    moment at each turnaround (the stall seen on 2026-10-23).
 - [ ] Pregenerated goals: check the peak acceleration taken from the samples.
 
 ### Merge

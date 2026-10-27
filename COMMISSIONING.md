@@ -38,7 +38,7 @@ both files; gaps in the numbering are the items kept there.
 - [ ] **5. Make the gateway switch the drive off if the PC or the node dies.** (rig; MGate configuration)
   The MGate keeps sending the last outputs (Drive On, Drive Start, last target) if Modbus writes stop. Our driver only sets control word 0 while its process is alive.
   - On the MGate's output module, set a fault value timeout of about 500 ms (it must ride out the ~210 ms gateway stalls; see *Verified so far*) with fault value 0 (MGate manual p. 28). Test by killing the controller while the drive is enabled; the drive must switch off.
-  - The fault timeout relies on writes every cycle; the matching code change (`write_only_dirty` default) is item 5 in [TODO.md](TODO.md).
+  - The fault timeout relies on writes every cycle; the matching code change is done: `write_only_dirty` defaults to `false` in `IndraDriveActuator` (2026-10-27).
 
 - [ ] **34. Spring balance matches the water depth.** (rig; mechanical, for whoever owns the mechanics)
   The blue ropes run over a pulley to large springs whose tension counteracts the water pressure on the flap, so the motor is stable at upright. The water's moment on the flap grows roughly with depth cubed (1.0 m ≈ 2.5 × 0.73 m), so the tension must be reset whenever the water level changes, together with `water_depth` in `wavemakers.yaml`.
